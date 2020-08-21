@@ -14,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class PublishTokenVerificationServiceRest implements PublishTokenVerificationService {
@@ -45,16 +46,16 @@ public class PublishTokenVerificationServiceRest implements PublishTokenVerifica
             if (reply.getStatusCode().is2xxSuccessful() && reply.hasBody()) {
                 return reply.getBody();
             } else {
-                LOG.warn("Server didn't verify publish token: status={}", reply.getStatusCode());
+                LOG.warn("Server didn't verify publish token: {}", keyValue("status", reply.getStatusCode()));
                 throw new TokenValidationException();
             }
         } catch (HttpClientErrorException e) {
-            LOG.warn("Publish token not verified: result={}", e.getStatusCode(), e);
+            LOG.warn("Publish token not verified: {}", keyValue("result", e.getStatusCode()), e);
             throw new TokenValidationException();
         } catch (HttpServerErrorException e) {
-            LOG.error("Error in token service: url={}", url, e);
+            LOG.error("Error in token service: {}", keyValue("url", url), e);
         } catch (RestClientException e) {
-            LOG.error("Error verifying token request: url={}", url, e);
+            LOG.error("Error verifying token request: {}", keyValue("url", url), e);
         }
         throw new IllegalStateException("Could not handle token verification");
     }

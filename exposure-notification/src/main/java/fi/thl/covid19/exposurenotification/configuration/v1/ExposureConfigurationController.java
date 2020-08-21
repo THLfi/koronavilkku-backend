@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @RestController
 @RequestMapping("/exposure/configuration/v1")
@@ -33,7 +34,7 @@ public class ExposureConfigurationController {
 
     @GetMapping
     public ResponseEntity<ExposureConfiguration> getConfiguration(@RequestParam("previous") Optional<Integer> version) {
-        LOG.info("Fetching exposure configuration: previous={}", version);
+        LOG.info("Fetching exposure configuration: {}", keyValue("previous", version));
         ExposureConfiguration latest = configurationService.getLatestExposureConfig();
         return version.isEmpty() || latest.version > version.get()
                 ? ResponseEntity.ok().cacheControl(cacheControl(version, latest.version)).body(latest)

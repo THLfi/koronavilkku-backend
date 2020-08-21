@@ -17,8 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -104,7 +103,7 @@ public class ApiErrorHandlerTest {
     private void assertErrorObject(String jsonResult, HttpStatus status, Optional<String> expectedMessage) throws JsonProcessingException {
         ApiError parsed = mapper.readValue(jsonResult, ApiError.class);
         assertEquals(status.value(), parsed.code);
-        assertTrue(parsed.errorId > 0);
+        assertFalse(parsed.errorId.isEmpty());
         assertEquals(expectedMessage, parsed.message);
     }
 }

@@ -18,6 +18,7 @@ import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class DiagnosisKeyService {
@@ -40,8 +41,12 @@ public class DiagnosisKeyService {
         List<TemporaryExposureKey> filtered = filter(keys, now);
         PublishTokenVerification verification = tokenVerificationService.getVerification(publishToken);
         int currentInterval = IntervalNumber.to24HourInterval(now);
-        LOG.info("Publish token verified: currentInterval={} filterStart={} filterEnd={} postedCount={} filteredCount={}",
-                currentInterval, verification.symptomsOnset, now, keys.size(), filtered.size());
+        LOG.info("Publish token verified: {} {} {} {} {}",
+                keyValue("currentInterval", currentInterval),
+                keyValue("filterStart", verification.symptomsOnset),
+                keyValue("filterEnd", now),
+                keyValue("postedCount", keys.size()),
+                keyValue("filteredCount", filtered.size()));
         dao.addKeys(verification.id, checksum(keys), currentInterval, adjustRiskBuckets(filtered, verification.symptomsOnset));
     }
 

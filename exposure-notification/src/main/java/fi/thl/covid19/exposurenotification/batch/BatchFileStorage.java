@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.*;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class BatchFileStorage {
@@ -32,7 +33,9 @@ public class BatchFileStorage {
 
     public BatchFileStorage(@Value("${covid19.diagnosis.file-storage.directory:}") Optional<String> directory) {
         this.batchFileDirectory = getDirectory(directory.map(String::trim).filter(s -> !s.isEmpty()));
-        LOG.info("Initialized: temp={} directory='{}'", directory.isEmpty(), this.batchFileDirectory);
+        LOG.info("Initialized: {} '{}'",
+                keyValue("temp", directory.isEmpty()),
+                keyValue("directory", this.batchFileDirectory));
     }
 
     private static Path getDirectory(Optional<String> directory) {
@@ -89,11 +92,11 @@ public class BatchFileStorage {
     }
 
     private boolean tryDelete(BatchId id) {
-        LOG.info("Deleting batch: batchId={}", id);
+        LOG.info("Deleting batch: {}", keyValue("batchId", id));
         try {
             return Files.deleteIfExists(pathToFile(id));
         } catch (IOException e) {
-            LOG.warn("Failed to delete file: batchId={}", id);
+            LOG.warn("Failed to delete file: {}", keyValue("batchId", id));
             throw new UncheckedIOException(e);
         }
     }
@@ -104,12 +107,12 @@ public class BatchFileStorage {
             if (lock != null) {
                 channel.truncate(0);
                 channel.write(ByteBuffer.wrap(data));
-                LOG.info("Wrote new batch: batchId={}", batchId);
+                LOG.info("Wrote new batch: {}", keyValue("batchId", batchId));
             } else {
-                LOG.info("Overlapping write (another process is writing the batch): batchId={}", batchId);
+                LOG.info("Overlapping write (another process is writing the batch): {}", keyValue("batchId", batchId));
             }
         } catch (IOException e) {
-            LOG.error("Error writing batch file: batchId={}", batchId);
+            LOG.error("Error writing batch file: {}", keyValue("batchId", batchId));
             throw new UncheckedIOException(e);
         }
     }

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Random;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class SmsService {
@@ -32,8 +33,10 @@ public class SmsService {
     public SmsService(RestTemplate restTemplate, SmsConfig config) {
         this.restTemplate = requireNonNull(restTemplate);
         this.config = requireNonNull(config);
-        LOG.info("SMS Service initialized: active={} senderName={} gateway={}",
-                config.gateway.isPresent(), config.senderName, config.gateway.orElse(""));
+        LOG.info("SMS Service initialized: {} {} {}",
+                keyValue("active", config.gateway.isPresent()),
+                keyValue("senderName", config.senderName),
+                keyValue("gateway", config.gateway.orElse("")));
     }
 
     public boolean send(String number, PublishToken token) {
@@ -48,20 +51,23 @@ public class SmsService {
     private boolean send(String gateway, String number, String content) {
         String sendEventId = Integer.toString(RAND.nextInt(Integer.MAX_VALUE));
 
-        LOG.info("Sending token via SMS: gateway={} length={} eventId={}", gateway, content.length(), sendEventId);
+        LOG.info("Sending token via SMS: {} {} {}",
+                keyValue("gateway", gateway),
+                keyValue("length", content.length()),
+                keyValue("eventId", sendEventId));
 
         try {
             HttpEntity<MultiValueMap<String, String>> request = formRequest(sendEventId, number, content);
             ResponseEntity<String> result = restTemplate.postForEntity(gateway, request, String.class);
             if (result.getStatusCode().is2xxSuccessful()) {
-                LOG.info("SMS sent: eventId={} status={}", sendEventId, result.getStatusCode());
+                LOG.info("SMS sent: {} {}", keyValue("eventId", sendEventId), keyValue("status", result.getStatusCode()));
                 return true;
             } else {
-                LOG.error("Failed to send SMS: eventId={} status={}", sendEventId, result.getStatusCode());
+                LOG.error("Failed to send SMS: {} {}", keyValue("eventId", sendEventId), keyValue("status", result.getStatusCode()));
                 return false;
             }
         } catch (RestClientException e) {
-            LOG.error("Failed to send SMS: eventId={}", sendEventId, e);
+            LOG.error("Failed to send SMS: {}", keyValue("eventId", sendEventId), e);
             return false;
         }
     }

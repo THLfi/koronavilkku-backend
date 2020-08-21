@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Repository
 public class PublishTokenDao {
@@ -46,7 +47,7 @@ public class PublishTokenDao {
             LOG.info("Adding new publish token");
             return jdbcTemplate.update(sql, params) == 1;
         } catch (DuplicateKeyException e) {
-            LOG.warn("Random token collision: service={} user{}", originService, originUser);
+            LOG.warn("Random token collision: {} {}", keyValue("service", originService), keyValue("user", originUser));
             return false;
         }
     }
@@ -74,7 +75,7 @@ public class PublishTokenDao {
         String sql = "delete from pt.publish_token where valid_through < :expiry_limit";
         Map<String, Object> params = Map.of("expiry_limit", new Timestamp(expiryLimit.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
-        LOG.info("Publish tokens deleted: expiryLimit={} count={}", expiryLimit, count);
+        LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit), keyValue("count", count));
     }
 
     private PublishToken mapToken(ResultSet rs, int i) throws SQLException {

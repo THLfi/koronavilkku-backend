@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class MaintenanceService {
@@ -22,14 +23,14 @@ public class MaintenanceService {
                               @Value("${covid19.maintenance.expired-token-lifetime}") Duration expiredTokenLifetime) {
         this.dao = requireNonNull(dao);
         this.expiredTokenLifetime = requireNonNull(expiredTokenLifetime);
-        LOG.info("Initialized: expiredTokenLifetime={}", expiredTokenLifetime);
+        LOG.info("Initialized: {}", keyValue("expiredTokenLifetime", expiredTokenLifetime));
     }
 
     @Scheduled(initialDelayString = "${covid19.maintenance.interval}",
             fixedRateString = "${covid19.maintenance.interval}")
     public void deleteExpiredTokens() {
         Instant limit = Instant.now().minus(expiredTokenLifetime);
-        LOG.info("Deleting expired tokens: limit={}", limit);
+        LOG.info("Deleting expired tokens: {}", keyValue("limit", limit));
         dao.deleteTokensExpiredBefore(limit);
     }
 }

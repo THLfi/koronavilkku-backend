@@ -13,6 +13,7 @@ import java.util.Optional;
 
 import static fi.thl.covid19.publishtoken.Validation.validatePublishToken;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @RestController
 @RequestMapping("/verification/v1")
@@ -32,7 +33,7 @@ public class PublishTokenVerificationController {
     public ResponseEntity<PublishTokenVerification> getVerification(@RequestHeader(TOKEN_HEADER) String token) {
         String validated = validatePublishToken(requireNonNull(token));
         Optional<PublishTokenVerification> result = publishTokenService.getVerification(validated);
-        LOG.info("Verifying token: accepted={}", result.isPresent());
+        LOG.info("Verifying token: {}", keyValue("accepted", result.isPresent()));
         return result.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.noContent().build());
     }
 }

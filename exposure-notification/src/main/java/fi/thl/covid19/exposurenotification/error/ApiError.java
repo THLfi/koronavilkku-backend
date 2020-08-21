@@ -7,12 +7,12 @@ import static java.util.Objects.requireNonNull;
 
 public class ApiError {
 
-    public final int errorId;
+    public final String errorId;
     public final int code;
     public final Optional<String> message;
 
-    public ApiError(int errorId, int code, Optional<String> message) {
-        this.errorId = errorId;
+    public ApiError(String errorId, int code, Optional<String> message) {
+        this.errorId = requireNonNull(errorId);
         this.code = code;
         this.message = requireNonNull(message);
     }
