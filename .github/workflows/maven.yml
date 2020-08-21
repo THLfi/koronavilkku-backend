@@ -1,0 +1,41 @@
+name: Backend services CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: maven:3.6-openjdk-11
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: devserver
+          POSTGRES_PASSWORD: devserver-password
+          POSTGRES_DB: exposure-notification
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: /root/.m2/repository
+          key: ${{ runner.os }}-m2-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-build
+      - name: Build with Maven
+        run: mvn -B package verify -Dlogging.config=src/main/resources/logback-dev.xml
+        env:
+          EN_DATABASE_URL: jdbc:postgresql://postgres:5432/exposure-notification
+          EN_DATABASE_USERNAME: devserver
+          EN_DATABASE_PASSWORD: devserver-password
+          PT_DATABASE_URL: jdbc:postgresql://postgres:5432/exposure-notification
+          PT_DATABASE_USERNAME: devserver
+          PT_DATABASE_PASSWORD: devserver-password

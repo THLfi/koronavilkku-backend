@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package exposure;
+option java_package = "fi.thl.covid19.proto";
+option java_multiple_files = true;
+import "exposure-bin.proto";
+
+message TEKSignatureList {
+  repeated TEKSignature signatures = 1;
+}
+message TEKSignature {
+  // Info about the signing key, version, algorithm, and so on.
+  optional SignatureInfo signature_info = 1;
+  // For example, file 2 in batch size of 10. Ordinal, 1-based numbering.
+  optional int32 batch_num = 2;
+  optional int32 batch_size = 3;
+  // Signature in X9.62 format (ASN.1 SEQUENCE of two INTEGER fields)
+  optional bytes signature = 4;
+}

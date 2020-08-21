@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Allows you to include your own appenders and stuff -->
+    <include file="${EN_LOG_INCLUDE:-/mnt/configuration}/exposure-notification-logback.xml"/>
+
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+
+    <!-- Allows to change log level using config map -->
+    <property name="root.level" value="${EN_ROOT_LOG_LEVEL:-INFO}" />
+    <property name="fi.kanta.level" value="${EN_FI_KANTA_LOG_LEVEL:-INFO}" />
+
+    <!-- LOG everything to console at INFO level -->
+    <root level="${root.level:-INFO}">
+        <appender-ref ref="Console" />
+    </root>
+
+    <!-- Appender for which the log level can be set through EN_FI_KANTA_LOG_LEVEL -->
+    <logger name="fi.kanta" level="${fi.kanta.level:-INFO}" additivity="false">
+        <appender-ref ref="Console" />
+    </logger>
+
+</configuration>

@@ -1,0 +1,71 @@
+server:
+  port: ${PT_SERVER_PORT:8080}
+  error:
+    whitelabel:
+      enabled: false
+
+management:
+  server:
+    port: ${PT_MANAGEMENT_SERVER_PORT:9080}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: Publish-Token-API
+  endpoint:
+    health:
+      group:
+        metrics:
+          include: '*'
+          show-details: always
+        readiness:
+          include: '*'
+          show-details: never
+        liveness:
+          include: ping
+          show-details: never
+
+spring:
+  application:
+    name: publish-token
+  mvc:
+    throw-exception-if-no-handler-found: true
+  resources:
+    add-mappings: false
+  datasource:
+    type: "com.zaxxer.hikari.HikariDataSource"
+    driver-class-name: "org.postgresql.Driver"
+    url: "${PT_DATABASE_URL}"
+    username: "${PT_DATABASE_USERNAME}"
+    password: "${PT_DATABASE_PASSWORD}"
+    hikari:
+      auto-commit: true
+      maximum-pool-size: 2
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
+  flyway:
+    url: "${PT_DATABASE_URL}"
+    user: "${PT_DATABASE_USERNAME}"
+    password: "${PT_DATABASE_PASSWORD}"
+    schemas: pt
+
+covid19:
+  maintenance:
+    # How often is maintenance-check done
+    interval: PT1H
+    # Expired tokens are kept in the DB for this duration.
+    # The same random token cannot be re-generated before removing the previous instance.
+    expired-token-lifetime: P14D
+  publish-token:
+    validity-duration: PT4H
+    sms:
+      gateway: "${PT_SMS_GATEWAY_URL:}"
+      sender-name: "publish-token"
+      senderId: ""
+      org-id: ""
+      # Limit SMS length to 160 characters. String <code> will be replaced with the actual code (12 characters)
+      content: "Koronavilkku-avauskoodisi/Din startkod för Coronablinkern\nPaina/Tryck: https://koronavilkku.fi/i?<code>\nTai kopioi koodi/Eller kopiera koden\n<code>"

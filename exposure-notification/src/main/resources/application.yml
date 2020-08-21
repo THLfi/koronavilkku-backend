@@ -1,0 +1,86 @@
+server:
+  port: ${EN_SERVER_PORT:8080}
+  error:
+    whitelabel:
+      enabled: false
+
+management:
+  server:
+    port: ${EN_MANAGEMENT_SERVER_PORT:9080}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: Publish-Token-API
+  endpoint:
+    health:
+      group:
+        metrics:
+          include: '*'
+          show-details: always
+        readiness:
+          include: '*'
+          show-details: never
+        liveness:
+          include: ping
+          show-details: never
+
+spring:
+  application:
+    name: exposure-notification
+  mvc:
+    throw-exception-if-no-handler-found: true
+  resources:
+    add-mappings: false
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: org.postgresql.Driver
+    url: "${EN_DATABASE_URL}"
+    username: "${EN_DATABASE_USERNAME}"
+    password: "${EN_DATABASE_PASSWORD}"
+    hikari:
+      auto-commit: true
+      maximum-pool-size: 5
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  flyway:
+    url: "${EN_DATABASE_URL}"
+    user: "${EN_DATABASE_USERNAME}"
+    password: "${EN_DATABASE_PASSWORD}"
+    schemas: en
+
+covid19:
+  demo-mode: "${EN_DEMO_MODE:false}"
+  region: FI
+  diagnosis:
+    # Use to set a fixed batch-file directory that lives beyond the application
+    file-storage:
+      directory: "${EN_FILES:}"
+    signature:
+      key-version: "${EN_SIGNING_VERSION:v1}"
+      key-id: "244"
+      algorithm-oid: 1.2.840.10045.4.3.2
+      algorithm-name: SHA256withECDSA
+    response-cache:
+      config-duration: PT1H
+      status-duration: PT15M
+      batch-duration: PT12H
+    data-cache:
+      enabled: true
+      status-duration: PT5M
+  maintenance:
+    # How often is maintenance-check done
+    interval: PT15M
+    # How long to keep the token verification row.
+    # Must be longer than maximum token lifetime to prevent reusing a single token.
+    token-verification-lifetime: P14D
+  publish-token:
+    url: "${EN_PT_URL:}"
