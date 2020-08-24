@@ -5,7 +5,7 @@ set -e
 JOB_STATUS=$(echo "$INPUT_STATUS" | tr '[:lower:]' '[:upper:]')
 WORKFLOW_RUN_PATH="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-SUBJECT="Thl-covid19-backend: OWASP Dependency Check ran with status: $JOB_STATUS"
+SUBJECT="$GITHUB_REPOSITORY: OWASP Dependency Check ran with status: $JOB_STATUS"
 BODY="<p><b>$SUBJECT</b>.</p><p>$INPUT_TEXT</p><p><a href=\"$WORKFLOW_RUN_PATH\">View run</a></p>"
 
 RECIPIENTS_JSON=""

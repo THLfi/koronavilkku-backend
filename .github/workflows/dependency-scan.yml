@@ -22,6 +22,7 @@ jobs:
       - name: OWASP dependency check
         run: mvn package -B -Powasp-dependency-check --file pom.xml
       - uses: actions/upload-artifact@v2
+        if: ${{ success() || failure() }}
         with:
           name: dependency-check-result
           path: ./**/target/dependency-check-report.html
@@ -31,7 +32,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
-          text: "thl-covid19-backend OWASP dependency check"
+          text: "OWASP dependency check"
           status: ${{job.status}}
       - name: Notify by email
         if: ${{ failure() }}
