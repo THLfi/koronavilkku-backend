@@ -32,7 +32,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
-          text: "thl-covid19-backend OWASP dependency check"
+          text: "OWASP dependency check"
           status: ${{job.status}}
       - name: Notify by email
         if: ${{ failure() }}
