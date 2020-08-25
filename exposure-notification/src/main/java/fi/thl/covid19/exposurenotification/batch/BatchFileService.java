@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class BatchFileService {
@@ -44,11 +45,12 @@ public class BatchFileService {
         if (randomizeKey) {
             KeyPair keyPair = Signing.randomKeyPair();
             String publicKey = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
-            LOG.info("Using randomized signing key for diagnosis batches: keyVersion={} public={}",
-                    signatureConfig.keyVersion, publicKey);
+            LOG.info("Using randomized signing key for diagnosis batches: {} {}",
+                    keyValue("keyVersion", signatureConfig.keyVersion),
+                    keyValue("public", publicKey));
             this.signingKey = keyPair.getPrivate();
         } else {
-            LOG.info("Using signing key provided through env: keyVersion={}", signatureConfig.keyVersion);
+            LOG.info("Using signing key provided through env: {}", keyValue("keyVersion", signatureConfig.keyVersion));
             this.signingKey = Signing.privateKey(System.getenv(PRIVATE_KEY_ENV_VARIABLE));
         }
     }
@@ -104,7 +106,7 @@ public class BatchFileService {
     }
 
     private byte[] createBatchData(BatchId id) {
-        LOG.debug("Generating batch file: batchId={}", id);
+        LOG.debug("Generating batch file: {}", keyValue("batchId", id));
         List<TemporaryExposureKey> keys = dao.getIntervalKeys(id.intervalNumber);
         if (keys.isEmpty()) {
             throw new BatchNotFoundException(id);

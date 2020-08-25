@@ -16,6 +16,7 @@ import java.util.Optional;
 
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class PublishTokenService {
@@ -34,7 +35,7 @@ public class PublishTokenService {
             @Value("${covid19.publish-token.validity-duration}") Duration tokenValidityDuration) {
         this.dao = requireNonNull(dao);
         this.tokenValidityDuration = requireNonNull(tokenValidityDuration);
-        LOG.info("Initialized: tokenValidityDuration={}", tokenValidityDuration);
+        LOG.info("Initialized: {}", keyValue("tokenValidityDuration", tokenValidityDuration));
     }
 
     public PublishToken generateAndStore(LocalDate symptomsOnset, String requestService, String requestUser) {

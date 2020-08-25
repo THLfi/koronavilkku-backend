@@ -26,6 +26,7 @@ import java.util.Optional;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.Validation.validatePublishToken;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
 
 @RestController
@@ -59,8 +60,10 @@ public class DiagnosisKeyController {
         this.statusCacheDuration = requireNonNull(statusCacheDuration);
         this.batchCacheDuration = requireNonNull(batchCacheDuration);
         this.demoMode = demoMode;
-        LOG.info("Initialized: demoMode={} statusCacheDuration={} batchCacheDuration={}",
-                demoMode, statusCacheDuration, batchCacheDuration);
+        LOG.info("Initialized: {} {} {}",
+                keyValue("demoMode", demoMode),
+                keyValue("statusCacheDuration", statusCacheDuration),
+                keyValue("batchCacheDuration", batchCacheDuration));
     }
 
     @GetMapping("/status")
@@ -69,8 +72,10 @@ public class DiagnosisKeyController {
             @RequestParam(value = "app-config") Optional<Integer> appConfigVersion,
             @RequestParam(value = "exposure-config") Optional<Integer> exposureConfigVersion) {
         batchId.ifPresent(this::validateDemoModeVsId);
-        LOG.info("Fetching full status info: clientBatchId={} clientAppConfigVersion={} clientExposureConfigVersion={}",
-                batchId, appConfigVersion, exposureConfigVersion);
+        LOG.info("Fetching full status info: {} {} {}",
+                keyValue("clientBatchId", batchId),
+                keyValue("clientAppConfigVersion", appConfigVersion),
+                keyValue("clientExposureConfigVersion", exposureConfigVersion));
 
         BatchIntervals intervals = getExportIntervals();
         ExposureConfiguration exposureConfig = configurationService.getLatestExposureConfig();
@@ -89,7 +94,7 @@ public class DiagnosisKeyController {
     @GetMapping("/current")
     public ResponseEntity<CurrentBatch> getCurrentDiagnosisBatchKey() {
         BatchId latest = batchFileService.getLatestBatchId(getExportIntervals());
-        LOG.info("Fetching current batch ID: current={}", latest);
+        LOG.info("Fetching current batch ID: {}", keyValue("current", latest));
         return statusResponse(new CurrentBatch(latest), true);
     }
 
@@ -98,14 +103,16 @@ public class DiagnosisKeyController {
         validateDemoModeVsId(previousBatchId);
         BatchIntervals intervals = getExportIntervals();
         List<BatchId> batches = batchFileService.listBatchIdsSince(previousBatchId, intervals);
-        LOG.info("Listing diagnosis batches since: previousBatchId={} resultBatches={}", previousBatchId, batches.size());
+        LOG.info("Listing diagnosis batches since: {} {}",
+                keyValue("previousBatchId", previousBatchId),
+                keyValue("resultBatches", batches.size()));
         return statusResponse(new BatchList(batches), intervals.isDistributed(previousBatchId.intervalNumber));
     }
 
     @GetMapping("/batch/{batch_id}")
     public ResponseEntity<Resource> getDiagnosisBatch(@PathVariable(value = "batch_id") BatchId batchId) {
         validateDemoModeVsId(batchId);
-        LOG.info("Requesting diagnosis batch: batchId={}", batchId);
+        LOG.info("Requesting diagnosis batch: {}", keyValue("batchId", batchId));
         if (!getExportIntervals().isDistributed(batchId.intervalNumber)) {
             throw new BatchNotFoundException(batchId);
         }
@@ -117,7 +124,7 @@ public class DiagnosisKeyController {
                                  @RequestHeader(FAKE_REQUEST_HEADER) boolean fakeRequest,
                                  @RequestBody DiagnosisPublishRequest request) {
         String validToken = validatePublishToken(requireNonNull(publishToken));
-        LOG.info("Publishing new diagnosis: fake={} keys={}", fakeRequest, request.keys.size());
+        LOG.info("Publishing new diagnosis: {} {}", keyValue("fake", fakeRequest), keyValue("keys", request.keys.size()));
         if (!fakeRequest) diagnosisService.handlePublishRequest(validToken, request.keys);
     }
 

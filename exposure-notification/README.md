@@ -38,8 +38,6 @@ This can be used to see what comes through for processing.
 
 `ApiErrorHandler` logs all failed requests. 
 The level is `WARN` if it's an "expected" issue, like client-side errors (403, 400, etc.) and `ERROR` if it's something unexpected (typically 500).
-All of these entries also include a random-generated error ID, which is also sent to the client. 
-If the client provides a user-visible error providing this ID, it can be used to find the corresponding issue in the logs.
 
 `DiagnosisKeyDao` logs all database operation on `INFO` level. 
 When returning data from cache, those loggings are left out, so this should correspond to real DB traffic.
@@ -47,6 +45,11 @@ When returning data from cache, those loggings are left out, so this should corr
 `BatchFileStorage` logs writing and deleting batch files to disk cache.
 
 `MaintenanceService` logs numeric information about background tasks that clean up old data and pre-cache batches.
+
+In addition, for class level logging, Mapped Diagnostic Context (MDC) is used to add pseudorandom correlation identifier (correlationId)
+to every log message. CorrelationId binds all individual log messages of request flow together. For compatibility reasons,
+correlationId is called errorId in http-responses.
+If the client provides a user-visible error and errorId from response, it can be used to find the corresponding issue in the logs.
 
 ## Signing Keys
 The diagnosis key batches are signed, so that the application can ensure that they come from a trusted source. 
