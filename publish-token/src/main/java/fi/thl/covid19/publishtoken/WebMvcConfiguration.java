@@ -8,8 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfiguration implements WebMvcConfigurer {
 
-    final
-    CorrelationIdInterceptor correlationIdInterceptor;
+    final CorrelationIdInterceptor correlationIdInterceptor;
 
     public WebMvcConfiguration(CorrelationIdInterceptor correlationIdInterceptor) {
         this.correlationIdInterceptor = correlationIdInterceptor;
