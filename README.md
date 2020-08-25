@@ -33,8 +33,8 @@ Obviously, you never want to deploy that setting into production environments th
 ## Running Locally
 
 ### Requirements
-Java 11
-PostgreSQL 12
+- Java 11
+- PostgreSQL 12 (either directly, or docker for running in a container)
 
 ### Quick Startup
 - The easiest way to get postgresql for development is via docker, for instance (using [the official image in docker hub](https://hub.docker.com/_/postgres)):
