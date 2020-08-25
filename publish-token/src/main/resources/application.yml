@@ -48,9 +48,9 @@ spring:
       validation-timeout: 5000
       connection-test-query: SELECT 1
   flyway:
-    url: "${PT_DATABASE_URL}"
-    user: "${PT_DATABASE_USERNAME}"
-    password: "${PT_DATABASE_PASSWORD}"
+    url: "${spring.datasource.url}"
+    user: "${spring.datasource.username}"
+    password: "${spring.datasource.password}"
     schemas: pt
 
 covid19:

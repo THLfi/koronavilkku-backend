@@ -26,9 +26,10 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 @SpringBootTest
-@ActiveProfiles({"test", "nodb"})
+@ActiveProfiles({"dev","test","nodb"})
 public class PublishTokenVerificationServiceRestTest {
 
+    private static final String VERIFICATION_URL = "http://localhost:8081" + TOKEN_VERIFICATION_PATH;
     @Autowired
     private PublishTokenVerificationServiceRest verificationService;
 
@@ -56,7 +57,7 @@ public class PublishTokenVerificationServiceRestTest {
     @Test
     public void verificationWorks() throws Exception {
         PublishTokenVerification response = new PublishTokenVerification(123, LocalDate.now());
-        server.expect(requestTo(TOKEN_VERIFICATION_PATH))
+        server.expect(requestTo(VERIFICATION_URL))
                 .andExpect(header(PUBLISH_TOKEN_HEADER, "123456789012"))
                 .andRespond(withSuccess(objectMapper.writeValueAsString(response), APPLICATION_JSON));
         PublishTokenVerification verification = verificationService.getVerification("123456789012");
@@ -67,7 +68,7 @@ public class PublishTokenVerificationServiceRestTest {
 
     @Test
     public void rejectionWorks() {
-        server.expect(requestTo(TOKEN_VERIFICATION_PATH))
+        server.expect(requestTo(VERIFICATION_URL))
                 .andExpect(header(PUBLISH_TOKEN_HEADER, "123456789012"))
                 .andRespond(withNoContent());
         assertThrows(TokenValidationException.class, () -> verificationService.getVerification("123456789012"));
@@ -76,7 +77,7 @@ public class PublishTokenVerificationServiceRestTest {
 
     @Test
     public void badRequestRejectsToken() {
-        server.expect(requestTo(TOKEN_VERIFICATION_PATH))
+        server.expect(requestTo(VERIFICATION_URL))
                 .andExpect(header(PUBLISH_TOKEN_HEADER, "123456789012"))
                 .andRespond(withBadRequest());
         assertThrows(TokenValidationException.class, () -> verificationService.getVerification("123456789012"));
@@ -85,7 +86,7 @@ public class PublishTokenVerificationServiceRestTest {
 
     @Test
     public void unauthorizedRequestRejectsToken() {
-        server.expect(requestTo(TOKEN_VERIFICATION_PATH))
+        server.expect(requestTo(VERIFICATION_URL))
                 .andExpect(header(PUBLISH_TOKEN_HEADER, "123456789012"))
                 .andRespond(withUnauthorizedRequest());
         assertThrows(TokenValidationException.class, () -> verificationService.getVerification("123456789012"));
@@ -94,7 +95,7 @@ public class PublishTokenVerificationServiceRestTest {
 
     @Test
     public void serverErrorLeadsToInternalError() {
-        server.expect(requestTo(TOKEN_VERIFICATION_PATH))
+        server.expect(requestTo(VERIFICATION_URL))
                 .andExpect(header(PUBLISH_TOKEN_HEADER, "123456789012"))
                 .andRespond(withServerError());
         assertThrows(IllegalStateException.class, () -> verificationService.getVerification("123456789012"));

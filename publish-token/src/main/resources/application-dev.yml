@@ -1,0 +1,17 @@
+logging:
+  config: src/main/resources/logback-dev.xml
+
+server:
+  port: 8080
+
+management:
+  server:
+    port: 9081
+
+spring:
+  datasource:
+    url: "jdbc:postgresql://localhost:5433/exposure-notification"
+    username: "devserver"
+    password: "devserver-password"
+  flyway:
+    clean-on-validation-error: true
