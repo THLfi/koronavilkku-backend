@@ -17,6 +17,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @EnableCaching
 @Configuration
@@ -34,7 +35,9 @@ public class ApplicationConfiguration {
                                     @Value("${covid19.diagnosis.data-cache.status-duration}") Duration statusCacheDuration) {
         this.cacheEnabled = cacheEnabled;
         this.statusCacheDuration = requireNonNull(statusCacheDuration);
-        LOG.info("Initialized: cacheEnabled={} statusCacheDuration={}", cacheEnabled, statusCacheDuration);
+        LOG.info("Initialized: {} {}",
+                keyValue("cacheEnabled", cacheEnabled),
+                keyValue("statusCacheDuration", statusCacheDuration));
     }
 
     @Bean

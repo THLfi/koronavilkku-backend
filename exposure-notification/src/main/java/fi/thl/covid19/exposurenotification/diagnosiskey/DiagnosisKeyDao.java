@@ -22,6 +22,7 @@ import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Repository
 public class DiagnosisKeyDao {
@@ -39,7 +40,7 @@ public class DiagnosisKeyDao {
     public int deleteKeysBefore(int interval) {
         String sql = "delete from en.diagnosis_key where submission_interval < :interval";
         int count = jdbcTemplate.update(sql, Map.of("interval", interval));
-        LOG.info("Keys deleted: beforeInterval={} count={}", interval, count);
+        LOG.info("Keys deleted: {} {}", keyValue("beforeInterval", interval), keyValue("count", count));
         return count;
     }
 
@@ -48,7 +49,7 @@ public class DiagnosisKeyDao {
         String sql = "delete from en.token_verification where verification_time < :verification_time";
         Map<String, Object> params = Map.of("verification_time", new Timestamp(verificationTime.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
-        LOG.info("Token verifications deleted: beforeVerificationTime={} count={}", verificationTime, count);
+        LOG.info("Token verifications deleted: {} {}", keyValue("beforeVerificationTime", verificationTime), keyValue("count", count));
         return count;
     }
 
@@ -56,7 +57,7 @@ public class DiagnosisKeyDao {
     public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys) {
         if (verify(verificationId, requestChecksum) && !keys.isEmpty()) {
             batchInsert(interval, keys);
-            LOG.info("Inserted keys: interval={} count={}", interval, keys.size());
+            LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
     }
 
@@ -73,7 +74,7 @@ public class DiagnosisKeyDao {
 
     @Cacheable(value = "key-count", sync = true)
     public int getKeyCount(int interval) {
-        LOG.info("Fetching key-count from DB: interval={}", interval);
+        LOG.info("Fetching key-count from DB: {}", keyValue("interval", interval));
         String sql = "select count(*) from en.diagnosis_key where submission_interval = :interval";
         Map<String,Object> params = Map.of("interval", interval);
         return jdbcTemplate.query(sql, params, (rs,i) -> rs.getInt(1))
@@ -81,7 +82,7 @@ public class DiagnosisKeyDao {
     }
 
     public List<TemporaryExposureKey> getIntervalKeys(int interval) {
-        LOG.info("Fetching keys: interval={}", interval);
+        LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
                 "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval " +
                 "from en.diagnosis_key " +
@@ -106,7 +107,7 @@ public class DiagnosisKeyDao {
                 "verification_id", verificationId,
                 "request_checksum", requestChecksum);
         boolean rowCreated = jdbcTemplate.update(sql, new MapSqlParameterSource(params)) == 1;
-        LOG.info("Marked token verification: newVerification={}", rowCreated);
+        LOG.info("Marked token verification: {}", keyValue("newVerification", rowCreated));
         if (rowCreated) {
             return true;
         } else if (requestChecksum.equals(getVerifiedChecksum(verificationId))) {
@@ -136,7 +137,7 @@ public class DiagnosisKeyDao {
         try {
             return Optional.of(mapKey(rs));
         } catch (InputValidationException e) {
-            LOG.error("Bad exposure keys in DB: interval={} index={}", interval, index, e);
+            LOG.error("Bad exposure keys in DB: {} {}", keyValue("interval", interval), keyValue("index", index), e);
             return Optional.empty();
         }
     }

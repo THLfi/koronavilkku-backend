@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class MaintenanceService {
@@ -34,7 +35,7 @@ public class MaintenanceService {
         this.batchFileStorage = requireNonNull(batchFileStorage);
         this.batchFileService = requireNonNull(batchFileService);
         this.tokenVerificationLifetime = requireNonNull(tokenVerificationLifetime);
-        LOG.info("Initialized: tokenVerificationLifetime={}", tokenVerificationLifetime);
+        LOG.info("Initialized: {}", keyValue("tokenVerificationLifetime", tokenVerificationLifetime));
     }
 
     @Scheduled(initialDelayString = "${covid19.maintenance.interval}",
@@ -42,15 +43,20 @@ public class MaintenanceService {
     public void runMaintenance() {
         BatchIntervals intervals = BatchIntervals.forGeneration();
 
-        LOG.info("Cleaning keys and updating batch files: currentInterval={} firstFile={} lastFile={}",
-                intervals.current, intervals.first, intervals.last);
+        LOG.info("Cleaning keys and updating batch files: {} {} {}",
+                keyValue("currentInterval", intervals.current),
+                keyValue("firstFile", intervals.first),
+                keyValue("lastFile", intervals.last));
 
         int removedKeys = dao.deleteKeysBefore(intervals.first);
         int removedVerifications = dao.deleteVerificationsBefore(Instant.now().minus(tokenVerificationLifetime));
         int removedBatches = batchFileStorage.deleteKeyBatchesBefore(intervals.first);
         int addedBatches = batchFileService.cacheMissingBatchesBetween(intervals.first, intervals.last);
 
-        LOG.info("Batches updated: removedKeys={} removedVerifications={} removedBatches={} addedBatches={}",
-                removedBatches, removedVerifications, removedKeys, addedBatches);
+        LOG.info("Batches updated: {} {} {} {}",
+                keyValue("removedKeys", removedBatches),
+                keyValue("removedVerifications", removedVerifications),
+                keyValue("removedBatches", removedKeys),
+                keyValue("addedBatches", addedBatches));
     }
 }

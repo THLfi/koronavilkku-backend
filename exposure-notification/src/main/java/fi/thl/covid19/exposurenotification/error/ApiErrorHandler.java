@@ -23,8 +23,10 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.Optional;
-import java.util.Random;
 
+import static fi.thl.covid19.exposurenotification.error.CorrelationIdInterceptor.clearCorrelationID;
+import static fi.thl.covid19.exposurenotification.error.CorrelationIdInterceptor.getOrCreateCorrelationId;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 import static org.springframework.http.HttpStatus.*;
 
 /**
@@ -36,28 +38,27 @@ import static org.springframework.http.HttpStatus.*;
 public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(ApiErrorHandler.class);
-    private static final Random RAND = new Random();
 
-    @ExceptionHandler({ InputValidationException.class })
+    @ExceptionHandler({InputValidationException.class})
     public ResponseEntity<Object> handleInputValidationError(InputValidationException ex, WebRequest request) {
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), BAD_REQUEST, request);
     }
 
-    @ExceptionHandler({ TokenValidationException.class })
+    @ExceptionHandler({TokenValidationException.class})
     public ResponseEntity<Object> handleTokenValidationError(TokenValidationException ex, WebRequest request) {
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), FORBIDDEN, request);
     }
 
-    @ExceptionHandler({ BatchNotFoundException.class })
+    @ExceptionHandler({BatchNotFoundException.class})
     public ResponseEntity<Object> handleBatchNotFound(BatchNotFoundException ex, WebRequest request) {
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), NOT_FOUND, request);
     }
 
-    @ExceptionHandler({ ClientAbortException.class })
+    @ExceptionHandler({ClientAbortException.class})
     public ResponseEntity<Object> handleClientAbortException(ClientAbortException ex, WebRequest request) {
-        int errorId = RAND.nextInt(Integer.MAX_VALUE);
-        logHandled(errorId, ex.toString(), INTERNAL_SERVER_ERROR, request);
-        return respondToError(errorId, Optional.of("Client abort"), INTERNAL_SERVER_ERROR, new HttpHeaders());
+        String correlationId = getOrCreateCorrelationId();
+        logHandled(ex.toString(), INTERNAL_SERVER_ERROR, request);
+        return respondToError(correlationId, Optional.of("Client abort"), INTERNAL_SERVER_ERROR, new HttpHeaders());
     }
 
     @Override
@@ -78,31 +79,33 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
                                                              HttpHeaders headers,
                                                              HttpStatus status,
                                                              WebRequest request) {
-        int errorId = RAND.nextInt(Integer.MAX_VALUE);
+        String errorId = getOrCreateCorrelationId();
         if (status.is4xxClientError()) {
-            logHandled(errorId, ex.toString(), status, request);
+            logHandled(ex.toString(), status, request);
         } else {
-            logUnhandled(errorId, ex, status, request);
+            logUnhandled(ex, status, request);
         }
         return respondToError(errorId, Optional.ofNullable(body).map(Object::toString), status, headers);
     }
 
-    private void logHandled(int errorId, String exception, HttpStatus status, WebRequest request) {
-        LOG.warn("Error processing request: errorId={} code={} status=\"{}\" request=\"{}\" exception=\"{}\"",
-                errorId,
-                status.value(),
-                status.getReasonPhrase(),
-                request.getDescription(false),
-                exception);
+    private void logHandled(String exception, HttpStatus status, WebRequest request) {
+        LOG.warn("Error processing request: {} {} {} {}",
+                keyValue("code", status.value()),
+                keyValue("status", status.getReasonPhrase()),
+                keyValue("request", request.getDescription(false)),
+                keyValue("exception", exception));
     }
 
-    private void logUnhandled(int errorId, Exception ex, HttpStatus status, WebRequest request) {
-        LOG.error("Unexpected error: errorId={} code={} status=\"{}\" request=\"{}\"",
-                errorId, status.value(), status.getReasonPhrase(), request.getDescription(false), ex);
+    private void logUnhandled(Exception ex, HttpStatus status, WebRequest request) {
+        LOG.error("Unexpected error: {} {} {}",
+                keyValue("code", status.value()),
+                keyValue("status", status.getReasonPhrase()),
+                keyValue("request", request.getDescription(false)), ex);
     }
 
-    private ResponseEntity<Object> respondToError(int errorId, Optional<String> message, HttpStatus status, HttpHeaders headers) {
+    private ResponseEntity<Object> respondToError(String errorId, Optional<String> message, HttpStatus status, HttpHeaders headers) {
         headers.setContentType(MediaType.APPLICATION_JSON);
+        clearCorrelationID();
         return new ResponseEntity<>(new ApiError(errorId, status.value(), message), headers, status);
     }
 

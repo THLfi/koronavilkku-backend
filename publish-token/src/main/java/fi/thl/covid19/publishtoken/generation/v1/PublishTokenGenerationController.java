@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import static fi.thl.covid19.publishtoken.Validation.validateUserName;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @RestController
 @RequestMapping("/publish-token/v1")
@@ -31,12 +32,14 @@ public class PublishTokenGenerationController {
         String requestService = Validation.validateServiceName(rawRequestService);
 
         if (request.validateOnly) {
-            LOG.info("API Validation Test: Generate new publish token: service={} user={}",
-                    requestService, request.requestUser);
+            LOG.info("API Validation Test: Generate new publish token: {} {}",
+                    keyValue("service", requestService), keyValue("user", request.requestUser));
             return publishTokenService.generate();
         } else {
-            LOG.info("Generating new publish token: service={} user={} smsUsed={}",
-                    requestService, request.requestUser, request.patientSmsNumber.isPresent());
+            LOG.info("Generating new publish token: {} {} {}",
+                    keyValue("service", requestService),
+                    keyValue("user", request.requestUser),
+                    keyValue("smsUsed", request.patientSmsNumber.isPresent()));
             PublishToken token = publishTokenService.generateAndStore(
                     request.symptomsOnset,
                     requestService,
@@ -50,7 +53,7 @@ public class PublishTokenGenerationController {
     public PublishTokenList getTokensBy(@RequestHeader(name = SERVICE_NAME_HEADER) String rawRequestService, @PathVariable(value = "user") String user) {
         String validatedService = Validation.validateServiceName(rawRequestService);
         String validatedUser = validateUserName(requireNonNull(user));
-        LOG.info("Fetching tokens: service={} user={}", validatedService, user);
+        LOG.info("Fetching tokens: {} {}", keyValue("service", validatedService), keyValue("user", user));
         return new PublishTokenList(publishTokenService.getTokensBy(validatedService, validatedUser));
     }
 }
