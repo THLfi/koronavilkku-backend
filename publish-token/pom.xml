@@ -16,7 +16,7 @@
 	<version>1.0.0-SNAPSHOT</version>
 
 	<name>publish-token</name>
-	<description>Diagnosis publish token generation server for Finnish COVID19 application</description>
+	<description>Diagnosis publish token generation server for the Finnish COVID-19 application</description>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
