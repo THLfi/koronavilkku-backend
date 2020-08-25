@@ -30,7 +30,7 @@ public class ConfigurationDao {
     @Cacheable(value = "exposure-config", sync = true)
     public ExposureConfiguration getLatestExposureConfiguration() {
         LOG.info("Fetching exposure configuration");
-        String sql = "select " +
+        String sql = "SELECT " +
                 "version, " +
                 "minimum_risk_score, " +
                 "attenuation_scores, " +
@@ -38,9 +38,9 @@ public class ConfigurationDao {
                 "duration_scores, " +
                 "transmission_risk_scores, " +
                 "duration_at_attenuation_thresholds " +
-                "from en.exposure_configuration " +
-                "order by version desc " +
-                "limit 1";
+                "FROM en.exposure_configuration " +
+                "ORDER BY version DESC " +
+                "LIMIT 1";
         return jdbcTemplate.queryForObject(sql, Map.of(), (rs, i) -> new ExposureConfiguration(
                 rs.getInt("version"),
                 rs.getInt("minimum_risk_score"),

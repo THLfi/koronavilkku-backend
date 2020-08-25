@@ -38,7 +38,7 @@ public class DiagnosisKeyDao {
 
     @Transactional
     public int deleteKeysBefore(int interval) {
-        String sql = "delete from en.diagnosis_key where submission_interval < :interval";
+        String sql = "DELETE FROM en.diagnosis_key WHERE submission_interval < :interval";
         int count = jdbcTemplate.update(sql, Map.of("interval", interval));
         LOG.info("Keys deleted: {} {}", keyValue("beforeInterval", interval), keyValue("count", count));
         return count;
@@ -46,7 +46,7 @@ public class DiagnosisKeyDao {
 
     @Transactional
     public int deleteVerificationsBefore(Instant verificationTime) {
-        String sql = "delete from en.token_verification where verification_time < :verification_time";
+        String sql = "DELETE FROM en.token_verification WHERE verification_time < :verification_time";
         Map<String, Object> params = Map.of("verification_time", new Timestamp(verificationTime.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
         LOG.info("Token verifications deleted: {} {}", keyValue("beforeVerificationTime", verificationTime), keyValue("count", count));
@@ -68,14 +68,14 @@ public class DiagnosisKeyDao {
 
     public List<Integer> getAvailableIntervalsDirect() {
         LOG.info("Fetching available intervals");
-        String sql = "select distinct submission_interval from en.diagnosis_key order by submission_interval";
+        String sql = "SELECT DISTINCT submission_interval FROM en.diagnosis_key ORDER BY submission_interval";
         return jdbcTemplate.query(sql, (rs,i) -> rs.getInt("submission_interval"));
     }
 
     @Cacheable(value = "key-count", sync = true)
     public int getKeyCount(int interval) {
         LOG.info("Fetching key-count from DB: {}", keyValue("interval", interval));
-        String sql = "select count(*) from en.diagnosis_key where submission_interval = :interval";
+        String sql = "SELECT COUNT(*) FROM en.diagnosis_key WHERE submission_interval = :interval";
         Map<String,Object> params = Map.of("interval", interval);
         return jdbcTemplate.query(sql, params, (rs,i) -> rs.getInt(1))
                 .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing."));
@@ -84,13 +84,13 @@ public class DiagnosisKeyDao {
     public List<TemporaryExposureKey> getIntervalKeys(int interval) {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
-                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval " +
-                "from en.diagnosis_key " +
-                "where submission_interval = :interval " +
+                "SELECT key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval " +
+                "FROM en.diagnosis_key " +
+                "WHERE submission_interval = :interval " +
                 // Level 0 & 7 would get 0 score anyhow, so ignore them
                 // This also clips the range, so that we can manage the difference between iOS & Android APIs
-                "and transmission_risk_level between 1 and 6 " +
-                "order by key_data";
+                "AND transmission_risk_level BETWEEN 1 AND 6 " +
+                "ORDER BY key_data";
         Map<String, Object> params = Map.of("interval", interval);
         // We should not have invalid data in the DB, but if we do, pass by it and move on
         return jdbcTemplate.query(sql, params, (rs,i) -> mapValidKey(interval, rs, i))
@@ -99,10 +99,10 @@ public class DiagnosisKeyDao {
 
     @Transactional
     public boolean verify(int verificationId, String requestChecksum) {
-        String sql = "insert into " +
+        String sql = "INSERT INTO " +
                 "en.token_verification (verification_id, request_checksum) " +
-                "values (:verification_id, :request_checksum) " +
-                "on conflict do nothing";
+                "VALUES (:verification_id, :request_checksum) " +
+                "ON CONFLICT DO NOTHING";
         Map<String, Object> params = Map.of(
                 "verification_id", verificationId,
                 "request_checksum", requestChecksum);
@@ -118,15 +118,15 @@ public class DiagnosisKeyDao {
     }
 
     private String getVerifiedChecksum(int verificationId) {
-        String sql = "select request_checksum from en.token_verification where verification_id=:verification_id";
+        String sql = "SELECT request_checksum FROM en.token_verification WHERE verification_id = :verification_id";
         return jdbcTemplate.queryForObject(sql, Map.of("verification_id", verificationId), String.class);
     }
 
     private void batchInsert(int interval, List<TemporaryExposureKey> newKeys) {
-        String sql = "insert into " +
+        String sql = "INSERT INTO " +
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval) " +
-                "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval) " +
-                "on conflict do nothing";
+                "VALUES (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval) " +
+                "ON CONFLICT DO NOTHING";
         Map<String,Object>[] params = newKeys.stream()
                 .map(key -> createParamsMap(interval, key))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);

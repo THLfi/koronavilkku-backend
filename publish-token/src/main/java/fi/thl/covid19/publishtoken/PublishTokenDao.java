@@ -34,9 +34,9 @@ public class PublishTokenDao {
 
     public boolean storeToken(PublishToken token, LocalDate symptomsOnset, String originService, String originUser) {
         try {
-            String sql = "insert into " +
+            String sql = "INSERT INTO " +
                     "pt.publish_token(token, created_at, valid_through, symptoms_onset, origin_service, origin_user) " +
-                    "values(:token, :created_at, :valid_through, :symptoms_onset, :origin_service, :origin_user)";
+                    "VALUES (:token, :created_at, :valid_through, :symptoms_onset, :origin_service, :origin_user)";
             Map<String, Object> params = Map.of(
                     "token", token.token,
                     "created_at", new Timestamp(token.createTime.toEpochMilli()),
@@ -54,25 +54,25 @@ public class PublishTokenDao {
 
     public List<PublishToken> getTokens(String originService, String originUser) {
         String sql =
-                "select token, created_at, valid_through " +
-                        "from pt.publish_token " +
-                        "where origin_service = :origin_service and origin_user = :origin_user";
+                "SELECT token, created_at, valid_through " +
+                        "FROM pt.publish_token " +
+                        "WHERE origin_service = :origin_service AND origin_user = :origin_user";
         Map<String, Object> params = Map.of("origin_service", originService, "origin_user", originUser);
         return jdbcTemplate.query(sql, params, this::mapToken);
     }
 
     public Optional<PublishTokenVerification> getVerification(String token) {
         String sql =
-                "select id, symptoms_onset " +
-                "from pt.publish_token " +
-                "where token = :token and now() <= valid_through";
+                "SELECT id, symptoms_onset " +
+                "FROM pt.publish_token " +
+                "WHERE token = :token AND NOW() <= valid_through";
         Map<String, Object> params = Map.of("token", token);
         return jdbcTemplate.query(sql, params, this::mapVerification).stream().findFirst();
     }
 
     @Transactional
     public void deleteTokensExpiredBefore(Instant expiryLimit) {
-        String sql = "delete from pt.publish_token where valid_through < :expiry_limit";
+        String sql = "DELETE FROM pt.publish_token WHERE valid_through < :expiry_limit";
         Map<String, Object> params = Map.of("expiry_limit", new Timestamp(expiryLimit.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
         LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit), keyValue("count", count));
