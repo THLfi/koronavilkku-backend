@@ -24,8 +24,7 @@ public class DiagnosisKeyService {
 
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyService.class);
 
-    // 14-1 since the age is measured in full days and fractions get cropped
-    private static final Duration MAX_KEY_AGE = Duration.ofDays(13);
+    private static final Duration MAX_KEY_AGE = Duration.ofDays(14);
 
     private final DiagnosisKeyDao dao;
     private final PublishTokenVerificationService tokenVerificationService;
@@ -67,7 +66,7 @@ public class DiagnosisKeyService {
 
     List<TemporaryExposureKey> filter(List<TemporaryExposureKey> original, Instant now) {
         int minInterval = dayFirst10MinInterval(now.minus(MAX_KEY_AGE));
-        int maxInterval = to10MinInterval(now);
+        int maxInterval = dayLast10MinInterval(now);
         return original.stream().filter(key -> isBetween(key, minInterval, maxInterval)).collect(Collectors.toList());
     }
 
