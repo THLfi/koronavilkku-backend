@@ -43,6 +43,10 @@ If the client provides a user-visible error providing this ID, it can be used to
 
 `SmsService` logs attempts to send out a token via SMS
 
+In addition, for class level logging, Mapped Diagnostic Context (MDC) is used to add pseudorandom correlation identifier (correlationId)
+to every log message. CorrelationId binds all individual log messages of request flow together. For compatibility reasons,
+correlationId is called errorId in http-responses.
+
 ## Publish Token Generation API
 API meant for health authorities, for creating a publish-token for a diagnosis report after verifying the infection.
 

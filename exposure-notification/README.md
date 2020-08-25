@@ -48,6 +48,10 @@ When returning data from cache, those loggings are left out, so this should corr
 
 `MaintenanceService` logs numeric information about background tasks that clean up old data and pre-cache batches.
 
+In addition, for class level logging, Mapped Diagnostic Context (MDC) is used to add pseudorandom correlation identifier (correlationId)
+to every log message. CorrelationId binds all individual log messages of request flow together. For compatibility reasons,
+correlationId is called errorId in http-responses.
+
 ## Signing Keys
 The diagnosis key batches are signed, so that the application can ensure that they come from a trusted source. 
 The EN API requires the key to be ECDSA P-256 curve using the SHA256 hash function.
