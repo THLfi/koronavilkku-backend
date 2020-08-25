@@ -13,7 +13,7 @@
 
 	<groupId>fi.thl.covid19</groupId>
 	<artifactId>publish-token</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 
 	<name>publish-token</name>
 	<description>Diagnosis publish token generation server for Finnish COVI19 application</description>
