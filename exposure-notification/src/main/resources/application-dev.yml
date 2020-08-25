@@ -1,0 +1,17 @@
+logging:
+  config: src/main/resources/logback-dev.xml
+
+spring:
+  datasource:
+    url: "jdbc:postgresql://localhost:5433/exposure-notification"
+    username: "devserver"
+    password: "devserver-password"
+  flyway:
+    clean-on-validation-error: true
+
+covid19:
+  diagnosis:
+    signature:
+      randomize-key: true
+  publish-token:
+    url: "http://localhost:8081"

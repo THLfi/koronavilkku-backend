@@ -23,9 +23,49 @@ cd exposure-notification
 ```
 
 ## Database Migrations
-Each service handles their own schema (en for exposure-notification and pt for publish-token), migrating them via Flyway as needed. 
+Each service handles its own schema (en for exposure-notification and pt for publish-token), migrating them via Flyway as needed. 
 They don't cross-use each other's data so service update/startup order should not matter. If desired, the services can be configured not to even see each other's schemas. 
 
 In development environment, you may want to use the property `-Dspring.flyway.clean-on-validation-error=true`. 
 This allows you to edit the schema definitions freely and have flyway simply reset the database when you make an incompatible change.
-Obviously, you never want to deploy that setting into production environments though (as you will lose all data), so it's not on by default.
+Obviously, you never want to deploy that setting into production environments though, as you will lose all data.
+
+## Running Locally
+
+### Requirements
+Java 11
+PostgreSQL 12
+
+### Quick Startup
+- The easiest way to get postgresql for development is via docker, for instance (using [the official image in docker hub](https://hub.docker.com/_/postgres)):
+  ```
+  docker run \
+  --name covid19-db \
+  -p 127.0.0.1:5433:5432 \
+  -e POSTGRES_DB=exposure-notification \
+  -e POSTGRES_USER=devserver \
+  -e POSTGRES_PASSWORD=devserver-password \
+  postgres:12
+  ```
+  - You can set the database to store the files in a location of your choosing by adding the parameter
+    ```
+    -v my-local-db-dir:/var/lib/postgresql/data
+    ``` 
+  - If you vary the parameters (username/password/port), just update them for each service `src/resources/application-dev.yml`
+- Build both applications: `./mvnw clean package`
+- Start exposure-notification service
+    ```
+    cd exposure-notification
+    java \
+      -Dspring.profiles.active=dev \
+      -jar target/exposure-notification-1.0.0-SNAPSHOT.jar \
+      fi.thl.covid19.exposurenotification.ExposureNotificationApplication
+    ```
+- Start publish-token service
+    ```
+    cd publish-token
+    java \
+      -Dspring.profiles.active=dev \
+      -jar target/publish-token-1.0.0-SNAPSHOT.jar \
+      fi.thl.covid19.publishtoken.PublishTokenApplication
+    ```

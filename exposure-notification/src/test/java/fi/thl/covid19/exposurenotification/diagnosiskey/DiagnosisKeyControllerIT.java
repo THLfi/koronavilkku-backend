@@ -50,7 +50,7 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
  * NOTE: These tests require the DB to be available and configured through ENV.
  */
 @SpringBootTest
-@ActiveProfiles({"test"})
+@ActiveProfiles({"dev","test"})
 @AutoConfigureMockMvc
 public class DiagnosisKeyControllerIT {
 

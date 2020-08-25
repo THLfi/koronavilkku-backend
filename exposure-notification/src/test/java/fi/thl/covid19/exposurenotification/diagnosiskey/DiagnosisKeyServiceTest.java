@@ -18,7 +18,7 @@ import static java.time.ZoneOffset.UTC;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-@ActiveProfiles({"test", "nodb"})
+@ActiveProfiles({"dev","test","nodb"})
 @SpringBootTest
 public class DiagnosisKeyServiceTest {
 
