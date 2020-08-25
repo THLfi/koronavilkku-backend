@@ -13,7 +13,7 @@
 
 	<groupId>fi.thl.covid19</groupId>
 	<artifactId>exposure-notification</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 
 	<name>exposure-notification</name>
 	<description>Exposure notification server for Finnish COVI19 application</description>
