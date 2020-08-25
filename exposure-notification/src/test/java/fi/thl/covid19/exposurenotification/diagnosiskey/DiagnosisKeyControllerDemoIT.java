@@ -31,11 +31,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.util.DigestUtils.md5DigestAsHex;
 
-/**
- * NOTE: These tests require the DB to be available and configured through ENV.
- */
 @SpringBootTest(properties = { "covid19.demo-mode=true" })
-@ActiveProfiles({"test"})
+@ActiveProfiles({"dev","test"})
 @AutoConfigureMockMvc
 public class DiagnosisKeyControllerDemoIT {
 

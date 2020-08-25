@@ -52,9 +52,9 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
   flyway:
-    url: "${EN_DATABASE_URL}"
-    user: "${EN_DATABASE_USERNAME}"
-    password: "${EN_DATABASE_PASSWORD}"
+    url: "${spring.datasource.url}"
+    user: "${spring.datasource.username}"
+    password: "${spring.datasource.password}"
     schemas: en
 
 covid19:

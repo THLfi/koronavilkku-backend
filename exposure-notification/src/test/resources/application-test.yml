@@ -1,6 +1,4 @@
 covid19:
   diagnosis:
-    signature:
-      randomize-key: true
     data-cache:
       enabled: false

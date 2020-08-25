@@ -9,11 +9,8 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * NOTE: These tests require the DB to be available and configured through ENV.
- */
 @SpringBootTest
-@ActiveProfiles({"test"})
+@ActiveProfiles({"dev","test"})
 @AutoConfigureMockMvc
 public class ConfigurationDaoIT {
 
