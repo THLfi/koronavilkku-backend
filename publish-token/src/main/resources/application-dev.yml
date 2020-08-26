@@ -10,8 +10,8 @@ management:
 
 spring:
   datasource:
-    url: "${EN_DATABASE_URL:jdbc:postgresql://localhost:5433/exposure-notification}"
-    username: "${EN_DATABASE_USERNAME:devserver}"
-    password: "${EN_DATABASE_PASSWORD:devserver-password}"
+    url: "jdbc:postgresql://localhost:5433/exposure-notification"
+    username: "devserver"
+    password: "devserver-password"
   flyway:
     clean-on-validation-error: true
