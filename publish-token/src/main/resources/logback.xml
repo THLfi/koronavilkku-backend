@@ -9,15 +9,15 @@
 
     <!-- Allows to change log level using config map -->
     <property name="root.level" value="${PT_ROOT_LOG_LEVEL:-INFO}" />
-    <property name="fi.kanta.level" value="${PT_FI_KANTA_LOG_LEVEL:-INFO}" />
+    <property name="fi.thl.level" value="${PT_FI_THL_LOG_LEVEL:-INFO}" />
 
     <!-- LOG everything to console at INFO level -->
     <root level="${root.level:-INFO}">
         <appender-ref ref="Console" />
     </root>
 
-    <!-- Appender for which the log level can be set through PT_FI_KANTA_LOG_LEVEL -->
-    <logger name="fi.kanta" level="${fi.kanta.level:-INFO}" additivity="false">
+    <!-- Appender for which the log level can be set through PT_FI_THL_LOG_LEVEL -->
+    <logger name="fi.thl" level="${fi.thl.level:-INFO}" additivity="false">
         <appender-ref ref="Console" />
     </logger>
 

@@ -10,7 +10,7 @@ The most relevant and environment-specific properties are provided as ENV variab
 * Port for monitoring services via Spring Actuator: `PT_MANAGEMENT_SERVER_PORT` 
 * Database connection parameters: `PT_DATABASE_URL`, `PT_DATABASE_USERNAME`, `PT_DATABASE_PASSWORD`
 * Gateway for SMS sending service: `PT_SMS_GATEWAY_URL`
-* Logback additional configuration: `PT_ROOT_LOG_LEVEL`, `PT_FI_KANTA_LOG_LEVEL`, `PT_LOG_INCLUDE`
+* Logback additional configuration: `PT_ROOT_LOG_LEVEL`, `PT_FI_THL_LOG_LEVEL`, `PT_LOG_INCLUDE`
 
 ### Database
 The service is built to use PostgreSQL database, version 12. 
