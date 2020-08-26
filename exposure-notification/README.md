@@ -14,7 +14,7 @@ The most relevant and environment-specific properties are provided as ENV variab
 * Address for reaching the publish-token service for token verification: `EN_PT_URL`
 * Private key for signing diagnosis batches (see details below): `EN_SIGNING_PRIVATE_PKCS8`
 * The signature version number (eg. v1 for testing, v2 for production): `EN_SIGNING_VERSION`
-* Logback additional configuration: `EN_ROOT_LOG_LEVEL`, `EN_FI_KANTA_LOG_LEVEL`, `EN_LOG_INCLUDE`
+* Logback additional configuration: `EN_ROOT_LOG_LEVEL`, `EN_FI_THL_LOG_LEVEL`, `EN_LOG_INCLUDE`
 
 ### Database
 The service is built to use PostgreSQL database, version 12. 
