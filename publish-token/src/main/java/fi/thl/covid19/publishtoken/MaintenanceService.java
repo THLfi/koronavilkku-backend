@@ -30,7 +30,7 @@ public class MaintenanceService {
             fixedRateString = "${covid19.maintenance.interval}")
     public void deleteExpiredTokens() {
         Instant limit = Instant.now().minus(expiredTokenLifetime);
-        LOG.info("Deleting expired tokens: {}", keyValue("limit", limit));
+        LOG.info("Deleting expired tokens: {}", keyValue("limit", limit.toString()));
         dao.deleteTokensExpiredBefore(limit);
     }
 }
