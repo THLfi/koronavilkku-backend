@@ -19,7 +19,7 @@ The most relevant and environment-specific properties are provided as ENV variab
 ### Database
 The service is built to use PostgreSQL database, version 12. 
 
-The service automatically creates and migrates the schema (named `pt`) on startup, using Flyway. 
+The service automatically creates and migrates the schema (named `en`) on startup, using Flyway. 
 If there are incompatible migrations, the startup will fail. 
 
 Connection parameters are given as environment variables (see above).
@@ -123,6 +123,7 @@ If a config is returned, it should be stored and used instead.
           "daysSinceLastExposureScores": [1,1,1,1,1,1,1,1],
           "durationScores": [0,0,0,0,5,5,5,5],
           "transmissionRiskScores": [1,1,1,1,1,1,1,1],
+          "transmissionRiskScoresAndroid": [1,1,1,1,1,1,1,1],
           "durationAtAttenuationThresholds": [50,70]
         }
         ```
