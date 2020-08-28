@@ -43,8 +43,8 @@ public class DiagnosisKeyService {
         int currentInterval = IntervalNumber.to24HourInterval(now);
         LOG.info("Publish token verified: {} {} {} {} {}",
                 keyValue("currentInterval", currentInterval),
-                keyValue("filterStart", verification.symptomsOnset),
-                keyValue("filterEnd", now),
+                keyValue("filterStart", verification.symptomsOnset.toString()),
+                keyValue("filterEnd", now.toString()),
                 keyValue("postedCount", keys.size()),
                 keyValue("filteredCount", filtered.size()));
         dao.addKeys(verification.id, checksum(keys), currentInterval, adjustRiskBuckets(filtered, verification.symptomsOnset));

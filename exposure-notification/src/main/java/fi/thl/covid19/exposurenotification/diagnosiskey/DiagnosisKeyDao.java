@@ -49,7 +49,7 @@ public class DiagnosisKeyDao {
         String sql = "delete from en.token_verification where verification_time < :verification_time";
         Map<String, Object> params = Map.of("verification_time", new Timestamp(verificationTime.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
-        LOG.info("Token verifications deleted: {} {}", keyValue("beforeVerificationTime", verificationTime), keyValue("count", count));
+        LOG.info("Token verifications deleted: {} {}", keyValue("beforeVerificationTime", verificationTime.toString()), keyValue("count", count));
         return count;
     }
 

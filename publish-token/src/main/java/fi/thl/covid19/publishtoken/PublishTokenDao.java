@@ -75,7 +75,7 @@ public class PublishTokenDao {
         String sql = "delete from pt.publish_token where valid_through < :expiry_limit";
         Map<String, Object> params = Map.of("expiry_limit", new Timestamp(expiryLimit.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
-        LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit), keyValue("count", count));
+        LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit.toString()), keyValue("count", count));
     }
 
     private PublishToken mapToken(ResultSet rs, int i) throws SQLException {
