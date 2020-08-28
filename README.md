@@ -33,7 +33,7 @@ Obviously, you never want to deploy that setting into production environments th
 ## Running Locally
 
 ### Requirements
-- Java 11
+- JDK 11
 - PostgreSQL 12 (either directly, or docker for running in a container)
 
 ### Quick Startup

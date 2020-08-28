@@ -2,11 +2,11 @@ logging:
   config: src/main/resources/logback-dev.xml
 
 server:
-  port: 8080
+  port: ${PT_SERVER_PORT:8081}
 
 management:
   server:
-    port: 9081
+    port: ${PT_MANAGEMENT_SERVER_PORT:9081}
 
 spring:
   datasource:

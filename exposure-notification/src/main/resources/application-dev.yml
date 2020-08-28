@@ -14,4 +14,4 @@ covid19:
     signature:
       randomize-key: true
   publish-token:
-    url: "http://localhost:8081"
+    url: "${EN_PT_URL:http://localhost:8081}"
