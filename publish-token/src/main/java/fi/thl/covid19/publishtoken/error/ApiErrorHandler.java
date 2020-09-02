@@ -2,6 +2,7 @@ package fi.thl.covid19.publishtoken.error;
 
 import io.micrometer.core.lang.Nullable;
 import org.apache.catalina.connector.ClientAbortException;
+import org.flywaydb.core.internal.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
@@ -60,7 +61,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
         Throwable cause = ex.getMostSpecificCause();
-        String message = cause instanceof InputValidationException ? cause.getMessage() : "Invalid request content";
+        String message = cause instanceof InputValidationException || cause instanceof InputValidationValidateOnlyException ? cause.getMessage() : "Invalid request content";
         return handleExceptionInternal(ex, message, headers, status, request);
     }
 
@@ -72,7 +73,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatus status, WebRequest request) {
         String errorId = getOrCreateCorrelationId();
-        if (ex instanceof InputValidationValidateOnlyException) {
+        if (ExceptionUtils.getRootCause(ex) instanceof InputValidationValidateOnlyException) {
             logHandledDebug(ex.toString(), status, request);
         } else if (status.is4xxClientError()) {
             logHandled(ex.toString(), status, request);
