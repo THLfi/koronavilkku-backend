@@ -2,7 +2,7 @@ package fi.thl.covid19.publishtoken.error;
 
 public class InputValidationException extends RuntimeException {
 
-    boolean validateOnly;
+    private final boolean validateOnly;
 
     public InputValidationException(String message, boolean validateOnly) {
         super(message);

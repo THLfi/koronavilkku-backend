@@ -67,7 +67,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatus status, WebRequest request) {
         String errorId = getOrCreateCorrelationId();
-        if (ex instanceof InputValidationException && ((InputValidationException) ex).validateOnly) {
+        if (ex instanceof InputValidationException && ((InputValidationException) ex).isValidateOnly()) {
             logHandledDebug(ex.toString(), status, request);
         } else if (status.is4xxClientError()) {
             logHandled(ex.toString(), status, request);
