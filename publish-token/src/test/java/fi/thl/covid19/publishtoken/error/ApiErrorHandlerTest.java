@@ -60,6 +60,15 @@ public class ApiErrorHandlerTest {
     }
 
     @Test
+    public void validationFailureIs400WithValidteOnly() throws Exception {
+        String result = mockMvc.perform(get("/test/input-validation-failure-validate-only"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse().getContentAsString();
+        assertErrorObject(result, HttpStatus.BAD_REQUEST, Optional.of(TestController.FAILURE_STRING));
+    }
+
+    @Test
     public void pathParsingErrorIs400() throws Exception {
         String result = mockMvc.perform(get("/test/should-be-int-path/asdf"))
                 .andExpect(status().isBadRequest())

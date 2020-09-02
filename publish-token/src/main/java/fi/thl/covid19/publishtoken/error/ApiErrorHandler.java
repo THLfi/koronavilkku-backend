@@ -67,7 +67,9 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatus status, WebRequest request) {
         String errorId = getOrCreateCorrelationId();
-        if (status.is4xxClientError()) {
+        if (ex instanceof InputValidationException && ((InputValidationException) ex).validateOnly) {
+            logHandledDebug(ex.toString(), status, request);
+        } else if (status.is4xxClientError()) {
             logHandled(ex.toString(), status, request);
         } else {
             logUnhandled(ex, status, request);
@@ -89,6 +91,14 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
                 keyValue("status", status.getReasonPhrase()),
                 keyValue("request", request.getDescription(false)),
                 ex);
+    }
+
+    private void logHandledDebug(String ex, HttpStatus status, WebRequest request) {
+        LOG.debug("Error processing request: {} {} {} {}",
+                keyValue("code", status.value()),
+                keyValue("status", status.getReasonPhrase()),
+                keyValue("request", request.getDescription(false)),
+                keyValue("exception", ex));
     }
 
     private ResponseEntity<Object> respondToError(String errorId, Optional<String> message, HttpStatus status, HttpHeaders headers) {

@@ -13,7 +13,12 @@ public class TestController {
 
     @GetMapping("/input-validation-failure")
     public void getInputValidationException() {
-        throw new InputValidationException(FAILURE_STRING);
+        throw new InputValidationException(FAILURE_STRING, false);
+    }
+
+    @GetMapping("/input-validation-failure-validate-only")
+    public void getInputValidationExceptionWithValidateOnly() {
+        throw new InputValidationException(FAILURE_STRING, true);
     }
 
     @GetMapping("/illegal-state")

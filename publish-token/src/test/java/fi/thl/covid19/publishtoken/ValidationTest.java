@@ -121,4 +121,19 @@ public class ValidationTest {
     public void phoneNumberNormalizationRemovesFormattingCharacters() {
         Assertions.assertEquals("123456", Validation.normalizeAndValidatePhoneNumber(" 1 2  3-- 45-6-()"));
     }
+
+    @Test
+    public void assertValidateOnlyIsPopulatedCorrectlyInInputValidationException() {
+        InputValidationException ive1 = assertThrows(InputValidationException.class, () -> Validation.normalizeAndValidatePhoneNumber("040-1234A67", true));
+        Assertions.assertTrue(ive1.isValidateOnly());
+
+        InputValidationException ive2 = assertThrows(InputValidationException.class, () -> Validation.normalizeAndValidatePhoneNumber("040-1234A67"));
+        Assertions.assertFalse(ive2.isValidateOnly());
+
+        InputValidationException ive3 = assertThrows(InputValidationException.class, () -> Validation.validateUserName("us er", true));
+        Assertions.assertTrue(ive3.isValidateOnly());
+
+        InputValidationException ive4 = assertThrows(InputValidationException.class, () -> Validation.validateUserName("us er"));
+        Assertions.assertFalse(ive4.isValidateOnly());
+    }
 }
