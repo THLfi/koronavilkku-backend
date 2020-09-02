@@ -10,7 +10,6 @@ import java.sql.SQLException;
 public class TestController {
 
     public static final String FAILURE_STRING = "TEST_FAILURE_STRING";
-    public static final String FAILURE_STRING_VALIDATE_ONLY = InputValidationException.class.getCanonicalName() + ": TEST_FAILURE_STRING";
 
     @GetMapping("/input-validation-failure")
     public void getInputValidationException() {
@@ -19,7 +18,7 @@ public class TestController {
 
     @GetMapping("/input-validation-failure-validate-only")
     public void getInputValidationExceptionWithValidateOnly() {
-        throw new InputValidationValidateOnlyException(new InputValidationException(FAILURE_STRING));
+        throw new InputValidationValidateOnlyException(FAILURE_STRING);
     }
 
     @GetMapping("/illegal-state")

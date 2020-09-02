@@ -65,7 +65,7 @@ public class ApiErrorHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn().getResponse().getContentAsString();
-        assertErrorObject(result, HttpStatus.BAD_REQUEST, Optional.of(TestController.FAILURE_STRING_VALIDATE_ONLY));
+        assertErrorObject(result, HttpStatus.BAD_REQUEST, Optional.of(TestController.FAILURE_STRING));
     }
 
     @Test
