@@ -36,7 +36,7 @@ public class PublishTokenGenerationRequest {
             }
         } catch (InputValidationException | NullPointerException e) {
             if (this.validateOnly) {
-                throw new InputValidationValidateOnlyException(e.getMessage());
+                throw new InputValidationValidateOnlyException(e);
             } else {
                 throw e;
             }
