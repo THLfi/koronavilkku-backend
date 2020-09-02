@@ -75,7 +75,7 @@ public class ValidationTest {
     @Test
     public void tooLongServiceNameIsRejected() {
         assertThrows(InputValidationException.class,
-                () -> Validation.validateServiceName(repeat("a", SERVICE_NAME_MAX_LENGTH+1)));
+                () -> Validation.validateServiceName(repeat("a", SERVICE_NAME_MAX_LENGTH + 1)));
     }
 
     @Test

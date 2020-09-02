@@ -32,7 +32,7 @@ public class PublishTokenGenerationController {
         String requestService = Validation.validateServiceName(rawRequestService);
 
         if (request.validateOnly) {
-            LOG.info("API Validation Test: Generate new publish token: {} {}",
+            LOG.debug("API Validation Test: Generate new publish token: {} {}",
                     keyValue("service", requestService), keyValue("user", request.requestUser));
             return publishTokenService.generate();
         } else {

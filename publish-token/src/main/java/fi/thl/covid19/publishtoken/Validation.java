@@ -3,7 +3,8 @@ package fi.thl.covid19.publishtoken;
 import fi.thl.covid19.publishtoken.error.InputValidationException;
 
 public final class Validation {
-    private Validation() {}
+    private Validation() {
+    }
 
     private static final String TOKEN_REGEX = "[0-9]{12}";
 
