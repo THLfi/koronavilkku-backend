@@ -2,10 +2,10 @@ package fi.thl.covid19.publishtoken.error;
 
 import io.micrometer.core.lang.Nullable;
 import org.apache.catalina.connector.ClientAbortException;
-import org.flywaydb.core.internal.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -73,7 +73,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatus status, WebRequest request) {
         String errorId = getOrCreateCorrelationId();
-        if (ExceptionUtils.getRootCause(ex) instanceof InputValidationValidateOnlyException) {
+        if (NestedExceptionUtils.getRootCause(ex) instanceof InputValidationValidateOnlyException) {
             logHandledDebug(ex.toString(), status, request);
         } else if (status.is4xxClientError()) {
             logHandled(ex.toString(), status, request);
