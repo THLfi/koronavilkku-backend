@@ -45,6 +45,11 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), BAD_REQUEST, request);
     }
 
+    @ExceptionHandler({InputValidationValidateOnlyException.class})
+    public ResponseEntity<Object> handleInputValidationValidateOnlyError(InputValidationValidateOnlyException ex, WebRequest request) {
+        return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), BAD_REQUEST, request);
+    }
+
     @ExceptionHandler({ClientAbortException.class})
     public ResponseEntity<Object> handleClientAbortException(ClientAbortException ex, WebRequest request) {
         String correlationId = getOrCreateCorrelationId();
@@ -67,7 +72,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatus status, WebRequest request) {
         String errorId = getOrCreateCorrelationId();
-        if (ex instanceof InputValidationException && ((InputValidationException) ex).isValidateOnly()) {
+        if (ex instanceof InputValidationValidateOnlyException) {
             logHandledDebug(ex.toString(), status, request);
         } else if (status.is4xxClientError()) {
             logHandled(ex.toString(), status, request);

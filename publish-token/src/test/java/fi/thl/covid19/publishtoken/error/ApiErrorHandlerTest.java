@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ActiveProfiles({"test","nodb"})
+@ActiveProfiles({"test", "nodb"})
 @SpringBootTest
 @AutoConfigureMockMvc
 public class ApiErrorHandlerTest {
@@ -60,7 +60,7 @@ public class ApiErrorHandlerTest {
     }
 
     @Test
-    public void validationFailureIs400WithValidteOnly() throws Exception {
+    public void validationFailureIs400WithValidateOnly() throws Exception {
         String result = mockMvc.perform(get("/test/input-validation-failure-validate-only"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
