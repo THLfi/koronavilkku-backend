@@ -69,3 +69,9 @@ Obviously, you never want to deploy that setting into production environments th
       -jar target/publish-token-1.0.0-SNAPSHOT.jar \
       fi.thl.covid19.publishtoken.PublishTokenApplication
     ```
+
+## Contributing
+
+We are grateful for all the people who have contributed so far. Due to tight schedule of Koronovilkku release we had no time to hone the open source contribution process to the very last detail. This has caused for some contributors to do work we cannot accept due to legal details or design choices that have been made during development. For this we are sorry.
+
+**IMPORTANT** See further details from [CONTRIBUTING.md](CONTRIBUTING.md)
