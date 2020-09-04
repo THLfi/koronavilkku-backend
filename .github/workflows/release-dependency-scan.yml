@@ -1,26 +1,28 @@
 name: Check dependencies
 
 on:
-  push:
-    branches: '*'
-  pull_request:
-    branches: 'trunk'
   schedule:
-  - cron:  "0 5 * * *" # this is utc time
+    - cron:  "0 11 * * *" # this is utc time
 
 jobs:
   dependency-scan:
-    name: Owasp Dependency Scanning
+    name: Owasp Release Dependency Scanning
     runs-on: ubuntu-latest
     container: maven:3.6-openjdk-11
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+      - name: Checkout latest release
+        run: |
+          git fetch --all --tags --prune
+          git checkout tags/$(git tag | sed '/-/d' | sort -t "." -k1,1n -k2,2n -k3,3n | tail -1) -b latest_release
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
           path: /root/.m2/repository
-          key: ${{ runner.os }}-m2-dependency-scan-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-dependency-scan
+          key: ${{ runner.os }}-m2-release-dependency-scan-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-release-dependency-scan
       - name: OWASP dependency check
         run: mvn package -B -Powasp-dependency-check --file pom.xml
       - uses: actions/upload-artifact@v2
