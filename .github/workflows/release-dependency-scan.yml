@@ -2,10 +2,10 @@ name: Check dependencies
 
 on:
   schedule:
-    - cron:  "0 11 * * *" # this is utc time
+    - cron:  "20 11 * * *" # this is utc time
 
 jobs:
-  dependency-scan:
+  release-dependency-scan:
     name: Owasp Release Dependency Scanning
     runs-on: ubuntu-latest
     container: maven:3.6-openjdk-11
