@@ -1,4 +1,4 @@
-name: Check dependencies
+name: Check Latest Release Dependencies
 
 on:
   schedule:
