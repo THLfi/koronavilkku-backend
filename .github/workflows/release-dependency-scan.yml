@@ -1,8 +1,6 @@
 name: Check latest release dependencies
 
 on:
-  push:
-    branches: '*'
   schedule:
     - cron:  "30 5 * * *" # this is utc time
 
