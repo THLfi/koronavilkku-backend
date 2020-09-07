@@ -1,5 +1,6 @@
 package fi.thl.covid19.publishtoken.sms;
 
+import fi.thl.covid19.publishtoken.PublishTokenDao;
 import fi.thl.covid19.publishtoken.generation.v1.PublishToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Random;
 
@@ -30,9 +32,12 @@ public class SmsService {
 
     private final SmsConfig config;
 
-    public SmsService(RestTemplate restTemplate, SmsConfig config) {
+    private final PublishTokenDao dao;
+
+    public SmsService(RestTemplate restTemplate, SmsConfig config, PublishTokenDao dao) {
         this.restTemplate = requireNonNull(restTemplate);
         this.config = requireNonNull(config);
+        this.dao = requireNonNull(dao);
         LOG.info("SMS Service initialized: {} {} {}",
                 keyValue("active", config.gateway.isPresent()),
                 keyValue("senderName", config.senderName),
@@ -40,8 +45,9 @@ public class SmsService {
     }
 
     public boolean send(String number, PublishToken token) {
-        if (config.gateway.isPresent()) {
-            return send(config.gateway.get(), number, config.formatContent(token.token));
+        if (config.gateway.isPresent() && send(config.gateway.get(), number, config.formatContent(token.token))) {
+            dao.addStatsRow(Instant.now(), "stats_sms_created");
+            return true;
         } else {
             LOG.warn("Requested to send SMS, but no gateway configured!");
             return false;

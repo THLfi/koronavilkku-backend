@@ -57,6 +57,7 @@ public class DiagnosisKeyDao {
     public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys) {
         if (verify(verificationId, requestChecksum) && !keys.isEmpty()) {
             batchInsert(interval, keys);
+            addDiagnosisKeyStatsRow(Instant.now());
             LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
     }
@@ -131,6 +132,13 @@ public class DiagnosisKeyDao {
                 .map(key -> createParamsMap(interval, key))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);
         jdbcTemplate.batchUpdate(sql, params);
+    }
+
+    private void addDiagnosisKeyStatsRow(Instant createTime) {
+        String sql = "insert into en.stats_diagnosis_keys_created(created_at) values (:created_at)";
+        Map<String, Object> params = Map.of(
+                "created_at", new Timestamp(createTime.toEpochMilli()));
+        jdbcTemplate.update(sql, params);
     }
 
     private Optional<TemporaryExposureKey> mapValidKey(int interval, ResultSet rs, int index) throws SQLException {

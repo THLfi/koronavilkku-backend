@@ -41,6 +41,9 @@ public class SMSServiceTest {
     @MockBean
     private NamedParameterJdbcTemplate jdbc;
 
+    @MockBean
+    private PublishTokenDao publishTokenDao;
+
     @Captor
     private ArgumentCaptor<HttpEntity<MultiValueMap<String, String>>> reqCaptor;
 

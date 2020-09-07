@@ -32,6 +32,7 @@ public class PublishTokenDao {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
     }
 
+    @Transactional
     public boolean storeToken(PublishToken token, LocalDate symptomsOnset, String originService, String originUser) {
         try {
             String sql = "insert into " +
@@ -45,7 +46,9 @@ public class PublishTokenDao {
                     "origin_service", originService,
                     "origin_user", originUser);
             LOG.info("Adding new publish token");
-            return jdbcTemplate.update(sql, params) == 1;
+            boolean storeStatus = jdbcTemplate.update(sql, params) == 1;
+            addStatsRow(token.createTime, "stats_tokens_created");
+            return  storeStatus;
         } catch (DuplicateKeyException e) {
             LOG.warn("Random token collision: {} {}", keyValue("service", originService), keyValue("user", originUser));
             return false;
@@ -64,8 +67,8 @@ public class PublishTokenDao {
     public Optional<PublishTokenVerification> getVerification(String token) {
         String sql =
                 "select id, symptoms_onset " +
-                "from pt.publish_token " +
-                "where token = :token and now() <= valid_through";
+                        "from pt.publish_token " +
+                        "where token = :token and now() <= valid_through";
         Map<String, Object> params = Map.of("token", token);
         return jdbcTemplate.query(sql, params, this::mapVerification).stream().findFirst();
     }
@@ -76,6 +79,13 @@ public class PublishTokenDao {
         Map<String, Object> params = Map.of("expiry_limit", new Timestamp(expiryLimit.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
         LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit.toString()), keyValue("count", count));
+    }
+
+    public void addStatsRow(Instant createTime, String tableName) {
+        String sql = "insert into pt." + tableName + "(created_at) values (:created_at)";
+        Map<String, Object> params = Map.of(
+                "created_at", new Timestamp(createTime.toEpochMilli()));
+        jdbcTemplate.update(sql, params);
     }
 
     private PublishToken mapToken(ResultSet rs, int i) throws SQLException {
