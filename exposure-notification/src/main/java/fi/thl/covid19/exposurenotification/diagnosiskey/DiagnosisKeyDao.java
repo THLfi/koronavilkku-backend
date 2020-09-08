@@ -57,7 +57,6 @@ public class DiagnosisKeyDao {
     public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys) {
         if (verify(verificationId, requestChecksum) && !keys.isEmpty()) {
             batchInsert(interval, keys);
-            addReportKeysStatsRow(Instant.now());
             LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
     }
@@ -110,6 +109,7 @@ public class DiagnosisKeyDao {
         boolean rowCreated = jdbcTemplate.update(sql, new MapSqlParameterSource(params)) == 1;
         LOG.info("Marked token verification: {}", keyValue("newVerification", rowCreated));
         if (rowCreated) {
+            addReportKeysStatsRow(Instant.now());
             return true;
         } else if (requestChecksum.equals(getVerifiedChecksum(verificationId))) {
             return false;

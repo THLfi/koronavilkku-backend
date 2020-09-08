@@ -64,6 +64,13 @@ public class DiagnosisKeyDaoIT {
     }
 
     @Test
+    public void emptyKeysListCreatesStatsRowOk() {
+        int interval = to24HourInterval(Instant.now());
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, Collections.emptyList());
+        assertStatRowAdded();
+    }
+
+    @Test
     public void intervalMetadataWorks() {
         assertEquals(List.of(), dao.getAvailableIntervals());
         assertEquals(0, dao.getKeyCount(1234));

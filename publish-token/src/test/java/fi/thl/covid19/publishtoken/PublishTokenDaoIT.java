@@ -60,8 +60,10 @@ public class PublishTokenDaoIT {
     }
 
     @Test
-    public void testSmsStatRowsAddedOk() {
+    public void testStatRowsAddedOk() {
         dao.addSmsStatsRow(Instant.now());
+        dao.addTokenCreateStatsRow(Instant.now());
+        assertStatRowAdded(STATS_TOKEN_CREATE);
         assertStatRowAdded(STATS_SMS_SEND);
     }
 
