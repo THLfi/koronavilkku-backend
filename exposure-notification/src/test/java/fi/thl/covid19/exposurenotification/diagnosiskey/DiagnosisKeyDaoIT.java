@@ -166,12 +166,12 @@ public class DiagnosisKeyDaoIT {
     }
 
     private void assertStatRowAdded() {
-        String sql = "select count(*) from en.stats_diagnosis_keys_created";
+        String sql = "select count(*) from en.stats_report_keys";
         Integer rows = jdbcTemplate.queryForObject(sql, Collections.emptyMap(), Integer.class);
         assertEquals(1, rows);
     }
 
     private void deleteStatsRows() {
-        jdbcTemplate.update("delete from en.stats_diagnosis_keys_created", Collections.emptyMap());
+        jdbcTemplate.update("delete from en.stats_report_keys", Collections.emptyMap());
     }
 }

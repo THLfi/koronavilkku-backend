@@ -24,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @AutoConfigureMockMvc
 public class PublishTokenDaoIT {
 
-    private static final String TOKEN_STAT_TABLE_NAME = "stats_tokens_created";
-    private static final String SMS_STAT_TABLE_NAME = "stats_sms_created";
+    private static final String STATS_TOKEN_CREATE = "stats_token_create";
+    private static final String STATS_SMS_SEND = "stats_sms_send";
 
     @Autowired
     private PublishTokenDao dao;
@@ -44,7 +44,7 @@ public class PublishTokenDaoIT {
         PublishToken token = new PublishToken("testtoken", Instant.now(), Instant.now().plus(1, HOURS));
         assertTrue(dao.storeToken(token, LocalDate.now(), "testservice", "testuser"));
         assertFalse(dao.storeToken(token, LocalDate.now(), "testservice", "testuser"));
-        assertStatRowAdded(TOKEN_STAT_TABLE_NAME);
+        assertStatRowAdded(STATS_TOKEN_CREATE);
     }
 
     @Test
@@ -61,8 +61,8 @@ public class PublishTokenDaoIT {
 
     @Test
     public void testSmsStatRowsAddedOk() {
-        dao.addStatsRow(Instant.now(), SMS_STAT_TABLE_NAME);
-        assertStatRowAdded(SMS_STAT_TABLE_NAME);
+        dao.addSmsStatsRow(Instant.now());
+        assertStatRowAdded(STATS_SMS_SEND);
     }
 
     private void assertStatRowAdded(String tableName) {
@@ -72,7 +72,7 @@ public class PublishTokenDaoIT {
     }
 
     private void deleteStatsRows() {
-        jdbcTemplate.update("delete from pt." + TOKEN_STAT_TABLE_NAME, Collections.emptyMap());
-        jdbcTemplate.update("delete from pt." + SMS_STAT_TABLE_NAME, Collections.emptyMap());
+        jdbcTemplate.update("delete from pt." + STATS_TOKEN_CREATE, Collections.emptyMap());
+        jdbcTemplate.update("delete from pt." + STATS_SMS_SEND, Collections.emptyMap());
     }
 }

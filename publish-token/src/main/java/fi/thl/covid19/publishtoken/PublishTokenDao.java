@@ -46,7 +46,7 @@ public class PublishTokenDao {
                     "origin_service", originService,
                     "origin_user", originUser);
             LOG.info("Adding new publish token");
-            addStatsRow(token.createTime, "stats_tokens_created");
+            addTokenCreateStatsRow(token.createTime);
             return jdbcTemplate.update(sql, params) == 1;
         } catch (DuplicateKeyException e) {
             LOG.warn("Random token collision: {} {}", keyValue("service", originService), keyValue("user", originUser));
@@ -80,10 +80,17 @@ public class PublishTokenDao {
         LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit.toString()), keyValue("count", count));
     }
 
-    public void addStatsRow(Instant createTime, String tableName) {
-        String sql = "insert into pt." + tableName + "(created_at) values (:created_at)";
+    public void addTokenCreateStatsRow(Instant createTime) {
+        String sql = "insert into pt.stats_token_create(created_at) values (:created_at)";
         Map<String, Object> params = Map.of(
                 "created_at", new Timestamp(createTime.toEpochMilli()));
+        jdbcTemplate.update(sql, params);
+    }
+
+    public void addSmsStatsRow(Instant createTime) {
+        String sql = "insert into pt.stats_sms_send(sent_at) values (:sent_at)";
+        Map<String, Object> params = Map.of(
+                "sent_at", new Timestamp(createTime.toEpochMilli()));
         jdbcTemplate.update(sql, params);
     }
 

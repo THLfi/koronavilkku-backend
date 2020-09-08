@@ -1,4 +1,4 @@
-create table en.stats_diagnosis_keys_created (
+create table en.stats_report_keys (
     id bigint primary key generated always as identity,
-    created_at timestamptz not null
+    reported_at timestamptz not null
 );

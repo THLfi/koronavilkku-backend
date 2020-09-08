@@ -46,7 +46,7 @@ public class SmsService {
 
     public boolean send(String number, PublishToken token) {
         if (config.gateway.isPresent() && send(config.gateway.get(), number, config.formatContent(token.token))) {
-            dao.addStatsRow(Instant.now(), "stats_sms_created");
+            dao.addSmsStatsRow(Instant.now());
             return true;
         } else {
             LOG.warn("Requested to send SMS, but no gateway configured!");
