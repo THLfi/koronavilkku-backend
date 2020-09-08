@@ -46,9 +46,8 @@ public class PublishTokenDao {
                     "origin_service", originService,
                     "origin_user", originUser);
             LOG.info("Adding new publish token");
-            boolean storeStatus = jdbcTemplate.update(sql, params) == 1;
             addStatsRow(token.createTime, "stats_tokens_created");
-            return  storeStatus;
+            return jdbcTemplate.update(sql, params) == 1;
         } catch (DuplicateKeyException e) {
             LOG.warn("Random token collision: {} {}", keyValue("service", originService), keyValue("user", originUser));
             return false;
