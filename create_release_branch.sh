@@ -55,7 +55,6 @@ find . -name "pom.xml" -exec sed -i "s|<version>$CURRENT_VERSION</version>|<vers
 
 git commit -a -m "Rolled version for new development version"
 
-echo "Do you want to push new version to remote?"
 while true; do
     read -p "Do you want to push new version to remote?" yn
     case $yn in
