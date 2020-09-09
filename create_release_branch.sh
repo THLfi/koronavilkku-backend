@@ -41,7 +41,7 @@ CURRENT_VERSION=$(grep -oPm1 "(?<=<version>)[^<]+" pom.xml)
 git checkout -b release/$CURRENT_VERSION
 
 while true; do
-    read -rp "Do you want to push new release branch to remote?" yn
+    read -rp "Do you want to push new release branch(release/$CURRENT_VERSION) to remote?" yn
     case $yn in
         [Yy]* ) git push --set-upstream origin "release/$CURRENT_VERSION"; break;;
         [Nn]* ) break;;
@@ -56,7 +56,7 @@ find . -name "pom.xml" -exec sed -i "s|<version>$CURRENT_VERSION</version>|<vers
 git commit -a -m "Rolled version for new development version"
 
 while true; do
-    read -p "Do you want to push new version to remote?" yn
+    read -p "Do you want to push new version($NEW_VERSION) to remote?" yn
     case $yn in
         [Yy]* ) git push; break;;
         [Nn]* ) break;;
