@@ -9,8 +9,8 @@ set -eu
 PROGRAM_NAME=$0
 
 usage() {
-    printf "usage: %s --version=[version]\n""$PROGRAM_NAME"
-    printf "version  Next version which will be updated to poms in trunk after release branch is created\n"
+    printf "usage: %s --new-version=[version]\n" "$PROGRAM_NAME"
+    printf "new-version: Next version which will be updated to poms in trunk after release branch is created\n"
     exit 1
 }
 
@@ -21,7 +21,7 @@ check_parameters() {
 for i in "$@"
 do
 case $i in
-    --version=*)
+    --new-version=*)
     NEW_VERSION="${i#*=}"
     shift
     ;;
