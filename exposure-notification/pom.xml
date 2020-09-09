@@ -162,6 +162,7 @@
                 </executions>
                 <configuration>
                     <dotGitDirectory>${project.basedir}/../.git</dotGitDirectory>
+                    <offline>true</offline>
                 </configuration>
             </plugin>
 		</plugins>
