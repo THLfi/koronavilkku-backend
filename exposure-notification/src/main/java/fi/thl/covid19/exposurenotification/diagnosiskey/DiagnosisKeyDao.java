@@ -109,6 +109,7 @@ public class DiagnosisKeyDao {
         boolean rowCreated = jdbcTemplate.update(sql, new MapSqlParameterSource(params)) == 1;
         LOG.info("Marked token verification: {}", keyValue("newVerification", rowCreated));
         if (rowCreated) {
+            addReportKeysStatsRow(Instant.now());
             return true;
         } else if (requestChecksum.equals(getVerifiedChecksum(verificationId))) {
             return false;
@@ -131,6 +132,13 @@ public class DiagnosisKeyDao {
                 .map(key -> createParamsMap(interval, key))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);
         jdbcTemplate.batchUpdate(sql, params);
+    }
+
+    private void addReportKeysStatsRow(Instant createTime) {
+        String sql = "insert into en.stats_report_keys(reported_at) values (:reported_at)";
+        Map<String, Object> params = Map.of(
+                "reported_at", new Timestamp(createTime.toEpochMilli()));
+        jdbcTemplate.update(sql, params);
     }
 
     private Optional<TemporaryExposureKey> mapValidKey(int interval, ResultSet rs, int index) throws SQLException {

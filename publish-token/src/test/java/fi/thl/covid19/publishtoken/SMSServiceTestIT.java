@@ -3,6 +3,7 @@ package fi.thl.covid19.publishtoken;
 import fi.thl.covid19.publishtoken.generation.v1.PublishToken;
 import fi.thl.covid19.publishtoken.sms.SmsService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -20,33 +21,40 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
+import static java.time.temporal.ChronoUnit.HOURS;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
-@ActiveProfiles({"test","nodb"})
+@ActiveProfiles({"dev"})
 @SpringBootTest(properties = { "covid19.publish-token.sms.gateway=http://testaddress" })
 @AutoConfigureMockMvc
-public class SMSServiceTest {
+public class SMSServiceTestIT {
 
     @Autowired
     private SmsService smsService;
 
     @MockBean
     private RestTemplate rest;
-    @MockBean
-    private NamedParameterJdbcTemplate jdbc;
+
+    @Autowired
+    NamedParameterJdbcTemplate jdbcTemplate;
 
     @Captor
     private ArgumentCaptor<HttpEntity<MultiValueMap<String, String>>> reqCaptor;
 
+    @BeforeEach
+    public void setUp() {
+        deleteStatsRows();
+    }
+
     @AfterEach
     public void end() {
-        Mockito.verifyNoMoreInteractions(jdbc);
         Mockito.verifyNoMoreInteractions(rest);
     }
 
@@ -58,6 +66,7 @@ public class SMSServiceTest {
         given(rest.postForEntity(eq("http://testaddress"), reqCaptor.capture(), eq(String.class)))
                 .willReturn(ResponseEntity.ok("test"));
         assertTrue(smsService.send(number, new PublishToken(token, Instant.now(), Instant.now())));
+        assertSmsStatRowAdded();
         HttpEntity<MultiValueMap<String, String>> request = reqCaptor.getValue();
         assertNotNull(request);
         verify(rest).postForEntity(eq("http://testaddress"), any(), eq(String.class));
@@ -73,5 +82,15 @@ public class SMSServiceTest {
         assertTrue(message.length() <= 160); // Single SMS
         assertTrue(message.contains(token));
         assertEquals(number, recipient);
+    }
+
+    private void assertSmsStatRowAdded() {
+        String sql = "select count(*) from pt.stats_sms_send";
+        Integer rows = jdbcTemplate.queryForObject(sql, Collections.emptyMap(), Integer.class);
+        assertEquals(1, rows);
+    }
+
+    private void deleteStatsRows() {
+        jdbcTemplate.update("delete from pt.stats_sms_send", Collections.emptyMap());
     }
 }

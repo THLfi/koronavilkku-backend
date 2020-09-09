@@ -92,11 +92,11 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     }
 
     private void logUnhandled(Exception ex, HttpStatus status, WebRequest request) {
-        LOG.error("Unexpected error: {} {} {}",
+        LOG.error("Unexpected error: {} {} {} {}",
                 keyValue("code", status.value()),
                 keyValue("status", status.getReasonPhrase()),
                 keyValue("request", request.getDescription(false)),
-                ex);
+                keyValue("exception", ex));
     }
 
     private void logHandledDebug(String ex, HttpStatus status, WebRequest request) {

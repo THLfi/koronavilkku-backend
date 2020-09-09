@@ -88,19 +88,20 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
         return respondToError(errorId, Optional.ofNullable(body).map(Object::toString), status, headers);
     }
 
-    private void logHandled(String exception, HttpStatus status, WebRequest request) {
+    private void logHandled(String ex, HttpStatus status, WebRequest request) {
         LOG.warn("Error processing request: {} {} {} {}",
                 keyValue("code", status.value()),
                 keyValue("status", status.getReasonPhrase()),
                 keyValue("request", request.getDescription(false)),
-                keyValue("exception", exception));
+                keyValue("exception", ex));
     }
 
     private void logUnhandled(Exception ex, HttpStatus status, WebRequest request) {
-        LOG.error("Unexpected error: {} {} {}",
+        LOG.error("Unexpected error: {} {} {} {}",
                 keyValue("code", status.value()),
                 keyValue("status", status.getReasonPhrase()),
-                keyValue("request", request.getDescription(false)), ex);
+                keyValue("request", request.getDescription(false)),
+                keyValue("exception", ex));
     }
 
     private ResponseEntity<Object> respondToError(String errorId, Optional<String> message, HttpStatus status, HttpHeaders headers) {

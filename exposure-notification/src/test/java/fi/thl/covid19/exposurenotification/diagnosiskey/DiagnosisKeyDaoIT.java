@@ -7,10 +7,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to24HourInterval;
@@ -28,6 +30,9 @@ public class DiagnosisKeyDaoIT {
     @Autowired
     private DiagnosisKeyDao dao;
 
+    @Autowired
+    NamedParameterJdbcTemplate jdbcTemplate;
+
     private TestKeyGenerator keyGenerator;
 
     @BeforeEach
@@ -35,6 +40,7 @@ public class DiagnosisKeyDaoIT {
         keyGenerator = new TestKeyGenerator(123);
         dao.deleteKeysBefore(Integer.MAX_VALUE);
         dao.deleteVerificationsBefore(Instant.now().plus(24, ChronoUnit.HOURS));
+        deleteStatsRows();
     }
 
     @Test
@@ -46,12 +52,22 @@ public class DiagnosisKeyDaoIT {
 
         dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, keys);
         assertKeysStored(interval, keys);
+        assertStatRowAdded();
 
         dao.deleteKeysBefore(interval);
         assertKeysStored(interval, keys);
+        assertStatRowAdded();
 
         dao.deleteKeysBefore(interval+1);
         assertKeysNotStored(interval, keys);
+        assertStatRowAdded();
+    }
+
+    @Test
+    public void emptyKeysListCreatesStatsRowOk() {
+        int interval = to24HourInterval(Instant.now());
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, Collections.emptyList());
+        assertStatRowAdded();
     }
 
     @Test
@@ -154,5 +170,15 @@ public class DiagnosisKeyDaoIT {
         for (TemporaryExposureKey key : keys) {
             assertFalse(result.stream().anyMatch(key::equals));
         }
+    }
+
+    private void assertStatRowAdded() {
+        String sql = "select count(*) from en.stats_report_keys";
+        Integer rows = jdbcTemplate.queryForObject(sql, Collections.emptyMap(), Integer.class);
+        assertEquals(1, rows);
+    }
+
+    private void deleteStatsRows() {
+        jdbcTemplate.update("delete from en.stats_report_keys", Collections.emptyMap());
     }
 }
