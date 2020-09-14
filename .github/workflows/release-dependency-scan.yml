@@ -19,7 +19,7 @@ jobs:
       - name: Checkout latest release
         run: |
           git fetch --all --tags --prune
-          git checkout tags/$(git tag | sed '/-/d' | sort -t "." -k1,1n -k2,2n -k3,3n | tail -1) -b latest_release
+          git checkout tags/prod -b latest_release
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
