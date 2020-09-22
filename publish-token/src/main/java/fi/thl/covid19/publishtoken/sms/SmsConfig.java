@@ -11,7 +11,7 @@ import static java.util.Objects.requireNonNull;
 @ConfigurationProperties(prefix = "covid19.publish-token.sms")
 public class SmsConfig {
 
-    private static final int MAX_SMS_LENGTH = 160;
+    private static final int MAX_SMS_LENGTH = 500;
     private static final String SMS_CODE_PART = "<code>";
 
     public final Optional<String> gateway;
