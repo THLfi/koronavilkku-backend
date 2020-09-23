@@ -1,5 +1,6 @@
 package fi.thl.covid19.publishtoken.generation.v1;
 
+import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import fi.thl.covid19.publishtoken.Validation;
 import fi.thl.covid19.publishtoken.error.InputValidationException;
@@ -23,9 +24,10 @@ public class PublishTokenGenerationRequest {
     public PublishTokenGenerationRequest(String requestUser,
                                          LocalDate symptomsOnset,
                                          Optional<String> patientSmsNumber,
-                                         Optional<Boolean> validateOnly) {
+                                         Optional<Boolean> validateOnly,
+                                         @JacksonInject boolean validateOnlyHeader) {
 
-        this.validateOnly = validateOnly.orElse(false);
+        this.validateOnly = validateOnlyHeader || validateOnly.orElse(false);
 
         try {
             this.requestUser = validateUserName(requireNonNull(requestUser, "User required"));
