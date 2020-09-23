@@ -1,12 +1,7 @@
 package fi.thl.covid19.publishtoken;
 
-import com.fasterxml.jackson.databind.InjectableValues;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.thl.covid19.publishtoken.error.InputValidationException;
-import fi.thl.covid19.publishtoken.error.InputValidationValidateOnlyException;
-import fi.thl.covid19.publishtoken.generation.v1.PublishTokenGenerationRequest;
-
-import java.io.IOException;
+import org.springframework.web.context.request.NativeWebRequest;
 
 public final class Validation {
     private Validation() {
@@ -22,17 +17,8 @@ public final class Validation {
     private static final String NAME_REGEX = "([A-Za-z0-9\\-_.]+)";
 
 
-    public static PublishTokenGenerationRequest validateAndCreate(String jsonBody, boolean validateOnly, ObjectMapper om) {
-        InjectableValues injectableValues = new InjectableValues.Std().addValue(boolean.class, validateOnly);
-        try {
-            return om.reader(injectableValues).readValue(jsonBody, PublishTokenGenerationRequest.class);
-        } catch (IOException e) {
-            if (validateOnly) {
-                throw new InputValidationValidateOnlyException("ValidateOnly: " + e.getMessage());
-            } else {
-                throw new InputValidationException(e.getMessage());
-            }
-        }
+    public static boolean validateBooleanHeader(NativeWebRequest nativeWebRequest, String headerName) {
+       return Boolean.parseBoolean(nativeWebRequest.getHeader(headerName));
     }
 
     public static String validatePublishToken(String publishToken) {
