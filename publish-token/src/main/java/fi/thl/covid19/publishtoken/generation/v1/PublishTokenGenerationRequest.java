@@ -17,6 +17,7 @@ public class PublishTokenGenerationRequest {
     public final String requestUser;
     public final LocalDate symptomsOnset;
     public final Optional<String> patientSmsNumber;
+    @Deprecated
     public final boolean validateOnly;
 
     @JsonCreator

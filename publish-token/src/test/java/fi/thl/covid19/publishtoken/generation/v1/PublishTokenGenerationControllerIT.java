@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static fi.thl.covid19.publishtoken.generation.v1.PublishTokenGenerationController.SERVICE_NAME_HEADER;
+import static fi.thl.covid19.publishtoken.generation.v1.PublishTokenGenerationController.VALIDATE_ONLY_HEADER;
 import static java.time.temporal.ChronoUnit.*;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
@@ -96,6 +97,34 @@ public class PublishTokenGenerationControllerIT {
     }
 
     @Test
+    public void validateOnlyHeaderDoesntGenerateToken() throws Exception {
+        assertTokens(TEST_SERVICE, TEST_USER, List.of());
+
+        // The header overrides the json field
+        PublishTokenGenerationRequest request1 = new PublishTokenGenerationRequest(
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.empty());
+        PublishTokenGenerationRequest request2 = new PublishTokenGenerationRequest(
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(false));
+        PublishTokenGenerationRequest request3 = new PublishTokenGenerationRequest(
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(true));
+
+        PublishToken generated1 = verifiedPost(request1);
+        PublishToken generated2 = verifiedPost(request2);
+        PublishToken generated3 = verifiedPost(request3);
+        // No header -> generated 1st and 2nd according to request
+        assertTokens(TEST_SERVICE, TEST_USER, List.of(generated1, generated2));
+
+        PublishToken validateOnly1 = verifiedValidateOnlyPost(request1, true);
+        PublishToken validateOnly2 = verifiedValidateOnlyPost(request2, true);
+        PublishToken validateOnly3 = verifiedValidateOnlyPost(request3, false);
+        assertNotEquals(generated1.token, validateOnly1.token);
+        assertNotEquals(generated2.token, validateOnly2.token);
+        assertNotEquals(generated3.token, validateOnly3.token);
+        // Validate-only header overrides the request value -> generate only the third one
+        assertTokens(TEST_SERVICE, TEST_USER, List.of(generated1, generated2, validateOnly3));
+    }
+
+    @Test
     public void getInvalidUserIs400() throws Exception {
         mockMvc.perform(get(GENERATION_URL + "/test-'ser")
                 .header(SERVICE_NAME_HEADER, "test-service"))
@@ -158,6 +187,17 @@ public class PublishTokenGenerationControllerIT {
                 .content(futureJson))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    private PublishToken verifiedValidateOnlyPost(PublishTokenGenerationRequest request, boolean validateOnly) throws Exception {
+        MvcResult post = mockMvc
+                .perform(post(GENERATION_URL)
+                        .header(SERVICE_NAME_HEADER, TEST_SERVICE)
+                        .header(VALIDATE_ONLY_HEADER, validateOnly)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andReturn();
+        return mapper.readValue(post.getResponse().getContentAsString(), PublishToken.class);
     }
 
     private PublishToken verifiedPost(PublishTokenGenerationRequest request) throws Exception {
