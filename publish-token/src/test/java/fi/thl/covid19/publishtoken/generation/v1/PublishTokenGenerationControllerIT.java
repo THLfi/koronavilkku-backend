@@ -100,7 +100,6 @@ public class PublishTokenGenerationControllerIT {
     public void validateOnlyHeaderDoesntGenerateToken() throws Exception {
         assertTokens(TEST_SERVICE, TEST_USER, List.of());
 
-        // The header overrides the json field
         PublishTokenGenerationRequest request1 = new PublishTokenGenerationRequest(
                 TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.empty());
         PublishTokenGenerationRequest request2 = new PublishTokenGenerationRequest(
@@ -116,12 +115,13 @@ public class PublishTokenGenerationControllerIT {
 
         PublishToken validateOnly1 = verifiedValidateOnlyPost(request1, true);
         PublishToken validateOnly2 = verifiedValidateOnlyPost(request2, true);
+        // Setting header to false works like no header -> uses the field
         PublishToken validateOnly3 = verifiedValidateOnlyPost(request3, false);
         assertNotEquals(generated1.token, validateOnly1.token);
         assertNotEquals(generated2.token, validateOnly2.token);
         assertNotEquals(generated3.token, validateOnly3.token);
-        // Validate-only header overrides the request value -> generate only the third one
-        assertTokens(TEST_SERVICE, TEST_USER, List.of(generated1, generated2, validateOnly3));
+        // All set to validateOnly -> Generate nothing new
+        assertTokens(TEST_SERVICE, TEST_USER, List.of(generated1, generated2));
     }
 
     @Test

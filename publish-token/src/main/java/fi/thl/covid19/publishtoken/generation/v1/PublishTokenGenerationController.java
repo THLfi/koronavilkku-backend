@@ -7,8 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
 import static fi.thl.covid19.publishtoken.Validation.validateUserName;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -32,11 +30,11 @@ public class PublishTokenGenerationController {
 
     @PostMapping
     public PublishToken generateToken(@RequestHeader(name = SERVICE_NAME_HEADER) String rawRequestService,
-                                      @RequestHeader(name = VALIDATE_ONLY_HEADER) Optional<Boolean> validateOnly,
+                                      @RequestHeader(name = VALIDATE_ONLY_HEADER, required = false) boolean validateOnly,
                                       @RequestBody PublishTokenGenerationRequest request) {
         String requestService = Validation.validateServiceName(rawRequestService);
 
-        if (validateOnly.orElse(request.validateOnly)) {
+        if (validateOnly || request.validateOnly) {
             LOG.debug("API Validation Test: Generate new publish token: {} {}",
                     keyValue("service", requestService), keyValue("user", request.requestUser));
             return publishTokenService.generate();
