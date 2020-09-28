@@ -1,8 +1,8 @@
 package fi.thl.covid19.publishtoken.generation.v1;
 
 import fi.thl.covid19.publishtoken.PublishTokenService;
-import fi.thl.covid19.publishtoken.sms.SmsService;
 import fi.thl.covid19.publishtoken.Validation;
+import fi.thl.covid19.publishtoken.sms.SmsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +18,7 @@ public class PublishTokenGenerationController {
     private static final Logger LOG = LoggerFactory.getLogger(PublishTokenGenerationController.class);
 
     public static final String SERVICE_NAME_HEADER = "KV-Request-Service";
+    public static final String VALIDATE_ONLY_HEADER = "KV-Validate-Only";
 
     private final PublishTokenService publishTokenService;
     private final SmsService smsService;
@@ -28,10 +29,12 @@ public class PublishTokenGenerationController {
     }
 
     @PostMapping
-    public PublishToken generateToken(@RequestHeader(name = SERVICE_NAME_HEADER) String rawRequestService, @RequestBody PublishTokenGenerationRequest request) {
+    public PublishToken generateToken(@RequestHeader(name = SERVICE_NAME_HEADER) String rawRequestService,
+                                      @RequestHeader(name = VALIDATE_ONLY_HEADER, required = false) boolean validateOnly,
+                                      @RequestBody PublishTokenGenerationRequest request) {
         String requestService = Validation.validateServiceName(rawRequestService);
 
-        if (request.validateOnly) {
+        if (validateOnly || request.validateOnly) {
             LOG.debug("API Validation Test: Generate new publish token: {} {}",
                     keyValue("service", requestService), keyValue("user", request.requestUser));
             return publishTokenService.generate();

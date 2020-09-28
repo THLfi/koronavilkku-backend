@@ -27,6 +27,7 @@ import java.util.Optional;
 
 import static fi.thl.covid19.publishtoken.error.CorrelationIdInterceptor.clearCorrelationID;
 import static fi.thl.covid19.publishtoken.error.CorrelationIdInterceptor.getOrCreateCorrelationId;
+import static fi.thl.covid19.publishtoken.generation.v1.PublishTokenGenerationController.VALIDATE_ONLY_HEADER;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
@@ -46,6 +47,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), BAD_REQUEST, request);
     }
 
+    @Deprecated
     @ExceptionHandler({InputValidationValidateOnlyException.class})
     public ResponseEntity<Object> handleInputValidationValidateOnlyError(InputValidationValidateOnlyException ex, WebRequest request) {
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), BAD_REQUEST, request);
@@ -72,8 +74,12 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatus status, WebRequest request) {
+        boolean validateOnlyHeader = Optional
+                .ofNullable(request.getHeader(VALIDATE_ONLY_HEADER))
+                .map(Boolean::parseBoolean)
+                .orElse(false);
         String errorId = getOrCreateCorrelationId();
-        if (NestedExceptionUtils.getRootCause(ex) instanceof InputValidationValidateOnlyException) {
+        if (validateOnlyHeader || NestedExceptionUtils.getRootCause(ex) instanceof InputValidationValidateOnlyException) {
             logHandledDebug(ex.toString(), status, request);
         } else if (status.is4xxClientError()) {
             logHandled(ex.toString(), status, request);
