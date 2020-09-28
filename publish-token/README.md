@@ -58,12 +58,12 @@ Deprecated components will be removed in next api-version.
 * **Query Params:** None
 * **Headers:**
   * (Mandatory) `KV-Request-Service` Calling service name. (With default configuration this is resolved automatically on load balancer and calling client does not need to worry about this.)
-  * (Optional) `KV-Validate-Only` Boolean (true or false, if missing true). This is for API verification tests: request is validated and a token created, it isn't stored in the database (activated) or sent via SMS. (Overrides validateOnly in the body if present)
+  * (Optional) `KV-Validate-Only` Boolean (true or false, if missing false). This is for API verification tests: request is validated and a token created, it isn't stored in the database (activated) or sent via SMS. (If validate-only in the request body is true, this has no effect)
 * **Request Body:** 
   * (Mandatory) requestUser: User who made the request (for auditing). Plain-text identifier, unique within the requesting service.
   * (Mandatory) symptomsOnset: (Estimated) date of initial onset of symptoms. This will affect the risk classification of the reported keys.
   * (Optional) patientSmsNumber: Phone number to delivering the token via SMS to the patient. This will not be stored.
-  * **DEPRECATED** (Optional) validateOnly: Boolean (null defaults to false). This is for API verification tests: request is validated and a token created, it isn't stored in the database (activated) or sent via SMS. (Overridden by KV-Validate-Only header if present)
+  * **DEPRECATED** (Optional) validateOnly: Boolean (null defaults to false). This is for API verification tests: request is validated and a token created, it isn't stored in the database (activated) or sent via SMS. (If validate-only in the header is true, this has no effect)
   * Sample Body 
       ```json
       { 
