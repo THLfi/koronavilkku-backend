@@ -67,5 +67,5 @@ covid19:
       sender-name: "publish-token"
       senderId: ""
       org-id: ""
-      # Limit SMS length to 160 characters. String <code> will be replaced with the actual code (12 characters)
-      content: "Koronavilkku-avauskoodisi/Din startkod för Coronablinkern\nPaina/Tryck: https://koronavilkku.fi/i?<code>\nTai kopioi koodi/Eller kopiera koden\n<code>"
+      # Limit SMS length to 500 characters. String <code> will be replaced with the actual code (12 characters)
+      content: "Koronavilkku-avauskoodisi: <code>. Koodi on voimassa 4 tuntia. Ilmoita nimettömästi tartunnastasi: https://koronavilkku.fi/i?<code>\n\nDin startkod för Coronablinkern: <code>. Koden är giltig i 4 timmar. Meddela om din smitta anonymt: https://koronavilkku.fi/i?<code>\n\nYour Koronavilkku key code: <code>. The code is valid for 4 hours. Report your infection anonymously: https://koronavilkku.fi/i?<code>"

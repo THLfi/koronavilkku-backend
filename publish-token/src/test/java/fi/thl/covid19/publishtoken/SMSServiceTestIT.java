@@ -79,7 +79,7 @@ public class SMSServiceTestIT {
         String message = request.getBody().getFirst("text");
         String recipient = request.getBody().getFirst("recipient");
         assertNotNull(message);
-        assertTrue(message.length() <= 160); // Single SMS
+        assertTrue(message.length() <= 500);
         assertTrue(message.contains(token));
         assertEquals(number, recipient);
     }
