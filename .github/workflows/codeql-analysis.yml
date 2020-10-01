@@ -15,6 +15,18 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: devserver
+          POSTGRES_PASSWORD: devserver-password
+          POSTGRES_DB: exposure-notification
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     strategy:
       fail-fast: false
