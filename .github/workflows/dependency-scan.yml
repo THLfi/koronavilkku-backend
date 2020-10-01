@@ -22,9 +22,8 @@ jobs:
           key: ${{ runner.os }}-m2-dependency-scan-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-dependency-scan
       - name: OWASP dependency check
-        run: mvn package -B -Powasp-dependency-check --file pom.xml
+        run: mvn clean package -B -Powasp-dependency-check --file pom.xml
       - uses: actions/upload-artifact@v2
-        if: ${{ success() || failure() }}
         with:
           name: dependency-check-result
           path: ./**/target/dependency-check-report.html
