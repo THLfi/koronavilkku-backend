@@ -70,3 +70,7 @@ jobs:
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
+    - uses: actions/upload-artifact@v2
+      with:
+        name: codeql-scan-result
+        path: ./results/java-builtin.sarif
