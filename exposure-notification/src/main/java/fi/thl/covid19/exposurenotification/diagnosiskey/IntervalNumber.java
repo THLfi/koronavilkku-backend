@@ -39,11 +39,11 @@ public final class IntervalNumber {
     }
 
     public static long startSecondOf24HourInterval(int interval24h) {
-        return interval24h * SECONDS_PER_24H;
+        return (long) interval24h * SECONDS_PER_24H;
     }
 
     public static LocalDate utcDateOf10MinInterval(int interval) {
-        Instant startMoment = Instant.ofEpochSecond(SECONDS_PER_10MIN * interval);
+        Instant startMoment = Instant.ofEpochSecond((long) interval * SECONDS_PER_10MIN);
         return startMoment.atOffset(ZoneOffset.UTC).toLocalDate();
     }
 }
