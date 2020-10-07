@@ -40,7 +40,7 @@ public class ApplicationConfiguration {
                 keyValue("statusCacheDuration", statusCacheDuration));
     }
 
-    @Bean
+    @Bean("default")
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         return builder
                 .setConnectTimeout(REST_TIMEOUT)

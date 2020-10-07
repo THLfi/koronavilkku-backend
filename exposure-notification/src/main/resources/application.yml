@@ -84,3 +84,14 @@ covid19:
     token-verification-lifetime: P14D
   publish-token:
     url: "${EN_PT_URL:}"
+  federation-gateway:
+    url-template: http://localhost:8090/diagnosiskeys/{operation}/{variable}
+    # These could be also provides as env-variables if we don't want to go env-specific configuration files
+    # But for now these are in here
+    trust-store:
+      path:
+      password:
+    key-store:
+      path:
+      password:
+      alias:

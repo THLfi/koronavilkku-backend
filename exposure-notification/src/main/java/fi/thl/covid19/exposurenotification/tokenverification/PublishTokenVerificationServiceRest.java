@@ -3,6 +3,7 @@ package fi.thl.covid19.exposurenotification.tokenverification;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,7 @@ public class PublishTokenVerificationServiceRest implements PublishTokenVerifica
     private final String publishTokenUrl;
 
     public PublishTokenVerificationServiceRest(
-            RestTemplate restTemplate,
+            @Qualifier("default") RestTemplate restTemplate,
             @Value("${covid19.publish-token.url}") String publishTokenUrl) {
         this.restTemplate = requireNonNull(restTemplate, "RestTemplate required");
         this.publishTokenUrl = requireNonNull(publishTokenUrl, "Publish Token URL required");
