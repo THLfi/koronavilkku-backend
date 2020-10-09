@@ -1,6 +1,5 @@
 package fi.thl.covid19.exposurenotification.eu;
 
-import fi.thl.covid19.proto.EfgsProto;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -26,22 +25,22 @@ public class FederationGatewayClient {
         this.gatewayUrl = gatewayUrl;
     }
 
-    public int upload(String batchTag, String batchSignature, EfgsProto.DiagnosisKeyBatch batch) {
+    public int upload(String batchTag, String batchSignature, byte[] batchData) {
         return restTemplate.exchange(
                 gatewayUrl,
                 HttpMethod.POST,
-                new HttpEntity<>(batch, getUploadHttpHeaders(batchTag, batchSignature)),
+                new HttpEntity<>(batchData, getUploadHttpHeaders(batchTag, batchSignature)),
                 String.class,
                 getUriVariables("upload", "")
         ).getStatusCodeValue();
     }
 
-    public EfgsProto.DiagnosisKeyBatch download(String dateVar, Optional<String> batchTag) {
+    public byte[] download(String dateVar, Optional<String> batchTag) {
         return restTemplate.exchange(
                 gatewayUrl,
                 HttpMethod.GET,
                 new HttpEntity<>(getDownloadHttpHeaders(batchTag)),
-                EfgsProto.DiagnosisKeyBatch.class,
+                byte[].class,
                 getUriVariables("download", dateVar)
         ).getBody();
     }

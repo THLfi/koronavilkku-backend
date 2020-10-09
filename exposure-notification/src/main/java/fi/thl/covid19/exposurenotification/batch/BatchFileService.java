@@ -105,6 +105,14 @@ public class BatchFileService {
         }
     }
 
+    public byte[] calculateBatchSignature(byte[] batchData) {
+        try {
+            return Signing.sign(signatureConfig.algorithmName, signingKey, batchData);
+        } catch (Exception e) {
+            throw new IllegalStateException("Batch data signing failed", e);
+        }
+    }
+
     private byte[] createBatchData(BatchId id) {
         LOG.debug("Generating batch file: {}", keyValue("batchId", id));
         List<TemporaryExposureKey> keys = dao.getIntervalKeys(id.intervalNumber);
