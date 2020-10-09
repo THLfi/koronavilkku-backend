@@ -60,17 +60,10 @@ public class FederationGatewayRestClientConfiguration {
 
     private HttpComponentsClientHttpRequestFactory requestFactory() {
         try {
-            SSLContext context;
-            if (!trustStorePath.isBlank() && trustStorePassword.length > 0 && !keyStorePath.isBlank() && keyStorePassword.length > 0) {
-
-                PrivateKeyStrategy privateKeyStrategy = (v1, v2) -> keyStoreKeyAlias;
-                context = SSLContextBuilder.create()
-                        .loadKeyMaterial(keyStore(keyStorePath, keyStorePassword), keyStorePassword, privateKeyStrategy)
-                        .loadTrustMaterial(new File(trustStorePath), trustStorePassword)
-                        .build();
-            } else {
-                context = SSLContextBuilder.create().build();
-            }
+            SSLContext context = (!trustStorePath.isBlank() &&
+                    trustStorePassword.length > 0 &&
+                    !keyStorePath.isBlank() &&
+                    keyStorePassword.length > 0) ? createSSLContextWithKey() : SSLContextBuilder.create().build();
 
             SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(context);
             CloseableHttpClient client = HttpClients.custom()
@@ -80,6 +73,14 @@ public class FederationGatewayRestClientConfiguration {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private SSLContext createSSLContextWithKey() throws Exception {
+        PrivateKeyStrategy privateKeyStrategy = (v1, v2) -> keyStoreKeyAlias;
+        return SSLContextBuilder.create()
+                .loadKeyMaterial(keyStore(keyStorePath, keyStorePassword), keyStorePassword, privateKeyStrategy)
+                .loadTrustMaterial(new File(trustStorePath), trustStorePassword)
+                .build();
     }
 
     private KeyStore keyStore(String keyStoreFile, char[] password) throws Exception {
