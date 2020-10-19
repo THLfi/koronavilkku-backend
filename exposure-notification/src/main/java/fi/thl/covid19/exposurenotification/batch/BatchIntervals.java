@@ -12,7 +12,7 @@ public class BatchIntervals {
     // Larger delay for distributing the batch files, so we know it's already generated before we give it out
     private static final Duration DISTRIBUTION_DELAY = Duration.ofHours(4);
 
-    private static final int DAYS_TO_DISTRIBUTE_BATCHES = 10;
+    private static final int DAYS_TO_DISTRIBUTE_BATCHES = 14;
     private static final int DAYS_TO_KEEP_BATCHES = DAYS_TO_DISTRIBUTE_BATCHES + 1;
 
     public final int current;
