@@ -7,7 +7,7 @@ select * from (
        '{ 1, 2, 3, 4, 5, 6, 7, 8 }'::int array[8],
        '{ 0, 0, 0, 1, 1, 1, 1, 1 }'::int array[8],
        '{ 1, 2 ,2, 4, 6, 6, 7, 8 }'::int array[8],
-       '{ 0, 2, 4, 6, 6, 7, 8, 0 }'::int array[8],
+       '{ 0, 0, 4, 6, 6, 7, 8, 0 }'::int array[8],
        '{ 50, 70 }'::int array[2])
 ) as default_values
 -- Don't insert a new version if the latest one is identical
