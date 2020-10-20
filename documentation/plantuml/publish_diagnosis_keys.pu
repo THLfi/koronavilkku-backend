@@ -4,14 +4,14 @@ skinparam noteTextAlignment left
 start
 :**Filter keys**
 
-Keys beyond current UTC-date is filtered;
+Keys older than 14 days and in future will be filtered;
 :**Verify publish token**
 
 Creates call to publish-token api;
 :**Adjust risk buckets**;
 note right
   - There is predefined array of day limits for every bucket: 14, 10, 8, 6, 4, 2, -3.
-  - Day value which is compared towards array is days between symptomsOnSet and encounter
+  - Day value which is compared towards the array is days between symptomsOnSet and encounter
   - Negative value means encounter has been before symptoms
   - Value for SymptomsOnSet has been get from health care
   - Single bucket will be chosen if day value is greater than value in bucket and less than value on the left hand
