@@ -113,14 +113,14 @@ public class DiagnosisKeyControllerIT {
         BatchId batchId2 = new BatchId(INTERVALS.last);
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
-                batchId1.intervalNumber, keyGenerator.someKeys(1));
+                batchId1.intervalNumber, keyGenerator.someKeys(1), 1);
 
         assertListing(BatchId.DEFAULT, List.of(batchId1));
         assertListing(new BatchId(INTERVALS.first), List.of(batchId1));
         assertListing(batchId1, List.of());
 
         dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
-                batchId2.intervalNumber, keyGenerator.someKeys(2));
+                batchId2.intervalNumber, keyGenerator.someKeys(2), 2);
 
         assertListing(BatchId.DEFAULT, List.of(batchId1, batchId2));
         assertListing(new BatchId(INTERVALS.first), List.of(batchId1, batchId2));
@@ -134,14 +134,14 @@ public class DiagnosisKeyControllerIT {
         BatchId batchId2 = new BatchId(INTERVALS.last);
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
-                batchId1.intervalNumber, keyGenerator.someKeys(1));
+                batchId1.intervalNumber, keyGenerator.someKeys(1), 1);
 
         assertStatus(BatchId.DEFAULT, List.of(batchId1));
         assertStatus(new BatchId(INTERVALS.first), List.of(batchId1));
         assertStatus(batchId1, List.of());
 
         dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
-                batchId2.intervalNumber, keyGenerator.someKeys(1));
+                batchId2.intervalNumber, keyGenerator.someKeys(1), 1);
 
         assertStatus(BatchId.DEFAULT, List.of(batchId1, batchId2));
         assertStatus(new BatchId(INTERVALS.first), List.of(batchId1, batchId2));
@@ -153,7 +153,7 @@ public class DiagnosisKeyControllerIT {
     public void newBatchIsGeneratedFromKeys() throws Exception {
         BatchId batch = new BatchId(INTERVALS.last);
         assertNoFile(batch);
-        dao.addKeys(1, md5DigestAsHex("test".getBytes()), INTERVALS.last, keyGenerator.someKeys(1));
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), INTERVALS.last, keyGenerator.someKeys(1), 1);
         assertFileExists(batch);
     }
 
@@ -200,7 +200,7 @@ public class DiagnosisKeyControllerIT {
     @Test
     public void batchFetchingSucceeds() throws Exception {
         int interval = to24HourInterval(Instant.now())-1;
-        dao.addKeys(123, "TEST", interval, keyGenerator.someKeys(14));
+        dao.addKeys(123, "TEST", interval, keyGenerator.someKeys(14), 14);
         mockMvc.perform(get("/diagnosis/v1/batch/" + interval))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM));

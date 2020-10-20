@@ -46,7 +46,7 @@ public class BatchFileServiceIT {
     @Test
     public void generateBatchesWorks() {
         for (int next = INTERVALS.first; next <= INTERVALS.last; next++) {
-            dao.addKeys(next, "TEST" + next, next, keyGenerator.someKeys(5));
+            dao.addKeys(next, "TEST" + next, next, keyGenerator.someKeys(5), 5);
             assertFalse(fileStorage.fileExists(new BatchId(next)));
             fileService.cacheMissingBatchesBetween(INTERVALS.first, INTERVALS.last);
             assertTrue(fileStorage.fileExists(new BatchId(next)));
