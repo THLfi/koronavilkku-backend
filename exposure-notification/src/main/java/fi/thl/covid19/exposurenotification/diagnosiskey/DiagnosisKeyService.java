@@ -47,7 +47,13 @@ public class DiagnosisKeyService {
                 keyValue("filterEnd", now.toString()),
                 keyValue("postedCount", keys.size()),
                 keyValue("filteredCount", filtered.size()));
-        dao.addKeys(verification.id, checksum(keys), currentInterval, adjustRiskBuckets(filtered, verification.symptomsOnset));
+        List<TemporaryExposureKey> adjustedKeys = adjustRiskBuckets(filtered, verification.symptomsOnset);
+
+        dao.addKeys(verification.id, checksum(keys), currentInterval, adjustedKeys, getExportedKeyCount(adjustedKeys));
+    }
+
+    private long getExportedKeyCount(List<TemporaryExposureKey> keys) {
+        return keys.stream().filter(key -> key.transmissionRiskLevel > 0 && key.transmissionRiskLevel < 7).count();
     }
 
     private String checksum(List<TemporaryExposureKey> keys) {

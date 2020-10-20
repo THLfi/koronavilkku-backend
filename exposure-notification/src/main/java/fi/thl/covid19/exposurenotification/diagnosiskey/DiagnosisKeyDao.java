@@ -54,8 +54,8 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys) {
-        if (verify(verificationId, requestChecksum) && !keys.isEmpty()) {
+    public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys, long exportedKeyCount) {
+        if (verify(verificationId, requestChecksum, keys.size(), exportedKeyCount) && !keys.isEmpty()) {
             batchInsert(interval, keys);
             LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
@@ -98,7 +98,7 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public boolean verify(int verificationId, String requestChecksum) {
+    public boolean verify(int verificationId, String requestChecksum, long totalKeyCount, long exportedKeyCount) {
         String sql = "insert into " +
                 "en.token_verification (verification_id, request_checksum) " +
                 "values (:verification_id, :request_checksum) " +
@@ -109,7 +109,7 @@ public class DiagnosisKeyDao {
         boolean rowCreated = jdbcTemplate.update(sql, new MapSqlParameterSource(params)) == 1;
         LOG.info("Marked token verification: {}", keyValue("newVerification", rowCreated));
         if (rowCreated) {
-            addReportKeysStatsRow(Instant.now());
+            addReportKeysStatsRow(Instant.now(), totalKeyCount, exportedKeyCount);
             return true;
         } else if (requestChecksum.equals(getVerifiedChecksum(verificationId))) {
             return false;
@@ -134,10 +134,12 @@ public class DiagnosisKeyDao {
         jdbcTemplate.batchUpdate(sql, params);
     }
 
-    private void addReportKeysStatsRow(Instant createTime) {
-        String sql = "insert into en.stats_report_keys(reported_at) values (:reported_at)";
+    private void addReportKeysStatsRow(Instant createTime, long totalKeyCount, long exportedKeyCount) {
+        String sql = "insert into en.stats_report_keys(reported_at, total_key_count, exported_key_count) values (:reported_at, :total_key_count, :exported_key_count)";
         Map<String, Object> params = Map.of(
-                "reported_at", new Timestamp(createTime.toEpochMilli()));
+                "reported_at", new Timestamp(createTime.toEpochMilli()),
+                "total_key_count", totalKeyCount,
+                "exported_key_count", exportedKeyCount);
         jdbcTemplate.update(sql, params);
     }
 
