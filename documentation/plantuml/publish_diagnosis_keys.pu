@@ -13,7 +13,7 @@ note right
   - There is predefined array of day limits for every bucket: 14, 10, 8, 6, 4, 2, -3.
   - Day value which is compared towards the array is days between symptomsOnSet and encounter
   - Negative value means encounter has been before symptoms
-  - Value for SymptomsOnSet has been get from health care
+  - Value for SymptomsOnSet has been set by a health care professional when creating the publish token
   - Single bucket will be chosen if day value is greater than value in bucket and less than value on the left hand
   - E.g. if value is 11 then bucket with index 1 will be chosen (14 > 11 > 10)
   - On later stage this index value will be used to get value from transmission_risk_scores array defined in configuration
