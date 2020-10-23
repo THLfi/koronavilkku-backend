@@ -8,6 +8,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +34,8 @@ public class DiagnosisKeyDao {
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyDao.class);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+
+    private enum EfgsOperationState {STARTED, FINISHED, ERROR}
 
     public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
@@ -69,15 +75,15 @@ public class DiagnosisKeyDao {
     public List<Integer> getAvailableIntervalsDirect() {
         LOG.info("Fetching available intervals");
         String sql = "select distinct submission_interval from en.diagnosis_key order by submission_interval";
-        return jdbcTemplate.query(sql, (rs,i) -> rs.getInt("submission_interval"));
+        return jdbcTemplate.query(sql, (rs, i) -> rs.getInt("submission_interval"));
     }
 
     @Cacheable(value = "key-count", sync = true)
     public int getKeyCount(int interval) {
         LOG.info("Fetching key-count from DB: {}", keyValue("interval", interval));
         String sql = "select count(*) from en.diagnosis_key where submission_interval = :interval";
-        Map<String,Object> params = Map.of("interval", interval);
-        return jdbcTemplate.query(sql, params, (rs,i) -> rs.getInt(1))
+        Map<String, Object> params = Map.of("interval", interval);
+        return jdbcTemplate.query(sql, params, (rs, i) -> rs.getInt(1))
                 .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing."));
     }
 
@@ -85,16 +91,35 @@ public class DiagnosisKeyDao {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
                 "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval " +
-                "from en.diagnosis_key " +
-                "where submission_interval = :interval " +
-                // Level 0 & 7 would get 0 score anyhow, so ignore them
-                // This also clips the range, so that we can manage the difference between iOS & Android APIs
-                "and transmission_risk_level between 1 and 6 " +
-                "order by key_data";
+                        "from en.diagnosis_key " +
+                        "where submission_interval = :interval " +
+                        // Level 0 & 7 would get 0 score anyhow, so ignore them
+                        // This also clips the range, so that we can manage the difference between iOS & Android APIs
+                        "and transmission_risk_level between 1 and 6 " +
+                        "order by key_data";
         Map<String, Object> params = Map.of("interval", interval);
         // We should not have invalid data in the DB, but if we do, pass by it and move on
-        return jdbcTemplate.query(sql, params, (rs,i) -> mapValidKey(interval, rs, i))
+        return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(interval, rs, i))
                 .stream().flatMap(Optional::stream).collect(Collectors.toList());
+    }
+
+    public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(long operationId) {
+        LOG.info("Fetching keys not sent to efgs.");
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval " +
+                "from en.diagnosis_key " +
+                "where efgs_update_to_operation = :efgs_update_to_operation " +
+                "order by key_data";
+        return jdbcTemplate.queryForList(sql, Map.of("efgs_update_to_operation", operationId), TemporaryExposureKey.class);
+    }
+
+    public void finishUpdateTo(long operationId) {
+        String sql = "update en.efgs_update_to_operation set state = :new_state where id = :id";
+        jdbcTemplate.update(sql, Map.of("new_state", EfgsOperationState.FINISHED, "id", operationId));
+    }
+
+    public void errorUpdateTo(long operationId) {
+        String sql = "update en.efgs_update_to_operation set state = :error_state where id = :id";
+        jdbcTemplate.update(sql, Map.of("error_state", EfgsOperationState.ERROR, "id", operationId));
     }
 
     @Transactional
@@ -118,6 +143,39 @@ public class DiagnosisKeyDao {
         }
     }
 
+    @Transactional(timeout = 10)
+    public long startUpdateToEfgs() {
+        String lock = "lock table en.efgs_update_to_operation in access exclusive mode";
+        jdbcTemplate.update(lock, Map.of());
+        if (isUpdateToEfgsAvailable()) {
+            return markUpdateToEfgsStarted();
+        } else {
+            throw new IllegalStateException("Update to efgs is already running.");
+        }
+    }
+
+    private boolean isUpdateToEfgsAvailable() {
+        String sql = "select count(*) from en.efgs_update_to_operation where state = :state";
+        return jdbcTemplate.query(sql, Map.of("state", EfgsOperationState.STARTED), (rs, i) -> rs.getInt(1))
+                .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing.")) == 0;
+    }
+
+    private long markUpdateToEfgsStarted() {
+        KeyHolder operationKeyHolder = new GeneratedKeyHolder();
+
+        String createOperation = "insert into en.efgs_update_to_operation (state, updated_at) default values";
+        jdbcTemplate.update(createOperation, new MapSqlParameterSource(), operationKeyHolder);
+
+        String markToBeUpdated = "update en.diagnosis_key " +
+                "set efgs_update_to_operation = :efgs_update_to_operation " +
+                "where efgs_update_to_operation is null";
+
+        long operationId = requireNonNull(operationKeyHolder.getKey()).longValue();
+        jdbcTemplate.update(markToBeUpdated, Map.of("efgs_update_to_operation", operationId));
+
+        return operationId;
+    }
+
     private String getVerifiedChecksum(int verificationId) {
         String sql = "select request_checksum from en.token_verification where verification_id=:verification_id";
         return jdbcTemplate.queryForObject(sql, Map.of("verification_id", verificationId), String.class);
@@ -128,7 +186,7 @@ public class DiagnosisKeyDao {
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval) " +
                 "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval) " +
                 "on conflict do nothing";
-        Map<String,Object>[] params = newKeys.stream()
+        Map<String, Object>[] params = newKeys.stream()
                 .map(key -> createParamsMap(interval, key))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);
         jdbcTemplate.batchUpdate(sql, params);
@@ -160,7 +218,7 @@ public class DiagnosisKeyDao {
                 rs.getInt("rolling_period"));
     }
 
-    private Map<String,Object> createParamsMap(int interval, TemporaryExposureKey key) {
+    private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key) {
         return Map.of(
                 "key_data", key.keyData,
                 "rolling_period", key.rollingPeriod,
