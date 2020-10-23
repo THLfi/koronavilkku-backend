@@ -4,11 +4,13 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import fi.thl.covid19.exposurenotification.batch.BatchFileService;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
+import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
-import fi.thl.covid19.exposurenotification.error.EfgsUpdateException;
+import fi.thl.covid19.exposurenotification.error.EfgsOperationException;
 import fi.thl.covid19.proto.EfgsProto;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -33,45 +35,55 @@ public class FederationGatewayService {
         this.dd = diagnosisKeyDao;
     }
 
-    public void updateTo() {
-        long operationId = dd.startUpdateToEfgs();
+    public void doOutbound() {
+        long operationId = dd.startOutboundOperation();
         try {
             List<TemporaryExposureKey> localKeys = dd.fetchAvailableKeysForEfgs(operationId);
-            handleUpdate(transformDiagnosisKeyBatch(localKeys), operationId);
-            dd.finishUpdateTo(operationId);
+            handleOutbound(transform(localKeys), operationId);
+            dd.finishOperation(operationId);
         } catch (Throwable t) {
-            dd.errorUpdateTo(operationId);
-            throw new EfgsUpdateException("Update to efgs failed.", t);
+            dd.markErrorOperation(operationId);
+            throw new EfgsOperationException("Outbound operation to efgs failed.", t);
         }
     }
 
-    public void updateFrom(Optional<String> batchTag) {
+    public void doInbound(Optional<String> batchTag) {
         // TODO: what date we should use?
         String date = getDateString(LocalDate.now());
         byte[] batchData = client.download(date, batchTag);
         // TODO: maybe some checks for data?
-        EfgsProto.DiagnosisKeyBatch batch = deserialize(batchData);
-        // TODO: do something with batch, maybe?
+        dd.addInboundKeys(transform(deserialize(batchData)), IntervalNumber.to24HourInterval(Instant.now()));
     }
 
-    private EfgsProto.DiagnosisKeyBatch transformDiagnosisKeyBatch(List<TemporaryExposureKey> localKeys) {
+    private EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
         List<EfgsProto.DiagnosisKey> euKeys = localKeys.stream().map(localKey ->
                 EfgsProto.DiagnosisKey.newBuilder()
                         .setKeyData(ByteString.copyFromUtf8(localKey.keyData))
-                .setRollingStartIntervalNumber(localKey.rollingStartIntervalNumber)
-                .setRollingPeriod(localKey.rollingPeriod)
-                .setTransmissionRiskLevel(0x7FFFFFFF)
-                //.setVisitedCountries() // TODO
-                .setOrigin("FI")
-                .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
-                //.setDaysSinceOnsetOfSymptoms() // TODO
-                .build())
+                        .setRollingStartIntervalNumber(localKey.rollingStartIntervalNumber)
+                        .setRollingPeriod(localKey.rollingPeriod)
+                        .setTransmissionRiskLevel(0x7FFFFFFF)
+                        //.setVisitedCountries() // TODO
+                        .setOrigin("FI")
+                        .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
+                        //.setDaysSinceOnsetOfSymptoms() // TODO
+                        .build())
                 .collect(Collectors.toList());
 
         return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(euKeys).build();
     }
 
-    private void handleUpdate(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
+    // TODO: transmissionRiskLevel
+    private List<TemporaryExposureKey> transform(EfgsProto.DiagnosisKeyBatch batch) {
+        return batch.getKeysList().stream().map(remoteKey ->
+                new TemporaryExposureKey(
+                        remoteKey.getKeyData().toString(),
+                        1,
+                        remoteKey.getRollingStartIntervalNumber(),
+                        remoteKey.getRollingPeriod()
+                )).collect(Collectors.toList());
+    }
+
+    private void handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
         byte[] batchData = serialize(batch);
         int status = client.upload(getDateString(LocalDate.now()) + "-" + operationId, calculateBatchSignature(batchData), batchData);
 
