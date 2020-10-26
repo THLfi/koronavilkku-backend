@@ -30,7 +30,7 @@ public final class BatchFileFactory {
             SignatureConfig signatureConfig,
             PrivateKey key,
             BatchMetadata metadata,
-            List<fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey> keys) {
+            List<fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey> keys) {
 
         if (keys.isEmpty()) throw new IllegalArgumentException("Cannot create a batch file without keys");
         try (ByteArrayOutputStream bytesOut = new ByteArrayOutputStream(DEFAULT_BYTE_SIZE);
@@ -56,7 +56,7 @@ public final class BatchFileFactory {
 
     private static byte[] getBinFileBytes(SignatureConfig signatureConfig,
                                           BatchMetadata metadata,
-                                          List<fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey> keys) throws IOException {
+                                          List<fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey> keys) throws IOException {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream(DEFAULT_BYTE_SIZE)) {
             stream.writeBytes(StringUtils.rightPad(BIN_HEADER, BIN_HEADER_LENGTH, ' ').getBytes(UTF_8));
             createKeyExport(signatureConfig, metadata, keys).writeTo(stream);
@@ -67,7 +67,7 @@ public final class BatchFileFactory {
     private static TemporaryExposureKeyExport createKeyExport(
             SignatureConfig signatureConfig,
             BatchMetadata metadata,
-            List<fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey> keys) {
+            List<fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey> keys) {
         return TemporaryExposureKeyExport.newBuilder()
                 .setStartTimestamp(metadata.startTimestampUtcSec)
                 .setEndTimestamp(metadata.endTimestampUtcSec)
@@ -97,7 +97,7 @@ public final class BatchFileFactory {
         return TEKSignatureList.newBuilder().addSignatures(signature).build();
     }
 
-    private static TemporaryExposureKey toProtoBuf(fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey key) {
+    private static TemporaryExposureKey toProtoBuf(fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey key) {
         return TemporaryExposureKey.newBuilder()
                 .setKeyData(ByteString.copyFrom(Base64.getDecoder().decode(key.keyData.getBytes(UTF_8))))
                 .setTransmissionRiskLevel(key.transmissionRiskLevel)

@@ -1,7 +1,5 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;

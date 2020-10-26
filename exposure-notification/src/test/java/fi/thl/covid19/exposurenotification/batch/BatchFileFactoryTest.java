@@ -1,7 +1,7 @@
 package fi.thl.covid19.exposurenotification.batch;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
+import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.proto.SignatureInfo;
 import fi.thl.covid19.proto.TEKSignature;
 import fi.thl.covid19.proto.TEKSignatureList;

@@ -1,6 +1,5 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.error.EfgsOperationException;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
@@ -18,10 +17,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
@@ -35,8 +31,9 @@ public class DiagnosisKeyDao {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    private enum EfgsOperationState { STARTED, FINISHED, ERROR }
-    private enum EfgsOperationDirection { INBOUND, OUTBOUND }
+    private enum EfgsOperationState {STARTED, FINISHED, ERROR}
+
+    private enum EfgsOperationDirection {INBOUND, OUTBOUND}
 
     public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
@@ -145,9 +142,13 @@ public class DiagnosisKeyDao {
         return jdbcTemplate.queryForList(sql, Map.of("efgs_operation", operationId), TemporaryExposureKey.class);
     }
 
-    public void finishOperation(long operationId) {
-        String sql = "update en.efgs_operation set state = :new_state where id = :id";
-        jdbcTemplate.update(sql, Map.of("new_state", EfgsOperationState.FINISHED, "id", operationId));
+    public void finishOperation(long operationId, int keysCount) {
+        String sql = "update en.efgs_operation set state = :new_state, keys_count = :keys_count where id = :id";
+        jdbcTemplate.update(sql, Map.of(
+                "new_state", EfgsOperationState.FINISHED,
+                "id", operationId,
+                "keys_count", keysCount
+        ));
     }
 
     public void markErrorOperation(long operationId) {
@@ -162,7 +163,7 @@ public class DiagnosisKeyDao {
             try {
                 batchInsert(interval, keys, operationId);
                 LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
-                finishOperation(operationId);
+                finishOperation(operationId, keys.size());
             } catch (Throwable t) {
                 markErrorOperation(operationId);
                 throw new EfgsOperationException("Inbound operation from efgs failed.", t);
@@ -207,8 +208,8 @@ public class DiagnosisKeyDao {
 
     private void batchInsert(int interval, List<TemporaryExposureKey> newKeys) {
         String sql = "insert into " +
-                "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval) " +
-                "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval) " +
+                "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval, origin, visited_countries, days_since_onset_of_symptoms) " +
+                "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
                 .map(key -> createParamsMap(interval, key))
@@ -218,8 +219,8 @@ public class DiagnosisKeyDao {
 
     private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, long operationId) {
         String sql = "insert into " +
-                "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval, efgs_operation) " +
-                "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval, :efgs_operation) " +
+                "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval, origin, visited_countries, days_since_onset_of_symptoms, efgs_operation) " +
+                "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :efgs_operation) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
                 .map(key -> createParamsMap(interval, key, operationId))
@@ -255,7 +256,11 @@ public class DiagnosisKeyDao {
                 rs.getString("key_data"),
                 rs.getInt("transmission_risk_level"),
                 rs.getInt("rolling_start_interval_number"),
-                rs.getInt("rolling_period"));
+                rs.getInt("rolling_period"),
+                Set.of((String[]) rs.getArray("visited_countries").getArray()),
+                rs.getInt("days_since_onset_of_symptoms"),
+                rs.getString("origin")
+        );
     }
 
     private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key) {
@@ -264,7 +269,11 @@ public class DiagnosisKeyDao {
                 "rolling_period", key.rollingPeriod,
                 "rolling_start_interval_number", key.rollingStartIntervalNumber,
                 "transmission_risk_level", key.transmissionRiskLevel,
-                "submission_interval", interval);
+                "submission_interval", interval,
+                "origin", key.origin,
+                "visited_countries", key.visitedCountries,
+                "days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms
+        );
     }
 
     private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key, long operationId) {

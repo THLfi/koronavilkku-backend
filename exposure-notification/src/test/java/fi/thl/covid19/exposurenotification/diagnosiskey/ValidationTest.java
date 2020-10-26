@@ -1,7 +1,6 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisPublishRequest;
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;

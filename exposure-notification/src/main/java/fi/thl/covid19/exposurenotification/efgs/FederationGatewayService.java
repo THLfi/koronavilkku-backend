@@ -1,11 +1,11 @@
-package fi.thl.covid19.exposurenotification.eu;
+package fi.thl.covid19.exposurenotification.efgs;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import fi.thl.covid19.exposurenotification.batch.BatchFileService;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
+import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.error.EfgsOperationException;
 import fi.thl.covid19.proto.EfgsProto;
 import org.springframework.stereotype.Service;
@@ -13,10 +13,11 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
 
 @Service
 public class FederationGatewayService {
@@ -40,7 +41,7 @@ public class FederationGatewayService {
         try {
             List<TemporaryExposureKey> localKeys = dd.fetchAvailableKeysForEfgs(operationId);
             handleOutbound(transform(localKeys), operationId);
-            dd.finishOperation(operationId);
+            dd.finishOperation(operationId, localKeys.size());
         } catch (Throwable t) {
             dd.markErrorOperation(operationId);
             throw new EfgsOperationException("Outbound operation to efgs failed.", t);
@@ -72,15 +73,23 @@ public class FederationGatewayService {
         return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(euKeys).build();
     }
 
-    // TODO: transmissionRiskLevel
     private List<TemporaryExposureKey> transform(EfgsProto.DiagnosisKeyBatch batch) {
         return batch.getKeysList().stream().map(remoteKey ->
                 new TemporaryExposureKey(
                         remoteKey.getKeyData().toString(),
-                        1,
+                        calculateTransmissionRisk(remoteKey),
                         remoteKey.getRollingStartIntervalNumber(),
-                        remoteKey.getRollingPeriod()
+                        remoteKey.getRollingPeriod(),
+                        new HashSet<>(remoteKey.getVisitedCountriesList()),
+                        remoteKey.getDaysSinceOnsetOfSymptoms(),
+                        remoteKey.getOrigin()
                 )).collect(Collectors.toList());
+    }
+
+    private int calculateTransmissionRisk(EfgsProto.DiagnosisKey key) {
+        LocalDate keyDate = utcDateOf10MinInterval(key.getRollingStartIntervalNumber());
+
+        return getRiskBucket(LocalDate.from(keyDate).plusDays(key.getDaysSinceOnsetOfSymptoms()), keyDate);
     }
 
     private void handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
