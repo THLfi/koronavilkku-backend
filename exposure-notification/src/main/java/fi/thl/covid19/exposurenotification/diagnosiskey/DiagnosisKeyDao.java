@@ -237,11 +237,6 @@ public class DiagnosisKeyDao {
 
     private void addReportKeysStatsRow(Instant createTime, long totalKeyCount, long exportedKeyCount) {
         String sql = "insert into en.stats_report_keys(reported_at, total_key_count, exported_key_count) values (:reported_at, :total_key_count, :exported_key_count)";
-
-    }
-
-    private void addReportKeysStatsRow(Instant createTime) {
-        String sql = "insert into en.stats_report_keys(reported_at) values (:reported_at)";
         Map<String, Object> params = Map.of(
                 "reported_at", new Timestamp(createTime.toEpochMilli()),
                 "total_key_count", totalKeyCount,
