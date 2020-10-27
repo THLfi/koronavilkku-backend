@@ -137,6 +137,9 @@
                         <version>5.3.2</version>
                         <configuration>
                             <failBuildOnCVSS>0</failBuildOnCVSS>
+                            <suppressionFiles>
+                                <suppressionFile>owasp_suppressions.xml</suppressionFile>
+                            </suppressionFiles>
                         </configuration>
                         <executions>
                             <execution>
