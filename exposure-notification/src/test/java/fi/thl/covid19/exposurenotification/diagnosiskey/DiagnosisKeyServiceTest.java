@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to10MinInterval;
 import static java.time.ZoneOffset.UTC;
@@ -108,6 +109,6 @@ public class DiagnosisKeyServiceTest {
 
     private TemporaryExposureKey generateAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {
         int interval = to10MinInterval(keyDate.atStartOfDay(UTC).toInstant());
-        return new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==", transmissionRiskLevel, interval, rollingPeriod);
+        return new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==", transmissionRiskLevel, interval, rollingPeriod, Set.of(), 0, "FI");
     }
 }

@@ -43,6 +43,7 @@ public class FederationGatewayService {
             handleOutbound(transform(localKeys), operationId);
             dd.finishOperation(operationId, localKeys.size());
         } catch (Throwable t) {
+            // TODO: check what we really want to catch in here
             dd.markErrorOperation(operationId);
             throw new EfgsOperationException("Outbound operation to efgs failed.", t);
         }
@@ -57,20 +58,20 @@ public class FederationGatewayService {
     }
 
     private EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
-        List<EfgsProto.DiagnosisKey> euKeys = localKeys.stream().map(localKey ->
+        List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream().map(localKey ->
                 EfgsProto.DiagnosisKey.newBuilder()
                         .setKeyData(ByteString.copyFromUtf8(localKey.keyData))
                         .setRollingStartIntervalNumber(localKey.rollingStartIntervalNumber)
                         .setRollingPeriod(localKey.rollingPeriod)
                         .setTransmissionRiskLevel(0x7FFFFFFF)
-                        //.setVisitedCountries() // TODO
-                        .setOrigin("FI")
+                        .addAllVisitedCountries(localKey.visitedCountries)
+                        .setOrigin(localKey.origin)
                         .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
-                        //.setDaysSinceOnsetOfSymptoms() // TODO
+                        .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms)
                         .build())
                 .collect(Collectors.toList());
 
-        return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(euKeys).build();
+        return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(efgsKeys).build();
     }
 
     private List<TemporaryExposureKey> transform(EfgsProto.DiagnosisKeyBatch batch) {

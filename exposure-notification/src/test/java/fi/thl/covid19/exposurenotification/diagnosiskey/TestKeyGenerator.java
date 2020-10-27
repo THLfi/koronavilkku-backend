@@ -1,11 +1,10 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
+import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKeyRequest;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.INTERVALS_10MIN_PER_24H;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.dayFirst10MinInterval;
@@ -39,6 +38,33 @@ public class TestKeyGenerator {
                 keyData,
                 getRiskBucket(symptomsDays-ageDays),
                 dayFirst10MinInterval(Instant.now().minus(ageDays, ChronoUnit.DAYS)),
-                INTERVALS_10MIN_PER_24H);
+                INTERVALS_10MIN_PER_24H,
+                Set.of(),
+                0,
+                "FI");
+    }
+
+    public List<TemporaryExposureKeyRequest> someRequestKeys(int count) {
+        return someRequestKeys(count, count);
+    }
+
+    public List<TemporaryExposureKeyRequest> someRequestKeys(int count, int symptomsDays) {
+        ArrayList<TemporaryExposureKeyRequest> list = new ArrayList<>(14);
+        for (int i = count-1; i >= 0; i--) {
+            list.add(someRequestKey(count-i, symptomsDays));
+        }
+        return list;
+    }
+
+    public TemporaryExposureKeyRequest someRequestKey(int ageDays, int symptomsDays) {
+        byte[] bytes = new byte[16];
+        rand.nextBytes(bytes);
+        String keyData = Base64.getEncoder().encodeToString(bytes);
+        return new TemporaryExposureKeyRequest(
+                keyData,
+                getRiskBucket(symptomsDays-ageDays),
+                dayFirst10MinInterval(Instant.now().minus(ageDays, ChronoUnit.DAYS)),
+                INTERVALS_10MIN_PER_24H,
+                Optional.empty());
     }
 }
