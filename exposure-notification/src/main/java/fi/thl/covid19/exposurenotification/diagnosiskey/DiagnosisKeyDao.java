@@ -163,8 +163,12 @@ public class DiagnosisKeyDao {
     }
 
     public void markErrorOperation(long operationId) {
-        String sql = "update en.efgs_operation set state = :error_state where id = :id";
-        jdbcTemplate.update(sql, Map.of("error_state", EfgsOperationState.ERROR.name(), "id", operationId));
+        String sql = "update en.efgs_operation set state = :error_state, updated_at = :updated_at where id = :id";
+        jdbcTemplate.update(sql, Map.of(
+                "error_state", EfgsOperationState.ERROR.name(),
+                "updated_at", Instant.now(),
+                "id", operationId
+        ));
     }
 
     @Transactional
@@ -175,10 +179,10 @@ public class DiagnosisKeyDao {
                 batchInsert(interval, keys, operationId);
                 LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
                 finishOperation(operationId, keys.size());
-            } catch (Throwable t) {
+            } catch (Exception e) {
                 // TODO: check what we really want to catch in here
                 markErrorOperation(operationId);
-                throw new EfgsOperationException("Inbound operation from efgs failed.", t);
+                throw new EfgsOperationException("Inbound operation from efgs failed.", e);
             }
         }
     }

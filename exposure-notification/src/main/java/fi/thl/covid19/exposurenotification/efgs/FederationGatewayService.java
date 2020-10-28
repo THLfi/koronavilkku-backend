@@ -42,10 +42,10 @@ public class FederationGatewayService {
             List<TemporaryExposureKey> localKeys = dd.fetchAvailableKeysForEfgs(operationId);
             handleOutbound(transform(localKeys), operationId);
             dd.finishOperation(operationId, localKeys.size());
-        } catch (Throwable t) {
+        } catch (Exception e) {
             // TODO: check what we really want to catch in here
             dd.markErrorOperation(operationId);
-            throw new EfgsOperationException("Outbound operation to efgs failed.", t);
+            throw new EfgsOperationException("Outbound operation to efgs failed.", e);
         }
     }
 
