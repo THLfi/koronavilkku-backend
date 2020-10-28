@@ -154,7 +154,7 @@ public class DiagnosisKeyDao {
     }
 
     public void finishOperation(long operationId, int keysCount) {
-        String sql = "update en.efgs_operation set state = :new_state, keys_count = :keys_count where id = :id";
+        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), keys_count = :keys_count where id = :id";
         jdbcTemplate.update(sql, Map.of(
                 "new_state", EfgsOperationState.FINISHED.name(),
                 "id", operationId,
@@ -163,10 +163,10 @@ public class DiagnosisKeyDao {
     }
 
     public void markErrorOperation(long operationId) {
-        String sql = "update en.efgs_operation set state = :error_state, updated_at = :updated_at where id = :id";
+        String sql = "update en.efgs_operation set state = CAST(:error_state as en.state_t), updated_at = :updated_at where id = :id";
         jdbcTemplate.update(sql, Map.of(
                 "error_state", EfgsOperationState.ERROR.name(),
-                "updated_at", Instant.now(),
+                "updated_at", new Timestamp(Instant.now().toEpochMilli()),
                 "id", operationId
         ));
     }
@@ -196,7 +196,7 @@ public class DiagnosisKeyDao {
     }
 
     private boolean isOutboundOperationAvailable() {
-        String sql = "select count(*) from en.efgs_operation where state = :state and direction = :direction";
+        String sql = "select count(*) from en.efgs_operation where state = CAST(:state as en.state_t) and direction = CAST(:direction as en.direction_t)";
         return jdbcTemplate.query(sql, Map.of(
                 "state", EfgsOperationState.STARTED.name(),
                 "direction", EfgsOperationDirection.OUTBOUND.name()
@@ -206,17 +206,17 @@ public class DiagnosisKeyDao {
 
     private void markOutboundOperationStarted(long operationId) {
         String startQueuedOperation = "update en.efgs_operation " +
-                "set state = :state, " +
-                "set updated_at = :updated_at " +
+                "set state = CAST(:state as en.state_t), " +
+                "updated_at = :updated_at " +
                 "where id = :id";
 
         jdbcTemplate.update(startQueuedOperation, Map.of(
                 "state", EfgsOperationState.STARTED.name(),
-                "updated_at", Instant.now(),
+                "updated_at", new Timestamp(Instant.now().toEpochMilli()),
                 "id", operationId)
         );
 
-        String createNewQueueOperation = "insert into en.efgs_operation (state, direction) values (:state, :direction)";
+        String createNewQueueOperation = "insert into en.efgs_operation (state, direction) values (CAST(:state as en.state_t), CAST(:direction as en.direction_t))";
         jdbcTemplate.update(createNewQueueOperation, Map.of(
                 "state", EfgsOperationState.QUEUED.name(),
                 "direction", EfgsOperationDirection.OUTBOUND.name()
