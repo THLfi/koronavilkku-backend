@@ -146,11 +146,12 @@ public class DiagnosisKeyDao {
 
     public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(long operationId) {
         LOG.info("Fetching queued keys not sent to efgs.");
-        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval " +
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval, visited_countries, days_since_onset_of_symptoms, origin " +
                 "from en.diagnosis_key " +
                 "where efgs_operation = :efgs_operation " +
                 "order by key_data";
-        return jdbcTemplate.queryForList(sql, Map.of("efgs_operation", operationId), TemporaryExposureKey.class);
+
+        return new ArrayList<>(jdbcTemplate.query(sql, Map.of("efgs_operation", operationId), (rs, i) -> mapKey(rs)));
     }
 
     public void finishOperation(long operationId, int keysCount) {
