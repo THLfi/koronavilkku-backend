@@ -89,10 +89,10 @@ covid19:
     # These could be also provides as env-variables if we don't want to go env-specific configuration files
     # But for now these are in here
     trust-store:
-      path: /home/alperttiti/projects/thl_public/koronavilkku-backend/dev_certs/efgs-ta.jks
-      password: 3fgs-p4ssw0rd
+      path:
+      password:
     key-store:
-      path: /home/alperttiti/projects/thl_public/koronavilkku-backend/dev_certs/cert.p12
-      password: devdev
-      alias: efgs
+      path:
+      password:
+      alias:
     upload-interval: PT2M
