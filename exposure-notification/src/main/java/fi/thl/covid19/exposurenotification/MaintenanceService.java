@@ -4,6 +4,7 @@ import fi.thl.covid19.exposurenotification.batch.BatchFileService;
 import fi.thl.covid19.exposurenotification.batch.BatchFileStorage;
 import fi.thl.covid19.exposurenotification.batch.BatchIntervals;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
+import fi.thl.covid19.exposurenotification.efgs.FederationGatewayService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,16 +25,19 @@ public class MaintenanceService {
     private final DiagnosisKeyDao dao;
     private final BatchFileStorage batchFileStorage;
     private final BatchFileService batchFileService;
+    private final FederationGatewayService fgs;
 
     private final Duration tokenVerificationLifetime;
 
     public MaintenanceService(DiagnosisKeyDao dao,
                               BatchFileService batchFileService,
                               BatchFileStorage batchFileStorage,
+                              FederationGatewayService fgs,
                               @Value("${covid19.maintenance.token-verification-lifetime}") Duration tokenVerificationLifetime) {
         this.dao = requireNonNull(dao);
         this.batchFileStorage = requireNonNull(batchFileStorage);
         this.batchFileService = requireNonNull(batchFileService);
+        this.fgs = fgs;
         this.tokenVerificationLifetime = requireNonNull(tokenVerificationLifetime);
         LOG.info("Initialized: {}", keyValue("tokenVerificationLifetime", tokenVerificationLifetime));
     }
@@ -58,5 +62,14 @@ public class MaintenanceService {
                 keyValue("removedVerifications", removedVerifications),
                 keyValue("removedBatches", removedKeys),
                 keyValue("addedBatches", addedBatches));
+    }
+
+    // TODO: rename service or make own service for this
+    @Scheduled(initialDelayString = "${covid19.federation-gateway.upload-interval}",
+            fixedRateString = "${covid19.federation-gateway.upload-interval}")
+    public void runExportToEfgs() {
+        LOG.info("Starting scheduled export to efgs.");
+        fgs.doOutbound();
+        LOG.info("Scheduled export to efgs finished.");
     }
 }
