@@ -37,7 +37,9 @@ public class ConfigurationDao {
                 "days_since_last_exposure_scores, " +
                 "duration_scores, " +
                 "transmission_risk_scores, " +
-                "duration_at_attenuation_thresholds " +
+                "duration_at_attenuation_thresholds, " +
+                "duration_at_attenuation_weights, " +
+                "exposure_risk_duration " +
                 "from en.exposure_configuration " +
                 "order by version desc " +
                 "limit 1";
@@ -48,11 +50,14 @@ public class ConfigurationDao {
                 toList(rs.getArray("days_since_last_exposure_scores")),
                 toList(rs.getArray("duration_scores")),
                 toList(rs.getArray("transmission_risk_scores")),
-                toList(rs.getArray("duration_at_attenuation_thresholds"))
+                toList(rs.getArray("duration_at_attenuation_thresholds")),
+                toList(rs.getArray("duration_at_attenuation_weights")),
+                rs.getInt("exposure_risk_duration")
         ));
     }
 
-    private List<Integer> toList(Array sqlArray) throws SQLException {
-        return Arrays.asList((Integer[]) sqlArray.getArray());
+    @SuppressWarnings("unchecked")
+    private <T extends Number> List<T> toList(Array sqlArray) throws SQLException {
+        return Arrays.asList((T[]) sqlArray.getArray());
     }
 }
