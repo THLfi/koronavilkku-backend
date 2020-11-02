@@ -172,6 +172,15 @@ public class DiagnosisKeyDao {
         ));
     }
 
+    public Instant getLatestInboundOperation() {
+        String sql = "select updated_at from en.efgs_operation where state = CAST(:state as en.state_t) and direction = CAST(:direction as en.direction_t) order by updated_at desc";
+        return jdbcTemplate.query(sql, Map.of(
+                "state", EfgsOperationState.FINISHED.name(),
+                "direction", EfgsOperationDirection.INBOUND.name()
+        ), (rs, i) -> rs.getTimestamp(1).toInstant())
+                .stream().findFirst().orElse(Instant.now());
+    }
+
     @Transactional
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
         if (!keys.isEmpty()) {

@@ -6,15 +6,17 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Component
 public class FederationGatewayClient {
+
+    private static final String BATCH_TAG_HEADER = "batchTag";
+    private static final String NEXT_BATCH_TAG_HEADER = "nextBatchTag";
 
     private final RestTemplate restTemplate;
     private final String gatewayUrl;
@@ -46,14 +48,27 @@ public class FederationGatewayClient {
         ).getStatusCodeValue();
     }
 
-    public byte[] download(String dateVar, Optional<String> batchTag) {
+    public List<byte[]> download(String dateVar, Optional<String> batchTag) {
+        Optional<String> nextTag = batchTag;
+        List<byte[]> data = new ArrayList<>();
+
+        do {
+            ResponseEntity<byte[]> res = doDownload(dateVar, nextTag);
+            nextTag = Objects.requireNonNull(res.getHeaders().get(NEXT_BATCH_TAG_HEADER)).stream().findFirst();
+            data.add(res.getBody());
+        } while (nextTag.isPresent());
+
+        return data;
+    }
+
+    private ResponseEntity<byte[]> doDownload(String dateVar, Optional<String> batchTag) {
         return restTemplate.exchange(
                 gatewayUrl,
                 HttpMethod.GET,
                 new HttpEntity<>(getDownloadHttpHeaders(batchTag)),
                 byte[].class,
                 getUriVariables("download", dateVar)
-        ).getBody();
+        );
     }
 
     private HttpHeaders getUploadHttpHeaders(String batchTag, String batchSignature) {
@@ -69,14 +84,13 @@ public class FederationGatewayClient {
         return headers;
     }
 
-    private void addDevHeaders(HttpHeaders headers) {
-        headers.add("X-SSL-Client-SHA256", devSha256);
-        headers.add("X-SSL-Client-DN", devDN);
-    }
-
     private HttpHeaders getDownloadHttpHeaders(Optional<String> batchTag) {
         HttpHeaders headers = new HttpHeaders();
-        batchTag.ifPresent(s -> headers.add("batchTag", s));
+        batchTag.ifPresent(s -> headers.add(BATCH_TAG_HEADER, s));
+
+        if (Arrays.stream(environment.getActiveProfiles()).anyMatch("dev"::equalsIgnoreCase)) {
+            addDevHeaders(headers);
+        }
 
         return headers;
     }
@@ -86,5 +100,10 @@ public class FederationGatewayClient {
                 "operation", operation,
                 "variable", uriDate
         );
+    }
+
+    private void addDevHeaders(HttpHeaders headers) {
+        headers.add("X-SSL-Client-SHA256", devSha256);
+        headers.add("X-SSL-Client-DN", devDN);
     }
 }

@@ -50,11 +50,11 @@ public class FederationGatewayService {
     }
 
     public void doInbound(Optional<String> batchTag) {
-        // TODO: what date we should use?
-        String date = getDateString(LocalDate.now());
-        byte[] batchData = client.download(date, batchTag);
+        String date = getDateString(dd.getLatestInboundOperation());
         // TODO: maybe some checks for data?
-        dd.addInboundKeys(transform(deserialize(batchData)), IntervalNumber.to24HourInterval(Instant.now()));
+        client.download(date, batchTag).forEach(
+                d -> dd.addInboundKeys(transform(deserialize(d)), IntervalNumber.to24HourInterval(Instant.now()))
+        );
     }
 
     private EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
@@ -95,7 +95,7 @@ public class FederationGatewayService {
 
     private void handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
         byte[] batchData = serialize(batch);
-        int status = client.upload(getDateString(LocalDate.now()) + "-" + operationId, calculateBatchSignature(batchData), batchData);
+        int status = client.upload(getDateString(Instant.now()) + "-" + operationId, calculateBatchSignature(batchData), batchData);
 
         if (status == 207) {
             // TODO: should we do something with partial success i.e. http status 207?
@@ -118,7 +118,7 @@ public class FederationGatewayService {
         }
     }
 
-    private String getDateString(LocalDate date) {
+    private String getDateString(Instant date) {
         return DateTimeFormatter.ISO_LOCAL_DATE.format(date);
     }
 }

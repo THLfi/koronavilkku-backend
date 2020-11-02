@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -67,9 +68,20 @@ public class MaintenanceService {
     // TODO: rename service or make own service for this
     @Scheduled(initialDelayString = "${covid19.federation-gateway.upload-interval}",
             fixedRateString = "${covid19.federation-gateway.upload-interval}")
-    public void runExportToEfgs() {
+    public void syncEfgs() {
+        runExportToEfgs();
+        runImportFromEfgs();
+    }
+
+    private void runExportToEfgs() {
         LOG.info("Starting scheduled export to efgs.");
         fgs.doOutbound();
+        LOG.info("Scheduled export to efgs finished.");
+    }
+
+    private void runImportFromEfgs() {
+        LOG.info("Starting scheduled export to efgs.");
+        fgs.doInbound(Optional.empty());
         LOG.info("Scheduled export to efgs finished.");
     }
 }
