@@ -5,7 +5,10 @@ create table en.efgs_operation (
     id bigint primary key generated always as identity,
     state en.state_t not null default 'STARTED',
     direction en.direction_t not null,
-    keys_count int,
+    keys_count_total int,
+    keys_count_201 int,
+    keys_count_409 int,
+    keys_count_500 int,
     updated_at timestamptz not null default now()
 );
 

@@ -3,10 +3,7 @@ package fi.thl.covid19.exposurenotification.efgs;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -38,14 +35,14 @@ public class FederationGatewayClient {
         this.devDN = devDN;
     }
 
-    public int upload(String batchTag, String batchSignature, byte[] batchData) {
+    public ResponseEntity<UploadResponseEntity> upload(String batchTag, String batchSignature, byte[] batchData) {
         return restTemplate.exchange(
                 gatewayUrl,
                 HttpMethod.POST,
                 new HttpEntity<>(batchData, getUploadHttpHeaders(batchTag, batchSignature)),
-                String.class,
+                UploadResponseEntity.class,
                 getUriVariables("upload", "")
-        ).getStatusCodeValue();
+        );
     }
 
     public List<byte[]> download(String dateVar, Optional<String> batchTag) {

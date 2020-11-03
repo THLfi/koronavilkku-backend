@@ -154,12 +154,27 @@ public class DiagnosisKeyDao {
         return new ArrayList<>(jdbcTemplate.query(sql, Map.of("efgs_operation", operationId), (rs, i) -> mapKey(rs)));
     }
 
-    public void finishOperation(long operationId, int keysCount) {
-        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), keys_count = :keys_count where id = :id";
+    public void finishOperation(long operationId, int keysCountTotal) {
+        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), keys_count_total = :keys_count_total where id = :id";
         jdbcTemplate.update(sql, Map.of(
                 "new_state", EfgsOperationState.FINISHED.name(),
                 "id", operationId,
-                "keys_count", keysCount
+                "keys_count_total", keysCountTotal
+        ));
+    }
+
+    public void finishOperation(long operationId, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
+        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), " +
+                "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201 " +
+                "keys_count_409 = :keys_count_500 " +
+                "where id = :id";
+        jdbcTemplate.update(sql, Map.of(
+                "new_state", EfgsOperationState.FINISHED.name(),
+                "id", operationId,
+                "keys_count_total", keysCountTotal,
+                "keys_count_201", keysCount201,
+                "keys_count_409", keysCount409,
+                "keys_count_500", keysCount500
         ));
     }
 

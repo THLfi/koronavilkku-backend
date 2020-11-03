@@ -8,6 +8,7 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.error.EfgsOperationException;
 import fi.thl.covid19.proto.EfgsProto;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -40,8 +41,16 @@ public class FederationGatewayService {
         long operationId = dd.startOutboundOperation();
         try {
             List<TemporaryExposureKey> localKeys = dd.fetchAvailableKeysForEfgs(operationId);
-            handleOutbound(transform(localKeys), operationId);
-            dd.finishOperation(operationId, localKeys.size());
+            //TODO: maximum batch size is 5000 keys in efgs, please split
+            ResponseEntity<UploadResponseEntity> res = handleOutbound(transform(localKeys), operationId);
+
+            // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
+            if (res.getStatusCodeValue() == 207) {
+                handlePartialOutbound(res.getBody(), localKeys, operationId);
+
+            } else {
+                dd.finishOperation(operationId, localKeys.size());
+            }
         } catch (Exception e) {
             // TODO: check what we really want to catch in here
             dd.markErrorOperation(operationId);
@@ -93,13 +102,23 @@ public class FederationGatewayService {
         return getRiskBucket(LocalDate.from(keyDate).plusDays(key.getDaysSinceOnsetOfSymptoms()), keyDate);
     }
 
-    private void handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
+    private ResponseEntity<UploadResponseEntity> handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
         byte[] batchData = serialize(batch);
-        int status = client.upload(getDateString(Instant.now()) + "-" + operationId, calculateBatchSignature(batchData), batchData);
+        return client.upload(getDateString(Instant.now()) + "-" + operationId, calculateBatchSignature(batchData), batchData);
+    }
 
-        if (status == 207) {
-            // TODO: should we do something with partial success i.e. http status 207?
-        }
+    private void handlePartialOutbound(UploadResponseEntity body, List<TemporaryExposureKey> localKeys, long operationId) {
+        List<Integer> successKeysIdx = Objects.requireNonNull(body).get(201);
+        List<Integer> keysIdx409 = Objects.requireNonNull(body).get(409);
+        List<Integer> keysIdx500 = Objects.requireNonNull(body).get(500);
+        List<TemporaryExposureKey> successKeys = successKeysIdx.stream().map(localKeys::get).collect(Collectors.toList());
+
+        ResponseEntity<UploadResponseEntity> resendRes = handleOutbound(transform(successKeys), operationId);
+
+        if (resendRes.getStatusCodeValue() == 207)
+            throw new EfgsOperationException("Upload to efgs still failing after resend.");
+
+        dd.finishOperation(operationId, localKeys.size(), successKeysIdx.size(), keysIdx409.size(), keysIdx500.size());
     }
 
     private String calculateBatchSignature(byte[] data) {
