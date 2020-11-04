@@ -124,7 +124,9 @@ If a config is returned, it should be stored and used instead.
           "durationScores": [0,0,0,0,5,5,5,5],
           "transmissionRiskScores": [1,1,1,1,1,1,1,1],
           "transmissionRiskScoresAndroid": [1,1,1,1,1,1,1,1],
-          "durationAtAttenuationThresholds": [50,70]
+          "durationAtAttenuationThresholds": [50,70],
+          "durationAtAttenuationWeights": [1.0, 0.5, 0.0],
+          "exposureRiskDuration": 15
         }
         ```
   * Configuration is already up to date
