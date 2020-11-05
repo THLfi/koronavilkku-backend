@@ -1,7 +1,5 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.error.EfgsOperationException;
-import fi.thl.covid19.exposurenotification.error.EfgsOutboundOperationUnavailableException;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
 import org.slf4j.Logger;
@@ -137,10 +135,11 @@ public class DiagnosisKeyDao {
         jdbcTemplate.update(lock, Map.of());
         if (isOutboundOperationAvailable()) {
             long operationId = this.getQueueId();
-            markOutboundOperationStarted(operationId);
+            markOutboundOperationStartedAndCreateNewQueue(operationId);
             return operationId;
         } else {
-            throw new EfgsOutboundOperationUnavailableException("Update to efgs is already running.");
+            LOG.info("Update to efgs unavailble. Skipping.");
+            return -1;
         }
     }
 
@@ -154,28 +153,28 @@ public class DiagnosisKeyDao {
         return new ArrayList<>(jdbcTemplate.query(sql, Map.of("efgs_operation", operationId), (rs, i) -> mapKey(rs)));
     }
 
-    public void finishOperation(long operationId, int keysCountTotal) {
+    public boolean finishOperation(long operationId, int keysCountTotal) {
         String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), keys_count_total = :keys_count_total where id = :id";
-        jdbcTemplate.update(sql, Map.of(
+        return jdbcTemplate.update(sql, Map.of(
                 "new_state", EfgsOperationState.FINISHED.name(),
                 "id", operationId,
                 "keys_count_total", keysCountTotal
-        ));
+        )) == 1;
     }
 
-    public void finishOperation(long operationId, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
+    public boolean finishOperation(long operationId, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
         String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), " +
                 "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201 " +
                 "keys_count_409 = :keys_count_500 " +
                 "where id = :id";
-        jdbcTemplate.update(sql, Map.of(
+        return jdbcTemplate.update(sql, Map.of(
                 "new_state", EfgsOperationState.FINISHED.name(),
                 "id", operationId,
                 "keys_count_total", keysCountTotal,
                 "keys_count_201", keysCount201,
                 "keys_count_409", keysCount409,
                 "keys_count_500", keysCount500
-        ));
+        )) == 1;
     }
 
     public void markErrorOperation(long operationId) {
@@ -199,15 +198,16 @@ public class DiagnosisKeyDao {
     @Transactional
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
         if (!keys.isEmpty()) {
+            boolean finished = false;
             long operationId = startInboundOperation();
             try {
                 batchInsert(interval, keys, operationId);
                 LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
-                finishOperation(operationId, keys.size());
-            } catch (Exception e) {
-                // TODO: check what we really want to catch in here
-                markErrorOperation(operationId);
-                throw new EfgsOperationException("Inbound operation from efgs failed.", e);
+                finished = finishOperation(operationId, keys.size());
+            } finally {
+                if (!finished) {
+                    markErrorOperation(operationId);
+                }
             }
         }
     }
@@ -229,7 +229,7 @@ public class DiagnosisKeyDao {
                 .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing.")) == 0;
     }
 
-    private void markOutboundOperationStarted(long operationId) {
+    private void markOutboundOperationStartedAndCreateNewQueue(long operationId) {
         String startQueuedOperation = "update en.efgs_operation " +
                 "set state = CAST(:state as en.state_t), " +
                 "updated_at = :updated_at " +

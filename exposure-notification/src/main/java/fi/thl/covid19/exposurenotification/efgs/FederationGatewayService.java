@@ -41,45 +41,20 @@ public class FederationGatewayService {
         this.dd = diagnosisKeyDao;
     }
 
-    public void doOutbound() {
+    public void startOutbound() {
         long operationId = dd.startOutboundOperation();
-        try {
-            List<List<TemporaryExposureKey>> localKeys = partitionIntoBatches(dd.fetchAvailableKeysForEfgs(operationId));
 
-            AtomicInteger total201Count = new AtomicInteger();
-            AtomicInteger total409Count = new AtomicInteger();
-            AtomicInteger total500Count = new AtomicInteger();
-
-            localKeys.forEach(
-                    batch -> {
-                        ResponseEntity<UploadResponseEntity> res = handleOutbound(transform(batch), operationId);
-                        // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
-                        if (res.getStatusCodeValue() == 207) {
-                            Map<Integer, Integer> responseCounts = handlePartialOutbound(res.getBody(), batch, operationId);
-                            total201Count.addAndGet(responseCounts.get(201));
-                            total409Count.addAndGet(responseCounts.get(409));
-                            total500Count.addAndGet(responseCounts.get(409));
-                        } else {
-                            total201Count.addAndGet(batch.size());
-                        }
-                    }
-            );
-
-            dd.finishOperation(operationId, localKeys.size(), total201Count.get(), total409Count.get(), total500Count.get());
-        } catch (Exception e) {
-            // TODO: check what we really want to catch in here
-            dd.markErrorOperation(operationId);
-            throw new EfgsOperationException("Outbound operation to efgs failed.", e);
+        if (operationId > 0) {
+            doOutbound(operationId);
         }
     }
 
-    public void doInbound(Optional<String> batchTag) {
-        String date = getDateString(dd.getLatestInboundOperation());
-        // TODO: maybe some checks for data?
-        client.download(date, batchTag).forEach(
-                d -> dd.addInboundKeys(transform(deserialize(d)), IntervalNumber.to24HourInterval(Instant.now()))
-        );
+    public void startInbound(Optional<String> batchTag) {
+        String date = getDateString(Instant.now());
+        doInbound(date, batchTag);
     }
+
+    // TODO: implement retry handler
 
     private EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
         List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream().map(localKey ->
@@ -111,10 +86,48 @@ public class FederationGatewayService {
                 )).collect(Collectors.toList());
     }
 
+    // TODO: FIXME: implement more sophisticated mapping
     private int calculateTransmissionRisk(EfgsProto.DiagnosisKey key) {
         LocalDate keyDate = utcDateOf10MinInterval(key.getRollingStartIntervalNumber());
 
         return getRiskBucket(LocalDate.from(keyDate).plusDays(key.getDaysSinceOnsetOfSymptoms()), keyDate);
+    }
+
+    private void doInbound(String date, Optional<String> batchTag) {
+        client.download(date, batchTag).forEach(
+                d -> dd.addInboundKeys(transform(deserialize(d)), IntervalNumber.to24HourInterval(Instant.now()))
+        );
+    }
+
+    private void doOutbound(long operationId) {
+        boolean finished = false;
+        try {
+            List<List<TemporaryExposureKey>> localKeys = partitionIntoBatches(dd.fetchAvailableKeysForEfgs(operationId));
+
+            AtomicInteger total201Count = new AtomicInteger();
+            AtomicInteger total409Count = new AtomicInteger();
+            AtomicInteger total500Count = new AtomicInteger();
+
+            localKeys.forEach(
+                    batch -> {
+                        ResponseEntity<UploadResponseEntity> res = handleOutbound(transform(batch), operationId);
+                        // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
+                        if (res.getStatusCodeValue() == 207) {
+                            Map<Integer, Integer> responseCounts = handlePartialOutbound(res.getBody(), batch, operationId);
+                            total201Count.addAndGet(responseCounts.get(201));
+                            total409Count.addAndGet(responseCounts.get(409));
+                            total500Count.addAndGet(responseCounts.get(409));
+                        } else {
+                            total201Count.addAndGet(batch.size());
+                        }
+                    }
+            );
+            finished = dd.finishOperation(operationId, localKeys.size(), total201Count.get(), total409Count.get(), total500Count.get());
+        } finally {
+            if (!finished) {
+                dd.markErrorOperation(operationId);
+            }
+        }
     }
 
     private List<List<TemporaryExposureKey>> partitionIntoBatches(List<TemporaryExposureKey> objs) {
@@ -139,7 +152,7 @@ public class FederationGatewayService {
         if (resendRes.getStatusCodeValue() == 207)
             throw new EfgsOperationException("Upload to efgs still failing after resend.");
 
-        return Map.of(201,successKeysIdx.size(), 409, keysIdx409.size(), 500, keysIdx500.size());
+        return Map.of(201, successKeysIdx.size(), 409, keysIdx409.size(), 500, keysIdx500.size());
     }
 
     private String calculateBatchSignature(byte[] data) {

@@ -75,13 +75,13 @@ public class MaintenanceService {
 
     private void runExportToEfgs() {
         LOG.info("Starting scheduled export to efgs.");
-        fgs.doOutbound();
+        fgs.startOutbound();
         LOG.info("Scheduled export to efgs finished.");
     }
 
     private void runImportFromEfgs() {
         LOG.info("Starting scheduled export to efgs.");
-        fgs.doInbound(Optional.empty());
+        fgs.startInbound(Optional.empty());
         LOG.info("Scheduled export to efgs finished.");
     }
 }
