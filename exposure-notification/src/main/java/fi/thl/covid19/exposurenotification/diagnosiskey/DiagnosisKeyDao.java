@@ -30,9 +30,9 @@ public class DiagnosisKeyDao {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    private enum EfgsOperationState {QUEUED, STARTED, FINISHED, ERROR}
+    public enum EfgsOperationState {QUEUED, STARTED, FINISHED, ERROR}
 
-    private enum EfgsOperationDirection {INBOUND, OUTBOUND}
+    public enum EfgsOperationDirection {INBOUND, OUTBOUND}
 
     public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
@@ -164,8 +164,8 @@ public class DiagnosisKeyDao {
 
     public boolean finishOperation(long operationId, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
         String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), " +
-                "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201 " +
-                "keys_count_409 = :keys_count_500 " +
+                "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201, " +
+                "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500 " +
                 "where id = :id";
         return jdbcTemplate.update(sql, Map.of(
                 "new_state", EfgsOperationState.FINISHED.name(),

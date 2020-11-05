@@ -39,12 +39,13 @@ public class FederationGatewayService {
         this.dd = diagnosisKeyDao;
     }
 
-    public void startOutbound() {
+    public long startOutbound() {
         long operationId = dd.startOutboundOperation();
 
         if (operationId > 0) {
             doOutbound(operationId);
         }
+        return operationId;
     }
 
     public void startInbound(Optional<String> batchTag) {
@@ -54,6 +55,7 @@ public class FederationGatewayService {
 
     // TODO: implement retry handler
 
+    // TODO: interval?
     private void doInbound(String date, Optional<String> batchTag) {
         client.download(date, batchTag).forEach(
                 d -> dd.addInboundKeys(transform(deserialize(d)), IntervalNumber.to24HourInterval(Instant.now()))
@@ -77,13 +79,16 @@ public class FederationGatewayService {
                             Map<Integer, Integer> responseCounts = handlePartialOutbound(res.getBody(), batch, operationId);
                             total201Count.addAndGet(responseCounts.get(201));
                             total409Count.addAndGet(responseCounts.get(409));
-                            total500Count.addAndGet(responseCounts.get(409));
+                            total500Count.addAndGet(responseCounts.get(500));
                         } else {
                             total201Count.addAndGet(batch.size());
                         }
                     }
             );
-            finished = dd.finishOperation(operationId, localKeys.size(), total201Count.get(), total409Count.get(), total500Count.get());
+            finished = dd.finishOperation(operationId,
+                    total201Count.get() + total409Count.get() + total500Count.get(),
+                    total201Count.get(),
+                    total409Count.get(), total500Count.get());
         } finally {
             if (!finished) {
                 dd.markErrorOperation(operationId);
