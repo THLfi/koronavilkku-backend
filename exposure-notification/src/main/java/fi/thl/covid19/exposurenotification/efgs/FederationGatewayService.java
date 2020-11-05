@@ -1,7 +1,5 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 import fi.thl.covid19.exposurenotification.batch.BatchFileService;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
@@ -13,14 +11,14 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
-import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
+import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
 
 @Service
 public class FederationGatewayService {
@@ -55,43 +53,6 @@ public class FederationGatewayService {
     }
 
     // TODO: implement retry handler
-
-    private EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
-        List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream().map(localKey ->
-                EfgsProto.DiagnosisKey.newBuilder()
-                        .setKeyData(ByteString.copyFromUtf8(localKey.keyData))
-                        .setRollingStartIntervalNumber(localKey.rollingStartIntervalNumber)
-                        .setRollingPeriod(localKey.rollingPeriod)
-                        .setTransmissionRiskLevel(0x7FFFFFFF)
-                        .addAllVisitedCountries(localKey.visitedCountries)
-                        .setOrigin(localKey.origin)
-                        .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
-                        .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms)
-                        .build())
-                .collect(Collectors.toList());
-
-        return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(efgsKeys).build();
-    }
-
-    private List<TemporaryExposureKey> transform(EfgsProto.DiagnosisKeyBatch batch) {
-        return batch.getKeysList().stream().map(remoteKey ->
-                new TemporaryExposureKey(
-                        remoteKey.getKeyData().toString(),
-                        calculateTransmissionRisk(remoteKey),
-                        remoteKey.getRollingStartIntervalNumber(),
-                        remoteKey.getRollingPeriod(),
-                        new HashSet<>(remoteKey.getVisitedCountriesList()),
-                        remoteKey.getDaysSinceOnsetOfSymptoms(),
-                        remoteKey.getOrigin()
-                )).collect(Collectors.toList());
-    }
-
-    // TODO: FIXME: implement more sophisticated mapping
-    private int calculateTransmissionRisk(EfgsProto.DiagnosisKey key) {
-        LocalDate keyDate = utcDateOf10MinInterval(key.getRollingStartIntervalNumber());
-
-        return getRiskBucket(LocalDate.from(keyDate).plusDays(key.getDaysSinceOnsetOfSymptoms()), keyDate);
-    }
 
     private void doInbound(String date, Optional<String> batchTag) {
         client.download(date, batchTag).forEach(
@@ -159,19 +120,7 @@ public class FederationGatewayService {
         return Arrays.toString(batchFileService.calculateBatchSignature(data));
     }
 
-    private byte[] serialize(EfgsProto.DiagnosisKeyBatch batch) {
-        return batch.toByteArray();
-    }
-
-    private EfgsProto.DiagnosisKeyBatch deserialize(byte[] data) {
-        try {
-            return EfgsProto.DiagnosisKeyBatch.parseFrom(data);
-        } catch (InvalidProtocolBufferException e) {
-            throw new IllegalStateException("Incorrect format from federation gateway.", e);
-        }
-    }
-
     private String getDateString(Instant date) {
-        return DateTimeFormatter.ISO_LOCAL_DATE.format(date);
+        return DateTimeFormatter.ISO_DATE.format(LocalDate.ofInstant(date, ZoneId.of("UTC")));
     }
 }

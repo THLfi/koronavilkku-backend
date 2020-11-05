@@ -215,9 +215,9 @@ public class DiagnosisKeyDao {
     private long startInboundOperation() {
         KeyHolder operationKeyHolder = new GeneratedKeyHolder();
 
-        String createOperation = "insert into en.efgs_operation (direction) values (:direction)";
+        String createOperation = "insert into en.efgs_operation (direction) values (CAST(:direction as en.direction_t))";
         jdbcTemplate.update(createOperation, new MapSqlParameterSource("direction", EfgsOperationDirection.INBOUND.name()), operationKeyHolder);
-        return requireNonNull(operationKeyHolder.getKey()).longValue();
+        return (Long) requireNonNull(operationKeyHolder.getKeys()).get("id");
     }
 
     private boolean isOutboundOperationAvailable() {
