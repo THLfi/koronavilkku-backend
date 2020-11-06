@@ -89,14 +89,14 @@ covid19:
     # These could be also provides as env-variables if we don't want to go env-specific configuration files
     # But for now these are in here
     trust-store:
-      path:
-      password:
+      path: "${tech-ec-europa-eu:}"
+      password: "${efgs-store-password:devdev}"
     client-key-store:
-      path:
-      password:
-      alias:
+      path: "${koronavilkku-efgs-keystore:}"
+      password: "${efgs-store-password:devdev}"
+      alias: efgs
     signing-key-store:
-      path:
-      password:
-      key-alias:
+      path: "${koronavilkku-efgs-signing-keystore:}"
+      password: "${efgs-store-password:devdev}"
+      key-alias: efgs-signing
     upload-interval: PT2M
