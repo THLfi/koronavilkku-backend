@@ -29,6 +29,7 @@ public class DiagnosisKeyDao {
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyDao.class);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private static final long MAX_RUN_COUNT = 2;
 
     public enum EfgsOperationState {QUEUED, STARTED, FINISHED, ERROR}
 
@@ -65,7 +66,8 @@ public class DiagnosisKeyDao {
     }
 
     public long getQueueId() {
-        String sql = "select id from en.efgs_operation where state = CAST(:state as en.state_t) and direction = CAST(:direction as en.direction_t)";
+        String sql = "select id from en.efgs_operation where state = CAST(:state as en.state_t) and " +
+                "direction = CAST(:direction as en.direction_t)";
         return requireNonNull(jdbcTemplate.queryForObject(sql, Map.of(
                 "state", EfgsOperationState.QUEUED.name(),
                 "direction", EfgsOperationDirection.OUTBOUND.name()
@@ -95,7 +97,8 @@ public class DiagnosisKeyDao {
     public List<TemporaryExposureKey> getIntervalKeys(int interval) {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
-                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval, origin, visited_countries, days_since_onset_of_symptoms " +
+                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                        "submission_interval, origin, visited_countries, days_since_onset_of_symptoms " +
                         "from en.diagnosis_key " +
                         "where submission_interval = :interval " +
                         // Level 0 & 7 would get 0 score anyhow, so ignore them
@@ -145,7 +148,8 @@ public class DiagnosisKeyDao {
 
     public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(long operationId) {
         LOG.info("Fetching queued keys not sent to efgs.");
-        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, visited_countries, days_since_onset_of_symptoms, origin " +
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "visited_countries, days_since_onset_of_symptoms, origin " +
                 "from en.diagnosis_key " +
                 "where efgs_operation = :efgs_operation " +
                 "order by key_data";
@@ -154,7 +158,9 @@ public class DiagnosisKeyDao {
     }
 
     public boolean finishOperation(long operationId, int keysCountTotal) {
-        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), keys_count_total = :keys_count_total where id = :id";
+        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), keys_count_total = :keys_count_total, " +
+                "run_count = run_count + 1 " +
+                "where id = :id";
         return jdbcTemplate.update(sql, Map.of(
                 "new_state", EfgsOperationState.FINISHED.name(),
                 "id", operationId,
@@ -165,7 +171,8 @@ public class DiagnosisKeyDao {
     public boolean finishOperation(long operationId, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
         String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), " +
                 "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201, " +
-                "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500 " +
+                "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500, " +
+                "run_count = run_count + 1 " +
                 "where id = :id";
         return jdbcTemplate.update(sql, Map.of(
                 "new_state", EfgsOperationState.FINISHED.name(),
@@ -178,12 +185,26 @@ public class DiagnosisKeyDao {
     }
 
     public void markErrorOperation(long operationId) {
-        String sql = "update en.efgs_operation set state = CAST(:error_state as en.state_t), updated_at = :updated_at where id = :id";
+        String sql = "update en.efgs_operation set state = CAST(:error_state as en.state_t), updated_at = :updated_at, " +
+                "run_count = run_count + 1 " +
+                "where id = :id";
         jdbcTemplate.update(sql, Map.of(
                 "error_state", EfgsOperationState.ERROR.name(),
                 "updated_at", new Timestamp(Instant.now().toEpochMilli()),
                 "id", operationId
         ));
+    }
+
+    public List<Long> getOutboundOperationsInError() {
+        String sql = "select id from en.efgs_operation " +
+                "where state = CAST(:state as en.state_t) " +
+                "and direction = CAST(:direction as en.direction_t) " +
+                "and run_count < :run_count";
+        return jdbcTemplate.queryForList(sql, Map.of(
+                "state", EfgsOperationState.ERROR.name(),
+                "direction", EfgsOperationDirection.OUTBOUND.name(),
+                "run_count", MAX_RUN_COUNT
+        ), Long.class);
     }
 
     @Transactional
@@ -207,12 +228,16 @@ public class DiagnosisKeyDao {
         KeyHolder operationKeyHolder = new GeneratedKeyHolder();
 
         String createOperation = "insert into en.efgs_operation (direction) values (CAST(:direction as en.direction_t))";
-        jdbcTemplate.update(createOperation, new MapSqlParameterSource("direction", EfgsOperationDirection.INBOUND.name()), operationKeyHolder);
+        jdbcTemplate.update(createOperation,
+                new MapSqlParameterSource("direction",
+                        EfgsOperationDirection.INBOUND.name()),
+                operationKeyHolder);
         return (Long) requireNonNull(operationKeyHolder.getKeys()).get("id");
     }
 
     private boolean isOutboundOperationAvailable() {
-        String sql = "select count(*) from en.efgs_operation where state = CAST(:state as en.state_t) and direction = CAST(:direction as en.direction_t)";
+        String sql = "select count(*) from en.efgs_operation " +
+                "where state = CAST(:state as en.state_t) and direction = CAST(:direction as en.direction_t)";
         return jdbcTemplate.query(sql, Map.of(
                 "state", EfgsOperationState.STARTED.name(),
                 "direction", EfgsOperationDirection.OUTBOUND.name()
@@ -232,7 +257,8 @@ public class DiagnosisKeyDao {
                 "id", operationId)
         );
 
-        String createNewQueueOperation = "insert into en.efgs_operation (state, direction) values (CAST(:state as en.state_t), CAST(:direction as en.direction_t))";
+        String createNewQueueOperation = "insert into en.efgs_operation (state, direction) " +
+                "values (CAST(:state as en.state_t), CAST(:direction as en.direction_t))";
         jdbcTemplate.update(createNewQueueOperation, Map.of(
                 "state", EfgsOperationState.QUEUED.name(),
                 "direction", EfgsOperationDirection.OUTBOUND.name()
@@ -246,8 +272,10 @@ public class DiagnosisKeyDao {
 
     private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, long operationId) {
         String sql = "insert into " +
-                "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval, origin, visited_countries, days_since_onset_of_symptoms, efgs_operation) " +
-                "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, :submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :efgs_operation) " +
+                "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, efgs_operation) " +
+                "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, " +
+                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :efgs_operation) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
                 .map(key -> createParamsMap(interval, key, operationId))
@@ -256,7 +284,8 @@ public class DiagnosisKeyDao {
     }
 
     private void addReportKeysStatsRow(Instant createTime, long totalKeyCount, long exportedKeyCount) {
-        String sql = "insert into en.stats_report_keys(reported_at, total_key_count, exported_key_count) values (:reported_at, :total_key_count, :exported_key_count)";
+        String sql = "insert into en.stats_report_keys(reported_at, total_key_count, exported_key_count) " +
+                "values (:reported_at, :total_key_count, :exported_key_count)";
         Map<String, Object> params = Map.of(
                 "reported_at", new Timestamp(createTime.toEpochMilli()),
                 "total_key_count", totalKeyCount,

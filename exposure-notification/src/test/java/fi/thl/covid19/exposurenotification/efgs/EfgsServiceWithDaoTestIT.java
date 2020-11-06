@@ -129,11 +129,18 @@ public class EfgsServiceWithDaoTestIT {
     }
 
     @Test
-    public void uploadKeysThrowsException() {
+    public void uploadKeysErrorState() {
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/upload/"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("")
+                );
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/upload/"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.OK)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
@@ -144,6 +151,9 @@ public class EfgsServiceWithDaoTestIT {
         } catch (Exception e) {
             assertUploadOperationErrorStateIsCorrect();
         }
+        federationGatewayService.startRetryForErroneus();
+        assertUploadOperationErrorStateIsChangedToFinished();
+        assertEquals(0, dao.getOutboundOperationsInError().size());
     }
 
     private void assertDownloadOperationStateIsCorrect(TemporaryExposureKey key, int keysCount) {
@@ -174,6 +184,13 @@ public class EfgsServiceWithDaoTestIT {
         Map<String, Object> resultSet = getLatestOperation();
         assertEquals(DiagnosisKeyDao.EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
         assertEquals(DiagnosisKeyDao.EfgsOperationState.ERROR.name(), resultSet.get("state").toString());
+    }
+
+    private void assertUploadOperationErrorStateIsChangedToFinished() {
+        Map<String, Object> resultSet = getLatestOperation();
+        assertEquals(DiagnosisKeyDao.EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(DiagnosisKeyDao.EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
+        assertEquals(2, resultSet.get("run_count"));
     }
 
     private Map<String, Object> getLatestOperation() {

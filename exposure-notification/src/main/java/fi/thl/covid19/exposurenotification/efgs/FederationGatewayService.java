@@ -49,9 +49,12 @@ public class FederationGatewayService {
         doInbound(date, batchTag);
     }
 
-    // TODO: implement retry handler
+    public void startRetryForErroneus() {
+        List<Long> errorOperations = dd.getOutboundOperationsInError();
+        errorOperations.forEach(this::doOutbound);
+    }
 
-    // TODO: interval?
+    // TODO: which interval should be used? Should we change interval to be more precise?
     private void doInbound(String date, Optional<String> batchTag) {
         client.download(date, batchTag).forEach(
                 d -> dd.addInboundKeys(transform(deserialize(d)), IntervalNumber.to24HourInterval(Instant.now()))
