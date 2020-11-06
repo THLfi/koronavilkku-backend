@@ -12,8 +12,8 @@ import java.util.*;
 @Component
 public class FederationGatewayClient {
 
-    private static final String BATCH_TAG_HEADER = "batchTag";
-    private static final String NEXT_BATCH_TAG_HEADER = "nextBatchTag";
+    public static final String BATCH_TAG_HEADER = "batchTag";
+    public static final String NEXT_BATCH_TAG_HEADER = "nextBatchTag";
 
     private final RestTemplate restTemplate;
     private final String gatewayUrl;
@@ -51,7 +51,7 @@ public class FederationGatewayClient {
 
         do {
             ResponseEntity<byte[]> res = doDownload(dateVar, nextTag);
-            nextTag = Objects.requireNonNull(res.getHeaders().get(NEXT_BATCH_TAG_HEADER)).stream().findFirst();
+            nextTag = getNextBatchTag(res.getHeaders());
             data.add(res.getBody());
         } while (nextTag.isPresent());
 
@@ -102,5 +102,14 @@ public class FederationGatewayClient {
     private void addDevHeaders(HttpHeaders headers) {
         headers.add("X-SSL-Client-SHA256", devSha256);
         headers.add("X-SSL-Client-DN", devDN);
+    }
+
+    private Optional<String> getNextBatchTag(HttpHeaders headers) {
+        List<String> nextBatchTagHeader = headers.get(NEXT_BATCH_TAG_HEADER);
+        if (nextBatchTagHeader != null && !nextBatchTagHeader.contains("null")) {
+            return nextBatchTagHeader.stream().findFirst();
+        } else {
+            return Optional.empty();
+        }
     }
 }

@@ -6,7 +6,10 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.proto.EfgsProto;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +19,7 @@ import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.ut
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
 
 public class FederationGatewayBatchUtil {
+
     public static EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
         List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream().map(localKey ->
                 EfgsProto.DiagnosisKey.newBuilder()
@@ -63,5 +67,13 @@ public class FederationGatewayBatchUtil {
         } catch (InvalidProtocolBufferException e) {
             throw new IllegalStateException("Incorrect format from federation gateway.", e);
         }
+    }
+
+    public static String getBatchTag(Instant instant, String postfix) {
+        return getDateString(instant) + "-" + postfix;
+    }
+
+    public static String getDateString(Instant date) {
+        return DateTimeFormatter.ISO_DATE.format(LocalDate.ofInstant(date, ZoneId.of("UTC")));
     }
 }

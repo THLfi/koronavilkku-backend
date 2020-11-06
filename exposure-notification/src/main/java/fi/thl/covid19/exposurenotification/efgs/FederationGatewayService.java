@@ -1,6 +1,5 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
-import fi.thl.covid19.exposurenotification.batch.BatchFileService;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
@@ -10,9 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -26,17 +22,17 @@ public class FederationGatewayService {
     private static final int BATCH_MAX_SIZE = 5000;
 
     private final FederationGatewayClient client;
-    private final BatchFileService batchFileService;
     private final DiagnosisKeyDao dd;
+    private final FederationBatchSigner signer;
 
     public FederationGatewayService(
             FederationGatewayClient client,
-            BatchFileService batchFileService,
-            DiagnosisKeyDao diagnosisKeyDao
+            DiagnosisKeyDao diagnosisKeyDao,
+            FederationBatchSigner signer
     ) {
         this.client = client;
-        this.batchFileService = batchFileService;
         this.dd = diagnosisKeyDao;
+        this.signer = signer;
     }
 
     public long startOutbound() {
@@ -104,7 +100,8 @@ public class FederationGatewayService {
 
     private ResponseEntity<UploadResponseEntity> handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
         byte[] batchData = serialize(batch);
-        return client.upload(getDateString(Instant.now()) + "-" + operationId, calculateBatchSignature(batchData), batchData);
+        //TODO: This probably won't work yet
+        return client.upload(getBatchTag(Instant.now(), Long.toString(operationId)), signer.sign(batchData), batchData);
     }
 
     private Map<Integer, Integer> handlePartialOutbound(UploadResponseEntity body, List<TemporaryExposureKey> localKeys, long operationId) {
@@ -119,13 +116,5 @@ public class FederationGatewayService {
             throw new EfgsOperationException("Upload to efgs still failing after resend.");
 
         return Map.of(201, successKeysIdx.size(), 409, keysIdx409.size(), 500, keysIdx500.size());
-    }
-
-    private String calculateBatchSignature(byte[] data) {
-        return Arrays.toString(batchFileService.calculateBatchSignature(data));
-    }
-
-    private String getDateString(Instant date) {
-        return DateTimeFormatter.ISO_DATE.format(LocalDate.ofInstant(date, ZoneId.of("UTC")));
     }
 }

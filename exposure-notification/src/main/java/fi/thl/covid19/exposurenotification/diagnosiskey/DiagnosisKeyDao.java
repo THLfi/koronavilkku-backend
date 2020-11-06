@@ -145,7 +145,7 @@ public class DiagnosisKeyDao {
 
     public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(long operationId) {
         LOG.info("Fetching queued keys not sent to efgs.");
-        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, submission_interval, visited_countries, days_since_onset_of_symptoms, origin " +
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, visited_countries, days_since_onset_of_symptoms, origin " +
                 "from en.diagnosis_key " +
                 "where efgs_operation = :efgs_operation " +
                 "order by key_data";
@@ -184,15 +184,6 @@ public class DiagnosisKeyDao {
                 "updated_at", new Timestamp(Instant.now().toEpochMilli()),
                 "id", operationId
         ));
-    }
-
-    public Instant getLatestInboundOperation() {
-        String sql = "select updated_at from en.efgs_operation where state = CAST(:state as en.state_t) and direction = CAST(:direction as en.direction_t) order by updated_at desc";
-        return jdbcTemplate.query(sql, Map.of(
-                "state", EfgsOperationState.FINISHED.name(),
-                "direction", EfgsOperationDirection.INBOUND.name()
-        ), (rs, i) -> rs.getTimestamp(1).toInstant())
-                .stream().findFirst().orElse(Instant.now());
     }
 
     @Transactional

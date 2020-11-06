@@ -36,9 +36,9 @@ public class FederationGatewayRestClientConfiguration {
     public FederationGatewayRestClientConfiguration(
             @Value("${covid19.federation-gateway.trust-store.path}") String trustStorePath,
             @Value("${covid19.federation-gateway.trust-store.password}") String trustStorePassword,
-            @Value("${covid19.federation-gateway.key-store.path}") String keyStorePath,
-            @Value("${covid19.federation-gateway.key-store.password}") String keyStorePassword,
-            @Value("${covid19.federation-gateway.key-store.alias}") String keyStoreKeyAlias
+            @Value("${covid19.federation-gateway.client-key-store.path}") String keyStorePath,
+            @Value("${covid19.federation-gateway.client-key-store.password}") String keyStorePassword,
+            @Value("${covid19.federation-gateway.client-key-store.alias}") String keyStoreKeyAlias
     ) {
         this.trustStorePath = trustStorePath;
         this.trustStorePassword = trustStorePassword.toCharArray();
