@@ -57,7 +57,7 @@ public class FederationGatewayService {
     // TODO: which interval should be used? Should we change interval to be more precise?
     private void doInbound(String date, Optional<String> batchTag) {
         client.download(date, batchTag).forEach(
-                d -> dd.addInboundKeys(transform(deserialize(d)), IntervalNumber.to24HourInterval(Instant.now()))
+                d -> dd.addInboundKeys(transform(d), IntervalNumber.to24HourInterval(Instant.now()))
         );
     }
 
@@ -102,7 +102,7 @@ public class FederationGatewayService {
     }
 
     private ResponseEntity<UploadResponseEntity> handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
-        return client.upload(getBatchTag(Instant.now(), Long.toString(operationId)), signer.sign(batch), serialize(batch));
+        return client.upload(getBatchTag(Instant.now(), Long.toString(operationId)), signer.sign(batch), batch);
     }
 
     private Map<Integer, Integer> handlePartialOutbound(UploadResponseEntity body, List<TemporaryExposureKey> localKeys, long operationId) {

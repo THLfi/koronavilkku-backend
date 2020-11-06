@@ -1,5 +1,6 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import fi.thl.covid19.proto.EfgsProto;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -8,6 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+
+import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.deserialize;
+import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.serialize;
 
 @Component
 public class FederationGatewayClient {
@@ -35,24 +39,24 @@ public class FederationGatewayClient {
         this.devDN = devDN;
     }
 
-    public ResponseEntity<UploadResponseEntity> upload(String batchTag, String batchSignature, byte[] batchData) {
+    public ResponseEntity<UploadResponseEntity> upload(String batchTag, String batchSignature, EfgsProto.DiagnosisKeyBatch batchData) {
         return restTemplate.exchange(
                 gatewayUrl,
                 HttpMethod.POST,
-                new HttpEntity<>(batchData, getUploadHttpHeaders(batchTag, batchSignature)),
+                new HttpEntity<>(serialize(batchData), getUploadHttpHeaders(batchTag, batchSignature)),
                 UploadResponseEntity.class,
                 getUriVariables("upload", "")
         );
     }
 
-    public List<byte[]> download(String dateVar, Optional<String> batchTag) {
+    public List<EfgsProto.DiagnosisKeyBatch> download(String dateVar, Optional<String> batchTag) {
         Optional<String> nextTag = batchTag;
-        List<byte[]> data = new ArrayList<>();
+        List<EfgsProto.DiagnosisKeyBatch> data = new ArrayList<>();
 
         do {
             ResponseEntity<byte[]> res = doDownload(dateVar, nextTag);
             nextTag = getNextBatchTag(res.getHeaders());
-            data.add(res.getBody());
+            data.add(deserialize(res.getBody()));
         } while (nextTag.isPresent());
 
         return data;
