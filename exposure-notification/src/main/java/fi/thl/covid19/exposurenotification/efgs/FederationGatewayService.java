@@ -99,9 +99,7 @@ public class FederationGatewayService {
     }
 
     private ResponseEntity<UploadResponseEntity> handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
-        byte[] batchData = serialize(batch);
-        //TODO: This probably won't work yet
-        return client.upload(getBatchTag(Instant.now(), Long.toString(operationId)), signer.sign(batchData), batchData);
+        return client.upload(getBatchTag(Instant.now(), Long.toString(operationId)), signer.sign(batch), serialize(batch));
     }
 
     private Map<Integer, Integer> handlePartialOutbound(UploadResponseEntity body, List<TemporaryExposureKey> localKeys, long operationId) {

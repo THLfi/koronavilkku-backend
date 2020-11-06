@@ -1,5 +1,8 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.ProtocolStringList;
+import fi.thl.covid19.proto.EfgsProto;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x500.style.BCStyle;
@@ -13,26 +16,35 @@ import org.bouncycastle.operator.DigestCalculatorProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.Date;
 
+// TODO: please sanity check this
 @Component
 public class FederationBatchSigner {
 
     private static final String DIGEST_ALGORITHM = "SHA256with";
+
+    private static final Logger LOG = LoggerFactory.getLogger(FederationBatchSigner.class);
 
     private final String keyStorePath;
     private final char[] keyStorePassword;
@@ -50,7 +62,7 @@ public class FederationBatchSigner {
         this.keyStore = initKeystore();
     }
 
-    public String sign(final byte[] data) {
+    public String sign(final EfgsProto.DiagnosisKeyBatch data) {
         try {
             return sign(data, keyStore);
         } catch (Exception e) {
@@ -76,14 +88,14 @@ public class FederationBatchSigner {
         }
     }
 
-    private String sign(final byte[] data, KeyStore keyStore)
+    private String sign(EfgsProto.DiagnosisKeyBatch data, KeyStore keyStore)
             throws Exception {
         PrivateKey key = (PrivateKey) keyStore.getKey(keyStoreKeyAlias, keyStorePassword);
         X509Certificate cert = (X509Certificate) keyStore.getCertificate(keyStoreKeyAlias);
-        final CMSSignedDataGenerator signedDataGenerator = new CMSSignedDataGenerator();
+        CMSSignedDataGenerator signedDataGenerator = new CMSSignedDataGenerator();
         signedDataGenerator.addSignerInfoGenerator(createSignerInfo(cert, key));
         signedDataGenerator.addCertificate(createCertificateHolder(cert));
-        CMSSignedData singedData = signedDataGenerator.generate(new CMSProcessableByteArray(data), false);
+        CMSSignedData singedData = signedDataGenerator.generate(new CMSProcessableByteArray(generateBytesForSigning(data)), false);
         return Base64.getEncoder().encodeToString(singedData.getEncoded());
     }
 
@@ -111,7 +123,7 @@ public class FederationBatchSigner {
         KeyPair keyPair = generateKeyPair();
         X509Certificate certificate = generateDevCertificate(keyPair);
         keyStore.setCertificateEntry(keyStoreKeyAlias, certificate);
-        keyStore.setKeyEntry(keyStoreKeyAlias, keyPair.getPrivate(), keyStorePassword, new Certificate[] { certificate });
+        keyStore.setKeyEntry(keyStoreKeyAlias, keyPair.getPrivate(), keyStorePassword, new Certificate[]{certificate});
 
         return keyStore;
     }
@@ -141,6 +153,87 @@ public class FederationBatchSigner {
 
         byte[] certBytes = certBuilder.build(signer).getEncoded();
         CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-        return (X509Certificate)certificateFactory.generateCertificate(new ByteArrayInputStream(certBytes));
+        return (X509Certificate) certificateFactory.generateCertificate(new ByteArrayInputStream(certBytes));
+    }
+
+    private byte[] generateBytesForSigning(EfgsProto.DiagnosisKeyBatch batch) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        batch.getKeysList().stream()
+                .map(this::generateBytesToVerify)
+                .sorted(Comparator.nullsLast(
+                        Comparator.comparing(this::bytesToBase64)
+                ))
+                .forEach(byteArrayOutputStream::writeBytes);
+
+        return byteArrayOutputStream.toByteArray();
+    }
+
+    private byte[] generateBytesToVerify(EfgsProto.DiagnosisKey diagnosisKey) {
+        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        writeBytesInByteArray(diagnosisKey.getKeyData(), byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        writeIntInByteArray(diagnosisKey.getRollingStartIntervalNumber(), byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        writeIntInByteArray(diagnosisKey.getRollingPeriod(), byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        writeIntInByteArray(diagnosisKey.getTransmissionRiskLevel(), byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        writeVisitedCountriesInByteArray(diagnosisKey.getVisitedCountriesList(),
+                byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        writeB64StringInByteArray(diagnosisKey.getOrigin(), byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        writeIntInByteArray(diagnosisKey.getReportTypeValue(), byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        writeIntInByteArray(diagnosisKey.getDaysSinceOnsetOfSymptoms(), byteArrayOutputStream);
+        writeSeperatorInArray(byteArrayOutputStream);
+        return byteArrayOutputStream.toByteArray();
+    }
+
+    private String bytesToBase64(byte[] bytes) {
+        try {
+            return Base64.getEncoder().encodeToString(bytes);
+        } catch (IllegalArgumentException e) {
+            LOG.error("Failed to convert byte array to string");
+            return null;
+        }
+    }
+
+    private void writeSeperatorInArray(final ByteArrayOutputStream byteArray) {
+        byteArray.writeBytes(".".getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private void writeStringInByteArray(final String batchString, final ByteArrayOutputStream byteArray) {
+        byteArray.writeBytes(batchString.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private void writeB64StringInByteArray(final String batchString, final ByteArrayOutputStream byteArray) {
+        String base64String = bytesToBase64(batchString.getBytes(StandardCharsets.US_ASCII));
+
+        if (base64String != null) {
+            writeStringInByteArray(base64String, byteArray);
+        }
+    }
+
+    private void writeIntInByteArray(final int batchInt, final ByteArrayOutputStream byteArray) {
+        String base64String = bytesToBase64(ByteBuffer.allocate(4).putInt(batchInt).array());
+
+        if (base64String != null) {
+            writeStringInByteArray(base64String, byteArray);
+        }
+    }
+
+    private void writeBytesInByteArray(final ByteString bytes, ByteArrayOutputStream byteArray) {
+        String base64String = bytesToBase64(bytes.toByteArray());
+
+        if (base64String != null) {
+            writeStringInByteArray(base64String, byteArray);
+        }
+    }
+
+    private void writeVisitedCountriesInByteArray(final ProtocolStringList countries,
+                                                  final ByteArrayOutputStream byteArray) {
+        writeB64StringInByteArray(String.join(",", countries), byteArray);
     }
 }
