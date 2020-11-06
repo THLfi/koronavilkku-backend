@@ -91,8 +91,12 @@ covid19:
     trust-store:
       path:
       password:
-    key-store:
+    client-key-store:
       path:
       password:
       alias:
+    signing-key-store:
+      path:
+      password:
+      key-alias:
     upload-interval: PT2M
