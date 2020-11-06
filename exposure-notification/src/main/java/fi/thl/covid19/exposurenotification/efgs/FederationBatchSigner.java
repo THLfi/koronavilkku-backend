@@ -32,7 +32,7 @@ import java.util.Date;
 @Component
 public class FederationBatchSigner {
 
-    private static final String DIGEST_ALGORITHM = "SHA256withRSA";
+    private static final String DIGEST_ALGORITHM = "SHA256with";
 
     private final String keyStorePath;
     private final char[] keyStorePassword;
@@ -102,7 +102,7 @@ public class FederationBatchSigner {
     }
 
     private ContentSigner createContentSigner(PrivateKey privateKey) throws OperatorCreationException {
-        return new JcaContentSignerBuilder(DIGEST_ALGORITHM).build(privateKey);
+        return new JcaContentSignerBuilder(DIGEST_ALGORITHM + privateKey.getAlgorithm()).build(privateKey);
     }
 
     private KeyStore initDevKeyStore() throws Exception {
@@ -136,7 +136,7 @@ public class FederationBatchSigner {
                 Date.from(Instant.now().plus(Duration.ofDays(100))),
                 subject,
                 SubjectPublicKeyInfo.getInstance(keyPair.getPublic().getEncoded()));
-        JcaContentSignerBuilder builder = new JcaContentSignerBuilder(DIGEST_ALGORITHM);
+        JcaContentSignerBuilder builder = new JcaContentSignerBuilder(DIGEST_ALGORITHM + "RSA");
         ContentSigner signer = builder.build(keyPair.getPrivate());
 
         byte[] certBytes = certBuilder.build(signer).getEncoded();
