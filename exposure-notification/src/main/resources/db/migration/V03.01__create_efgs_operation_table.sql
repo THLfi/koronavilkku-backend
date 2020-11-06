@@ -10,7 +10,7 @@ create table en.efgs_operation (
     keys_count_409 int,
     keys_count_500 int,
     updated_at timestamptz not null default now(),
-    retry_count int not null default 0;
+    retry_count int not null default 0
 );
 
 alter table en.diagnosis_key add efgs_operation bigint;
