@@ -86,11 +86,9 @@ covid19:
     url: "${EN_PT_URL:}"
   federation-gateway:
     url-template: http://localhost:8080/diagnosiskeys/{operation}/{variable}
-    # These could be also provides as env-variables if we don't want to go env-specific configuration files
-    # But for now these are in here
     trust-store:
       path: "${tech-ec-europa-eu:}"
-      password: "${efgs-store-password:devdev}"
+      password: "${efgs-store-password:3fgs-p4ssw0rd}"
     client-key-store:
       path: "${koronavilkku-efgs-keystore:}"
       password: "${efgs-store-password:devdev}"
@@ -98,5 +96,5 @@ covid19:
     signing-key-store:
       path: "${koronavilkku-efgs-signing-keystore:}"
       password: "${efgs-store-password:devdev}"
-      key-alias: efgs-signing
+      key-alias: signing
     upload-interval: PT2M

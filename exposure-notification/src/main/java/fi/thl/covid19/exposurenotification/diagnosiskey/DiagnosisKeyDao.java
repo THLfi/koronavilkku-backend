@@ -195,6 +195,16 @@ public class DiagnosisKeyDao {
         ));
     }
 
+    public void setStalledToError() {
+        String sql = "update en.efgs_operation set state = CAST(:error_state as en.state_t), updated_at = :updated_at " +
+                "where state = CAST(:started_state as en.state_t) and (now() > (updated_at + interval '10 minute')) ";
+        jdbcTemplate.update(sql, Map.of(
+                "error_state", EfgsOperationState.ERROR.name(),
+                "started_state", EfgsOperationState.STARTED.name(),
+                "updated_at", new Timestamp(Instant.now().toEpochMilli())
+        ));
+    }
+
     public List<Long> getOutboundOperationsInError() {
         String sql = "select id from en.efgs_operation " +
                 "where state = CAST(:state as en.state_t) " +

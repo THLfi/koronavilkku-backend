@@ -49,7 +49,8 @@ public class FederationGatewayService {
         doInbound(date, batchTag);
     }
 
-    public void startRetryForErroneus() {
+    public void startErronHandling() {
+        dd.setStalledToError();
         List<Long> errorOperations = dd.getOutboundOperationsInError();
         errorOperations.forEach(this::doOutbound);
     }

@@ -80,7 +80,7 @@ public class MaintenanceService {
     }
 
     private void runImportFromEfgs() {
-        LOG.info("Starting scheduled export to efgs.");
+        LOG.info("Starting scheduled import from efgs.");
         fgs.startInbound(Optional.empty());
         LOG.info("Scheduled export to efgs finished.");
     }

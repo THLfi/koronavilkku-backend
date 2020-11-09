@@ -42,7 +42,7 @@ public class EfgsServiceWithDaoTestIT {
     private static MediaType PROTOBUF_MEDIATYPE = new MediaType("application", "protobuf", 1.0);
 
     @Autowired
-    private DiagnosisKeyDao dao;
+    DiagnosisKeyDao dao;
 
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -149,9 +149,9 @@ public class EfgsServiceWithDaoTestIT {
         try {
             federationGatewayService.startOutbound();
         } catch (Exception e) {
-            assertUploadOperationErrorStateIsCorrect();
+            assertOperationErrorStateIsCorrect(DiagnosisKeyDao.EfgsOperationDirection.OUTBOUND);
         }
-        federationGatewayService.startRetryForErroneus();
+        federationGatewayService.startErronHandling();
         assertUploadOperationErrorStateIsChangedToFinished();
         assertEquals(0, dao.getOutboundOperationsInError().size());
     }
@@ -180,9 +180,9 @@ public class EfgsServiceWithDaoTestIT {
         assertEquals(c500, resultSet.get("keys_count_500"));
     }
 
-    private void assertUploadOperationErrorStateIsCorrect() {
+    private void assertOperationErrorStateIsCorrect(DiagnosisKeyDao.EfgsOperationDirection direction) {
         Map<String, Object> resultSet = getLatestOperation();
-        assertEquals(DiagnosisKeyDao.EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(direction.name(), resultSet.get("direction").toString());
         assertEquals(DiagnosisKeyDao.EfgsOperationState.ERROR.name(), resultSet.get("state").toString());
     }
 
