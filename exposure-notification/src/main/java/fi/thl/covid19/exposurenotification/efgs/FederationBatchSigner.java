@@ -38,7 +38,6 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.Date;
 
-// TODO: please sanity check this
 @Component
 public class FederationBatchSigner {
 
@@ -72,6 +71,7 @@ public class FederationBatchSigner {
 
     private KeyStore initKeystore() throws Exception {
         if (keyStorePath.isBlank()) {
+            // This can't be used towards any efgs instance, this is just to get things working without setting certificates
             return initDevKeyStore();
         } else {
             return loadKeyStore();

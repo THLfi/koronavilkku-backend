@@ -1,6 +1,8 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
 import fi.thl.covid19.proto.EfgsProto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -55,8 +57,12 @@ public class FederationGatewayClient {
 
         do {
             ResponseEntity<byte[]> res = doDownload(dateVar, nextTag);
+
+            if (res.hasBody()) {
+                data.add(deserialize(res.getBody()));
+            }
+
             nextTag = getNextBatchTag(res.getHeaders());
-            data.add(deserialize(res.getBody()));
         } while (nextTag.isPresent());
 
         return data;
@@ -87,6 +93,7 @@ public class FederationGatewayClient {
 
     private HttpHeaders getDownloadHttpHeaders(Optional<String> batchTag) {
         HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.ACCEPT, "application/protobuf; version=1.0");
         batchTag.ifPresent(s -> headers.add(BATCH_TAG_HEADER, s));
 
         if (Arrays.stream(environment.getActiveProfiles()).anyMatch("dev"::equalsIgnoreCase)) {

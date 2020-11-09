@@ -23,20 +23,23 @@ public class FederationGatewayService {
 
     private final FederationGatewayClient client;
     private final DiagnosisKeyDao dd;
+    private final FederationOperationDao fod;
     private final FederationBatchSigner signer;
 
     public FederationGatewayService(
             FederationGatewayClient client,
             DiagnosisKeyDao diagnosisKeyDao,
+            FederationOperationDao fod,
             FederationBatchSigner signer
     ) {
         this.client = client;
         this.dd = diagnosisKeyDao;
+        this.fod = fod;
         this.signer = signer;
     }
 
     public long startOutbound() {
-        long operationId = dd.startOutboundOperation();
+        long operationId = fod.startOutboundOperation();
 
         if (operationId > 0) {
             doOutbound(operationId);
@@ -50,8 +53,8 @@ public class FederationGatewayService {
     }
 
     public void startErronHandling() {
-        dd.setStalledToError();
-        List<Long> errorOperations = dd.getOutboundOperationsInError();
+        fod.setStalledToError();
+        List<Long> errorOperations = fod.getOutboundOperationsInError();
         errorOperations.forEach(this::doOutbound);
     }
 
@@ -85,13 +88,13 @@ public class FederationGatewayService {
                         }
                     }
             );
-            finished = dd.finishOperation(operationId,
+            finished = fod.finishOperation(operationId,
                     total201Count.get() + total409Count.get() + total500Count.get(),
                     total201Count.get(),
                     total409Count.get(), total500Count.get());
         } finally {
             if (!finished) {
-                dd.markErrorOperation(operationId);
+                fod.markErrorOperation(operationId);
             }
         }
     }

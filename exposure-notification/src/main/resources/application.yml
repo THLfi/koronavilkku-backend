@@ -98,3 +98,5 @@ covid19:
       password: "${efgs-store-password:devdev}"
       key-alias: signing
     upload-interval: PT2M
+    download-interval: PT2M
+    error-handling-interval: PT1M
