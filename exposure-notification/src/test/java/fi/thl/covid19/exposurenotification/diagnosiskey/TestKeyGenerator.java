@@ -19,18 +19,22 @@ public class TestKeyGenerator {
     }
 
     public List<TemporaryExposureKey> someKeys(int count) {
-        return someKeys(count, count);
+        return someKeys(count, count, true);
     }
 
-    public List<TemporaryExposureKey> someKeys(int count, int symptomsDays) {
+    public List<TemporaryExposureKey> someKeys(int count, boolean consentToShare) {
+        return someKeys(count, count, consentToShare);
+    }
+
+    public List<TemporaryExposureKey> someKeys(int count, int symptomsDays, boolean consentToShare) {
         ArrayList<TemporaryExposureKey> list = new ArrayList<>(14);
         for (int i = count-1; i >= 0; i--) {
-            list.add(someKey(count-i, symptomsDays));
+            list.add(someKey(count-i, symptomsDays, consentToShare));
         }
         return list;
     }
 
-    public TemporaryExposureKey someKey(int ageDays, int symptomsDays) {
+    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare) {
         byte[] bytes = new byte[16];
         rand.nextBytes(bytes);
         String keyData = Base64.getEncoder().encodeToString(bytes);
@@ -41,7 +45,9 @@ public class TestKeyGenerator {
                 INTERVALS_10MIN_PER_24H,
                 Set.of(),
                 0,
-                "FI");
+                "FI",
+                consentToShare
+        );
     }
 
     public List<TemporaryExposureKeyRequest> someRequestKeys(int count) {
@@ -65,6 +71,7 @@ public class TestKeyGenerator {
                 getRiskBucket(symptomsDays-ageDays),
                 dayFirst10MinInterval(Instant.now().minus(ageDays, ChronoUnit.DAYS)),
                 INTERVALS_10MIN_PER_24H,
+                Optional.empty(),
                 Optional.empty());
     }
 }

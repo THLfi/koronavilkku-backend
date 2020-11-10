@@ -66,7 +66,8 @@ public class DiagnosisKeyService {
                 requestKey.rollingPeriod,
                 requestKey.visitedCountries,
                 Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber))),
-                DEFAULT_ORIGIN_COUNTRY
+                DEFAULT_ORIGIN_COUNTRY,
+                requestKey.consentToShareWithEfgs
         )).collect(Collectors.toList());
     }
 

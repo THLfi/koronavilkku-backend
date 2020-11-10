@@ -411,14 +411,17 @@ public class DiagnosisKeyControllerIT {
 
     private List<TemporaryExposureKeyRequest> resetRiskLevelsRequest(List<TemporaryExposureKeyRequest> originals, int level) {
         return originals.stream()
-                .map(k -> new TemporaryExposureKeyRequest(k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod, Optional.empty()))
+                .map(k -> new TemporaryExposureKeyRequest(
+                        k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod, Optional.empty(), Optional.empty()))
                 .collect(Collectors.toList());
     }
 
     private List<TemporaryExposureKeyRequest> sortByInterval(List<TemporaryExposureKey> originals) {
         return originals.stream()
                 .sorted((k1, k2) -> Integer.compare(k2.rollingStartIntervalNumber, k1.rollingStartIntervalNumber))
-                .map(key -> new TemporaryExposureKeyRequest(key.keyData, key.transmissionRiskLevel, key.rollingStartIntervalNumber, key.rollingPeriod, Optional.empty()))
+                .map(key -> new TemporaryExposureKeyRequest(
+                        key.keyData, key.transmissionRiskLevel, key.rollingStartIntervalNumber,
+                        key.rollingPeriod, Optional.empty(), Optional.empty()))
                 .collect(Collectors.toList());
     }
 }

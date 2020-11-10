@@ -22,6 +22,8 @@ public final class TemporaryExposureKey {
     public final int daysSinceOnsetOfSymptoms;
     /** Origin country in ISO-3166 alpha-2 format **/
     public final String origin;
+    /** Consent to share data with efgs **/
+    public final boolean consentToShareWithEfgs;
 
 
     public TemporaryExposureKey(String keyData,
@@ -30,7 +32,8 @@ public final class TemporaryExposureKey {
                                 int rollingPeriod,
                                 Set<String> visitedCountries,
                                 int daysSinceOnsetOfSymptoms,
-                                String origin) {
+                                String origin,
+                                boolean consentToShareWithEfgs) {
         this.keyData = validateKeyData(requireNonNull(keyData));
         this.transmissionRiskLevel = validateTransmissionRiskLevel(transmissionRiskLevel);
         this.rollingStartIntervalNumber = validateRollingStartIntervalNumber(rollingStartIntervalNumber);
@@ -38,6 +41,7 @@ public final class TemporaryExposureKey {
         this.visitedCountries = Validation.validateISOCountryCodes(requireNonNull(visitedCountries));
         this.daysSinceOnsetOfSymptoms = Validation.validateDaysSinceOnsetOfSymptoms(daysSinceOnsetOfSymptoms);
         this.origin = Validation.getValidatedISOCountryCode(requireNonNull(origin));
+        this.consentToShareWithEfgs = consentToShareWithEfgs;
     }
 
     @Override
@@ -51,12 +55,14 @@ public final class TemporaryExposureKey {
                 keyData.equals(that.keyData) &&
                 visitedCountries.equals(that.visitedCountries) &&
                 daysSinceOnsetOfSymptoms == that.daysSinceOnsetOfSymptoms &&
-                origin.equals(that.origin);
+                origin.equals(that.origin) &&
+                consentToShareWithEfgs == that.consentToShareWithEfgs;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(keyData, transmissionRiskLevel, rollingStartIntervalNumber, rollingPeriod, visitedCountries, daysSinceOnsetOfSymptoms, origin);
+        return Objects.hash(keyData, transmissionRiskLevel, rollingStartIntervalNumber, rollingPeriod,
+                visitedCountries, daysSinceOnsetOfSymptoms, origin, consentToShareWithEfgs);
     }
 
     @Override
@@ -69,6 +75,7 @@ public final class TemporaryExposureKey {
                 ", visitedCountries=" + visitedCountries.toString() +
                 ", daysSinceOnsetOfSymptoms=" + daysSinceOnsetOfSymptoms +
                 ", origin=" + origin +
+                ", consentToShareWithEfgs=" + consentToShareWithEfgs +
                 '}';
     }
 }

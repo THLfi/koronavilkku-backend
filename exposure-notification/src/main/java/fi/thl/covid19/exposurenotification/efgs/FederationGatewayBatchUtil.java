@@ -21,7 +21,9 @@ import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskB
 public class FederationGatewayBatchUtil {
 
     public static EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
-        List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream().map(localKey ->
+        List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream()
+                .filter(localKey -> localKey.consentToShareWithEfgs)
+                .map(localKey ->
                 EfgsProto.DiagnosisKey.newBuilder()
                         .setKeyData(ByteString.copyFrom(Base64.getDecoder().decode(localKey.keyData.getBytes())))
                         .setRollingStartIntervalNumber(localKey.rollingStartIntervalNumber)
@@ -46,7 +48,8 @@ public class FederationGatewayBatchUtil {
                         remoteKey.getRollingPeriod(),
                         new HashSet<>(remoteKey.getVisitedCountriesList()),
                         remoteKey.getDaysSinceOnsetOfSymptoms(),
-                        remoteKey.getOrigin()
+                        remoteKey.getOrigin(),
+                        true
                 )).collect(Collectors.toList());
     }
 

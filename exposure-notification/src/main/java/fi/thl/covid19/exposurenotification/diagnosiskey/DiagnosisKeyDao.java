@@ -85,7 +85,7 @@ public class DiagnosisKeyDao {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
                 "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval, origin, visited_countries, days_since_onset_of_symptoms " +
+                        "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share " +
                         "from en.diagnosis_key " +
                         "where submission_interval = :interval " +
                         // Level 0 & 7 would get 0 score anyhow, so ignore them
@@ -122,7 +122,7 @@ public class DiagnosisKeyDao {
     public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(long operationId) {
         LOG.info("Fetching queued keys not sent to efgs.");
         String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "visited_countries, days_since_onset_of_symptoms, origin " +
+                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share " +
                 "from en.diagnosis_key " +
                 "where efgs_operation = :efgs_operation " +
                 "order by key_data";
@@ -157,9 +157,9 @@ public class DiagnosisKeyDao {
     private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, long operationId) {
         String sql = "insert into " +
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, efgs_operation) " +
+                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_operation) " +
                 "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, " +
-                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :efgs_operation) " +
+                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_operation) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
                 .map(key -> createParamsMap(interval, key, operationId))
@@ -194,7 +194,8 @@ public class DiagnosisKeyDao {
                 rs.getInt("rolling_period"),
                 Set.of((String[]) rs.getArray("visited_countries").getArray()),
                 rs.getInt("days_since_onset_of_symptoms"),
-                rs.getString("origin")
+                rs.getString("origin"),
+                rs.getBoolean("consent_to_share")
         );
     }
 
@@ -208,6 +209,7 @@ public class DiagnosisKeyDao {
                 "origin", key.origin,
                 "visited_countries", key.visitedCountries.toArray(new String[0]),
                 "days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms,
+                "consent_to_share", key.consentToShareWithEfgs,
                 "efgs_operation", operationId
         );
     }

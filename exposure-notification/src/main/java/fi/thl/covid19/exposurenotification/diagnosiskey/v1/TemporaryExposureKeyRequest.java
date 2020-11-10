@@ -25,18 +25,22 @@ public final class TemporaryExposureKeyRequest {
     public final int rollingPeriod;
     /** List of visited countries in ISO-3166 alpha-2 format **/
     public final Set<String> visitedCountries;
+    /** Consent to share data with efgs **/
+    public final boolean consentToShareWithEfgs;
 
     @JsonCreator
     public TemporaryExposureKeyRequest(String keyData,
                                        int transmissionRiskLevel,
                                        int rollingStartIntervalNumber,
                                        int rollingPeriod,
-                                       Optional<Set<String>> visitedCountries) {
+                                       Optional<Set<String>> visitedCountries,
+                                       Optional<Boolean> consentToShareWithEfgs) {
         this.keyData = validateKeyData(requireNonNull(keyData));
         this.transmissionRiskLevel = validateTransmissionRiskLevel(transmissionRiskLevel);
         this.rollingStartIntervalNumber = validateRollingStartIntervalNumber(rollingStartIntervalNumber);
         this.rollingPeriod = validateRollingPeriod(rollingPeriod);
         this.visitedCountries = Validation.validateISOCountryCodes(requireNonNull(visitedCountries).orElse(Set.of()));
+        this.consentToShareWithEfgs = requireNonNull(consentToShareWithEfgs).orElse(false);
     }
 
     @Override
@@ -48,12 +52,13 @@ public final class TemporaryExposureKeyRequest {
                 rollingStartIntervalNumber == that.rollingStartIntervalNumber &&
                 rollingPeriod == that.rollingPeriod &&
                 keyData.equals(that.keyData) &&
-                visitedCountries.equals(that.visitedCountries);
+                visitedCountries.equals(that.visitedCountries) &&
+                consentToShareWithEfgs == that.consentToShareWithEfgs;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(keyData, transmissionRiskLevel, rollingStartIntervalNumber, rollingPeriod, visitedCountries);
+        return Objects.hash(keyData, transmissionRiskLevel, rollingStartIntervalNumber, rollingPeriod, visitedCountries, consentToShareWithEfgs);
     }
 
     @Override
@@ -63,6 +68,7 @@ public final class TemporaryExposureKeyRequest {
                 ", transmissionRiskLevel=" + transmissionRiskLevel +
                 ", rollingStartIntervalNumber=" + rollingStartIntervalNumber +
                 ", rollingPeriod=" + rollingPeriod +
-                ", visitedCountries=" + visitedCountries.toString() + '}';
+                ", visitedCountries=" + visitedCountries.toString() +
+                ", consentToShareWithEfgs=" + consentToShareWithEfgs + '}';
     }
 }

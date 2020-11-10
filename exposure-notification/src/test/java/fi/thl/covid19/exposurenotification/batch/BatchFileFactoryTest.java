@@ -88,7 +88,8 @@ public class BatchFileFactoryTest {
                 144,
                 Set.of(),
                 0,
-                "FI"
+                "FI",
+                false
         );
     }
 

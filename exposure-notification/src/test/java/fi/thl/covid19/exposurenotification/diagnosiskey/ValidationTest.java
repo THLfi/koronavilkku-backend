@@ -140,6 +140,7 @@ public class ValidationTest {
                         0,
                         dayFirst10MinInterval(Instant.now()),
                         IntervalNumber.INTERVALS_10MIN_PER_24H,
+                        Optional.empty(),
                         Optional.empty()
                 ));
             }
