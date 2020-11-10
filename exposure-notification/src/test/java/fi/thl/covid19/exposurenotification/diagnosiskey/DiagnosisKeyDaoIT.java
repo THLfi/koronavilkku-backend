@@ -1,6 +1,5 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +13,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to24HourInterval;
@@ -154,13 +154,13 @@ public class DiagnosisKeyDaoIT {
     public void keysAreSorted() {
         int interval = to24HourInterval(Instant.now());
         TemporaryExposureKey key1 = new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==",
-                2, interval, 144);
+                2, interval, 144, Set.of(), 0, "FI", false);
         TemporaryExposureKey key2 = new TemporaryExposureKey("0MwsNfC4Rgnl8SxV3YWrqA==",
-                2, interval - 1, 144);
+                2, interval - 1, 144, Set.of(), 0, "FI", false);
         TemporaryExposureKey key3 = new TemporaryExposureKey("1dm+92gI87Vy5ZABErgZJw==",
-                2, interval - 2, 144);
+                2, interval - 2, 144, Set.of(), 0, "FI", false);
         TemporaryExposureKey key4 = new TemporaryExposureKey("ulu19n4b2ii0BJvw5K7XjQ==",
-                2, interval - 3, 144);
+                2, interval - 3, 144, Set.of(), 0, "FI", false);
 
         // Expect ordering to be by key, not by insert order
         dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, List.of(key1, key2, key3, key4), 4);

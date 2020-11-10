@@ -1,7 +1,7 @@
 package fi.thl.covid19.exposurenotification.batch;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
+import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.error.BatchNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,6 +102,14 @@ public class BatchFileService {
             return new BatchId(intervals.last, Optional.of(dao.getKeyCount(intervals.last)));
         } else {
             return new BatchId(intervals.last);
+        }
+    }
+
+    public byte[] calculateBatchSignature(byte[] batchData) {
+        try {
+            return Signing.sign(signatureConfig.algorithmName, signingKey, batchData);
+        } catch (Exception e) {
+            throw new IllegalStateException("Batch data signing failed", e);
         }
     }
 

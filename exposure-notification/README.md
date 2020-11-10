@@ -271,7 +271,9 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
           "keyData": "/MwsNfC4Rgnl8SxV3YWrqA==",
           "transmissionRiskLevel": 5,
           "rollingStartIntervalNumber":  123456,
-          "rollingPeriod": 144
+          "rollingPeriod": 144,
+          "visitedCountries": "DE",
+          "consentToShareWithEfgs": true
         }] 
     }
     ```

@@ -1,7 +1,7 @@
 package fi.thl.covid19.exposurenotification.batch;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
+import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.proto.SignatureInfo;
 import fi.thl.covid19.proto.TEKSignature;
 import fi.thl.covid19.proto.TEKSignatureList;
@@ -16,10 +16,7 @@ import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -88,7 +85,12 @@ public class BatchFileFactoryTest {
                 Base64.getEncoder().encodeToString(keyBytes),
                 rand.nextInt(9),
                 to10MinInterval(Instant.now())-rand.nextInt(10)*6*24,
-                144);
+                144,
+                Set.of(),
+                0,
+                "FI",
+                false
+        );
     }
 
     private void assertHeaderCorrect(byte[] headerBytes) {

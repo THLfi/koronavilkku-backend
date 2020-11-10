@@ -11,10 +11,10 @@ public class DiagnosisPublishRequest {
 
     private static final int KEYS_PER_REQUEST = 14;
 
-    public final List<TemporaryExposureKey> keys;
+    public final List<TemporaryExposureKeyRequest> keys;
 
     @JsonCreator
-    public DiagnosisPublishRequest(List<TemporaryExposureKey> keys) {
+    public DiagnosisPublishRequest(List<TemporaryExposureKeyRequest> keys) {
         if (keys.size() != KEYS_PER_REQUEST) {
             throw new InputValidationException("The request should contain exactly " + KEYS_PER_REQUEST + " keys");
         }

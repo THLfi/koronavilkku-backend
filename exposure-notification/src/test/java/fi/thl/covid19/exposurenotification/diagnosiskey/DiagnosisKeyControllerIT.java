@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.dayFirst10MinInterval;
@@ -173,9 +174,9 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void postSucceeds() throws Exception {
-        List<TemporaryExposureKey> keys = keyGenerator.someKeys(14, 7);
+        List<TemporaryExposureKeyRequest> keys = keyGenerator.someRequestKeys(14, 7);
         // Generator produces appropriate risk levels. Set them all to zero to verify that service calculates them OK.
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevels(keys,0));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys,0));
 
         assertTrue(dao.getAvailableIntervals().isEmpty());
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
@@ -185,7 +186,7 @@ public class DiagnosisKeyControllerIT {
 
         List<Integer> available = dao.getAvailableIntervals();
         assertEquals(1, available.size());
-        List<TemporaryExposureKey> expectedOutput = keys.stream()
+        List<TemporaryExposureKeyRequest> expectedOutput = keys.stream()
                 // 0-risk keys (transmission risk level in extremes) are not distributed
                 .filter(k -> k.transmissionRiskLevel > 0 && k.transmissionRiskLevel < 7)
                 // Todays keys are not distributed without demo-mode
@@ -194,7 +195,7 @@ public class DiagnosisKeyControllerIT {
         // Filtered should be base 14 -4 due to risk levels -1 since it's current day
         assertEquals(9, expectedOutput.size());
         // Also, the order of exported keys is random -> sort here for clearer comparison
-        assertEquals(sortByInterval(expectedOutput), sortByInterval(dao.getIntervalKeys(available.get(0))));
+        assertEquals(sortByIntervalRequest(expectedOutput), sortByInterval(dao.getIntervalKeys(available.get(0))));
     }
 
     @Test
@@ -210,7 +211,7 @@ public class DiagnosisKeyControllerIT {
     public void validRetryIsNotAnError() throws Exception {
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
         verifiedPost("123654032165", request);
         verifiedPost("123654032165", request);
         verify(tokenVerificationService, times(2)).getVerification("123654032165");
@@ -220,8 +221,8 @@ public class DiagnosisKeyControllerIT {
     public void reusingTokenForDifferentRequestIs403() throws Exception {
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        DiagnosisPublishRequest request1 = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
-        DiagnosisPublishRequest request2 = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request1 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
+        DiagnosisPublishRequest request2 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
         verifiedPost("123654032165", request1);
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -252,7 +253,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void invalidPublishTokenIs400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "123")
@@ -266,11 +267,11 @@ public class DiagnosisKeyControllerIT {
     @Test
     public void tooFewOrTooManyKeysIsInvalidInput() {
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(keyGenerator.someKeys(13)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(13)));
         Assertions.assertDoesNotThrow(
-                () -> new DiagnosisPublishRequest(keyGenerator.someKeys(14)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14)));
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(keyGenerator.someKeys(15)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(15)));
     }
 
     @Test
@@ -281,7 +282,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void fakeRequestIsValidRegardlessOfToken() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -293,7 +294,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void missingFakeRequestHeaderIsError400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -313,7 +314,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void invalidFakeRequestHeaderIsError400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -402,15 +403,25 @@ public class DiagnosisKeyControllerIT {
                         "attachment; filename=\"" + BatchFile.batchFileName(id) + "\""));
     }
 
-    private List<TemporaryExposureKey> sortByInterval(List<TemporaryExposureKey> originals) {
+    private List<TemporaryExposureKeyRequest> sortByIntervalRequest(List<TemporaryExposureKeyRequest> originals) {
         return originals.stream()
                 .sorted((k1, k2) -> Integer.compare(k2.rollingStartIntervalNumber, k1.rollingStartIntervalNumber))
                 .collect(Collectors.toList());
     }
 
-    private List<TemporaryExposureKey> resetRiskLevels(List<TemporaryExposureKey> originals, int level) {
+    private List<TemporaryExposureKeyRequest> resetRiskLevelsRequest(List<TemporaryExposureKeyRequest> originals, int level) {
         return originals.stream()
-                .map(k -> new TemporaryExposureKey(k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod))
+                .map(k -> new TemporaryExposureKeyRequest(
+                        k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod, Optional.empty(), Optional.empty()))
+                .collect(Collectors.toList());
+    }
+
+    private List<TemporaryExposureKeyRequest> sortByInterval(List<TemporaryExposureKey> originals) {
+        return originals.stream()
+                .sorted((k1, k2) -> Integer.compare(k2.rollingStartIntervalNumber, k1.rollingStartIntervalNumber))
+                .map(key -> new TemporaryExposureKeyRequest(
+                        key.keyData, key.transmissionRiskLevel, key.rollingStartIntervalNumber,
+                        key.rollingPeriod, Optional.empty(), Optional.empty()))
                 .collect(Collectors.toList());
     }
 }

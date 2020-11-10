@@ -1,16 +1,14 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisPublishRequest;
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
+import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKeyRequest;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.dayFirst10MinInterval;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -119,29 +117,32 @@ public class ValidationTest {
 
     @Test
     public void publishRejectsTooSmallPost() {
-        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someKeys(13)));
+        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(13)));
     }
 
     @Test
     public void publishAcceptsCorrectPost() {
-        assertDoesNotThrow(() -> new DiagnosisPublishRequest(keyGenerator.someKeys(14)));
+        assertDoesNotThrow(() -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14)));
     }
 
     @Test
     public void publishRejectsTooLargePost() {
-        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someKeys(15)));
+        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(15)));
     }
 
     @Test
     public void publishRequestAcceptsDummyPost() {
         assertDoesNotThrow(() -> {
-            List<TemporaryExposureKey> keys = new ArrayList<>();
+            List<TemporaryExposureKeyRequest> keys = new ArrayList<>();
             for (int i = 0; i < 14; i++) {
-                keys.add(new TemporaryExposureKey(
+                keys.add(new TemporaryExposureKeyRequest(
                         "AAAAAAAAAAAAAAAAAAAAAA==",
                         0,
                         dayFirst10MinInterval(Instant.now()),
-                        IntervalNumber.INTERVALS_10MIN_PER_24H));
+                        IntervalNumber.INTERVALS_10MIN_PER_24H,
+                        Optional.empty(),
+                        Optional.empty()
+                ));
             }
             new DiagnosisPublishRequest(keys);
         });
