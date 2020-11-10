@@ -27,6 +27,8 @@ import java.util.Optional;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to24HourInterval;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.serialize;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.transform;
+import static fi.thl.covid19.exposurenotification.efgs.FederationOperationDao.EfgsOperationState;
+import static fi.thl.covid19.exposurenotification.efgs.FederationOperationDao.EfgsOperationDirection;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.NEXT_BATCH_TAG_HEADER;
 import static org.junit.jupiter.api.Assertions.*;
@@ -104,6 +106,7 @@ public class EfgsServiceWithDaoTestIT {
                         .body("")
                 );
         dd.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+        // TODO: check keys are bound to correct operation
         assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(), 5, 5, 0, 0);
     }
 
@@ -152,7 +155,7 @@ public class EfgsServiceWithDaoTestIT {
         try {
             federationGatewayService.startOutbound();
         } catch (Exception e) {
-            assertOperationErrorStateIsCorrect(FederationOperationDao.EfgsOperationDirection.OUTBOUND);
+            assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
         }
         federationGatewayService.startErronHandling();
         assertUploadOperationErrorStateIsChangedToFinished();
@@ -162,8 +165,8 @@ public class EfgsServiceWithDaoTestIT {
     private void assertDownloadOperationStateIsCorrect(TemporaryExposureKey key, int keysCount) {
         String sql = "select * from en.efgs_operation where id = (select efgs_operation from en.diagnosis_key where key_data = :key_data)";
         Map<String, Object> resultSet = jdbcTemplate.queryForMap(sql, Map.of("key_data", key.keyData));
-        assertEquals(FederationOperationDao.EfgsOperationDirection.INBOUND.name(), resultSet.get("direction").toString());
-        assertEquals(FederationOperationDao.EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
+        assertEquals(EfgsOperationDirection.INBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
         assertEquals(keysCount, resultSet.get("keys_count_total"));
     }
 
@@ -175,24 +178,24 @@ public class EfgsServiceWithDaoTestIT {
 
     private void assertUploadOperationStateIsCorrect(long operationId, int total, int c201, int c409, int c500) {
         Map<String, Object> resultSet = getOperation(operationId);
-        assertEquals(FederationOperationDao.EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
-        assertEquals(FederationOperationDao.EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
+        assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
         assertEquals(total, resultSet.get("keys_count_total"));
         assertEquals(c201, resultSet.get("keys_count_201"));
         assertEquals(c409, resultSet.get("keys_count_409"));
         assertEquals(c500, resultSet.get("keys_count_500"));
     }
 
-    private void assertOperationErrorStateIsCorrect(FederationOperationDao.EfgsOperationDirection direction) {
+    private void assertOperationErrorStateIsCorrect(EfgsOperationDirection direction) {
         Map<String, Object> resultSet = getLatestOperation();
         assertEquals(direction.name(), resultSet.get("direction").toString());
-        assertEquals(FederationOperationDao.EfgsOperationState.ERROR.name(), resultSet.get("state").toString());
+        assertEquals(EfgsOperationState.ERROR.name(), resultSet.get("state").toString());
     }
 
     private void assertUploadOperationErrorStateIsChangedToFinished() {
         Map<String, Object> resultSet = getLatestOperation();
-        assertEquals(FederationOperationDao.EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
-        assertEquals(FederationOperationDao.EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
+        assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
         assertEquals(2, resultSet.get("run_count"));
     }
 
@@ -214,7 +217,7 @@ public class EfgsServiceWithDaoTestIT {
     }
 
     private void deleteOperations() {
-        String sql = "delete from en.efgs_operation where state <> CAST(:state as en.state_t)";
-        jdbcTemplate.update(sql, Map.of("state", FederationOperationDao.EfgsOperationState.QUEUED.name()));
+        String sql = "delete from en.efgs_operation where state <> cast(:state as en.state_t)";
+        jdbcTemplate.update(sql, Map.of("state", EfgsOperationState.QUEUED.name()));
     }
 }

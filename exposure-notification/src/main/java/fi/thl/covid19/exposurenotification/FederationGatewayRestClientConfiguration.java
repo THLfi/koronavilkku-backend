@@ -89,13 +89,11 @@ public class FederationGatewayRestClientConfiguration {
     }
 
     private KeyStore loadKeyStore(File file, char[] password) throws Exception {
-        KeyStore keyStore;
-
         try (FileInputStream fileInputStream = new FileInputStream(file)) {
+            KeyStore keyStore;
             keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(fileInputStream, password);
+            return keyStore;
         }
-
-        return keyStore;
     }
 }

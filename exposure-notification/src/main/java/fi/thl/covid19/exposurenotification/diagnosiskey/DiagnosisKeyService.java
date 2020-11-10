@@ -41,17 +41,17 @@ public class DiagnosisKeyService {
     public void handlePublishRequest(String publishToken, List<TemporaryExposureKeyRequest> requestKeys) {
         Instant now = Instant.now();
         PublishTokenVerification verification = tokenVerificationService.getVerification(publishToken);
-        List<TemporaryExposureKey> keys = transform(requestKeys, verification.symptomsOnset);
-        List<TemporaryExposureKey> filtered = filter(keys, now);
+        List<TemporaryExposureKeyRequest> filtered = filter(requestKeys, now);
+        List<TemporaryExposureKey> keys = transform(filtered, verification.symptomsOnset);
         int currentInterval = IntervalNumber.to24HourInterval(now);
         LOG.info("Publish token verified: {} {} {} {} {}",
                 keyValue("currentInterval", currentInterval),
                 keyValue("filterStart", verification.symptomsOnset.toString()),
                 keyValue("filterEnd", now.toString()),
-                keyValue("postedCount", keys.size()),
+                keyValue("postedCount", requestKeys.size()),
                 keyValue("filteredCount", filtered.size())
         );
-        dao.addKeys(verification.id, checksum(keys), currentInterval, filtered, getExportedKeyCount(filtered));
+        dao.addKeys(verification.id, checksum(keys), currentInterval, keys, getExportedKeyCount(keys));
     }
 
     private long getExportedKeyCount(List<TemporaryExposureKey> keys) {
@@ -76,13 +76,13 @@ public class DiagnosisKeyService {
         return DigestUtils.md5DigestAsHex(bytes);
     }
 
-    List<TemporaryExposureKey> filter(List<TemporaryExposureKey> original, Instant now) {
+    List<TemporaryExposureKeyRequest> filter(List<TemporaryExposureKeyRequest> original, Instant now) {
         int minInterval = dayFirst10MinInterval(now.minus(MAX_KEY_AGE));
         int maxInterval = dayLast10MinInterval(now);
         return original.stream().filter(key -> isBetween(key, minInterval, maxInterval)).collect(Collectors.toList());
     }
 
-    private boolean isBetween(TemporaryExposureKey key, int minPeriod, int maxPeriod) {
+    private boolean isBetween(TemporaryExposureKeyRequest key, int minPeriod, int maxPeriod) {
         return key.rollingStartIntervalNumber >= minPeriod &&
                 key.rollingStartIntervalNumber + key.rollingPeriod - 1 <= maxPeriod;
     }

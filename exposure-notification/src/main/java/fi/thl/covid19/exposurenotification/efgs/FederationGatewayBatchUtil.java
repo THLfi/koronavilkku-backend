@@ -8,7 +8,7 @@ import fi.thl.covid19.proto.EfgsProto;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashSet;
@@ -77,6 +77,6 @@ public class FederationGatewayBatchUtil {
     }
 
     public static String getDateString(Instant date) {
-        return DateTimeFormatter.ISO_DATE.format(LocalDate.ofInstant(date, ZoneId.of("UTC")));
+        return DateTimeFormatter.ISO_DATE.format(LocalDate.ofInstant(date, ZoneOffset.UTC));
     }
 }

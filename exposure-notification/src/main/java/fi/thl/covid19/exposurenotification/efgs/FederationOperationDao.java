@@ -32,8 +32,8 @@ public class FederationOperationDao {
     }
 
     public long getQueueId() {
-        String sql = "select id from en.efgs_operation where state = CAST(:state as en.state_t) and " +
-                "direction = CAST(:direction as en.direction_t)";
+        String sql = "select id from en.efgs_operation where state = cast(:state as en.state_t) and " +
+                "direction = cast(:direction as en.direction_t)";
         return requireNonNull(jdbcTemplate.queryForObject(sql, Map.of(
                 "state", FederationOperationDao.EfgsOperationState.QUEUED.name(),
                 "direction", FederationOperationDao.EfgsOperationDirection.OUTBOUND.name()
@@ -55,7 +55,7 @@ public class FederationOperationDao {
     }
 
     public boolean finishOperation(long operationId, int keysCountTotal) {
-        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), keys_count_total = :keys_count_total, " +
+        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), keys_count_total = :keys_count_total, " +
                 "run_count = run_count + 1 " +
                 "where id = :id";
         return jdbcTemplate.update(sql, Map.of(
@@ -66,7 +66,7 @@ public class FederationOperationDao {
     }
 
     public boolean finishOperation(long operationId, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
-        String sql = "update en.efgs_operation set state = CAST(:new_state as en.state_t), " +
+        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), " +
                 "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201, " +
                 "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500, " +
                 "run_count = run_count + 1 " +
@@ -82,7 +82,7 @@ public class FederationOperationDao {
     }
 
     public void markErrorOperation(long operationId) {
-        String sql = "update en.efgs_operation set state = CAST(:error_state as en.state_t), updated_at = :updated_at, " +
+        String sql = "update en.efgs_operation set state = cast(:error_state as en.state_t), updated_at = :updated_at, " +
                 "run_count = run_count + 1 " +
                 "where id = :id";
         jdbcTemplate.update(sql, Map.of(
@@ -93,8 +93,8 @@ public class FederationOperationDao {
     }
 
     public void setStalledToError() {
-        String sql = "update en.efgs_operation set state = CAST(:error_state as en.state_t), updated_at = :updated_at " +
-                "where state = CAST(:started_state as en.state_t) and (now() > (updated_at + interval '10 minute')) ";
+        String sql = "update en.efgs_operation set state = cast(:error_state as en.state_t), updated_at = :updated_at " +
+                "where state = cast(:started_state as en.state_t) and (now() > (updated_at + interval '10 minute')) ";
         jdbcTemplate.update(sql, Map.of(
                 "error_state", EfgsOperationState.ERROR.name(),
                 "started_state", EfgsOperationState.STARTED.name(),
@@ -104,8 +104,8 @@ public class FederationOperationDao {
 
     public List<Long> getOutboundOperationsInError() {
         String sql = "select id from en.efgs_operation " +
-                "where state = CAST(:state as en.state_t) " +
-                "and direction = CAST(:direction as en.direction_t) " +
+                "where state = cast(:state as en.state_t) " +
+                "and direction = cast(:direction as en.direction_t) " +
                 "and run_count < :run_count";
         return jdbcTemplate.queryForList(sql, Map.of(
                 "state", EfgsOperationState.ERROR.name(),
@@ -117,17 +117,20 @@ public class FederationOperationDao {
     public long startInboundOperation() {
         KeyHolder operationKeyHolder = new GeneratedKeyHolder();
 
-        String createOperation = "insert into en.efgs_operation (direction) values (CAST(:direction as en.direction_t))";
+        String createOperation = "insert into en.efgs_operation (state, direction) " +
+                "values (cast(:state as en.state_t), cast(:direction as en.direction_t))";
         jdbcTemplate.update(createOperation,
-                new MapSqlParameterSource("direction",
-                        EfgsOperationDirection.INBOUND.name()),
+                new MapSqlParameterSource(Map.of(
+                        "state", EfgsOperationState.STARTED.name(),
+                        "direction", EfgsOperationDirection.INBOUND.name())
+                ),
                 operationKeyHolder);
         return (Long) requireNonNull(operationKeyHolder.getKeys()).get("id");
     }
 
     private boolean isOutboundOperationAvailable() {
         String sql = "select count(*) from en.efgs_operation " +
-                "where state = CAST(:state as en.state_t) and direction = CAST(:direction as en.direction_t)";
+                "where state = cast(:state as en.state_t) and direction = cast(:direction as en.direction_t)";
         return jdbcTemplate.query(sql, Map.of(
                 "state", EfgsOperationState.STARTED.name(),
                 "direction", EfgsOperationDirection.OUTBOUND.name()
@@ -137,7 +140,7 @@ public class FederationOperationDao {
 
     private void markOutboundOperationStartedAndCreateNewQueue(long operationId) {
         String startQueuedOperation = "update en.efgs_operation " +
-                "set state = CAST(:state as en.state_t), " +
+                "set state = cast(:state as en.state_t), " +
                 "updated_at = :updated_at " +
                 "where id = :id";
 
@@ -148,7 +151,7 @@ public class FederationOperationDao {
         );
 
         String createNewQueueOperation = "insert into en.efgs_operation (state, direction) " +
-                "values (CAST(:state as en.state_t), CAST(:direction as en.direction_t))";
+                "values (cast(:state as en.state_t), cast(:direction as en.direction_t))";
         jdbcTemplate.update(createNewQueueOperation, Map.of(
                 "state", EfgsOperationState.QUEUED.name(),
                 "direction", EfgsOperationDirection.OUTBOUND.name()

@@ -1,5 +1,6 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
+import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKeyRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to10MinInterval;
 import static java.time.ZoneOffset.UTC;
@@ -38,7 +36,7 @@ public class DiagnosisKeyServiceTest {
 
     @Test
     public void filterAcceptsKeyInsideRange() {
-        List<TemporaryExposureKey> keys = List.of(
+        List<TemporaryExposureKeyRequest> keys = List.of(
                 generateAt(LocalDate.parse("2020-07-02")),
                 generateAt(LocalDate.parse("2020-07-03")),
                 generateAt(LocalDate.parse("2020-07-04")),
@@ -58,7 +56,7 @@ public class DiagnosisKeyServiceTest {
 
     @Test
     public void filterAcceptsTodaysKeys() {
-        List<TemporaryExposureKey> keys = List.of(
+        List<TemporaryExposureKeyRequest> keys = List.of(
                 generateAt(LocalDate.parse("2020-07-16"), 14*6),
                 generateAt(LocalDate.parse("2020-07-16"), 144));
         assertEquals(keys, filter(keys, "2020-07-16T14:00:00Z"));
@@ -66,13 +64,13 @@ public class DiagnosisKeyServiceTest {
 
     @Test
     public void filterRejectsOver14daysOldKey() {
-        List<TemporaryExposureKey> keys = List.of(generateAt(LocalDate.parse("2020-07-01")));
+        List<TemporaryExposureKeyRequest> keys = List.of(generateAt(LocalDate.parse("2020-07-01")));
         assertEquals(List.of(), filter(keys, "2020-07-16T14:00:00Z"));
     }
 
     @Test
     public void filterRejectsKeyInFuture() {
-        List<TemporaryExposureKey> keys = List.of(generateAt(LocalDate.parse("2020-07-17")));
+        List<TemporaryExposureKeyRequest> keys = List.of(generateAt(LocalDate.parse("2020-07-17")));
         assertEquals(List.of(), filter(keys, "2020-07-16T14:00:00Z"));
     }
 
@@ -86,28 +84,34 @@ public class DiagnosisKeyServiceTest {
 
     private List<TemporaryExposureKey> generateCountTestKeys() {
         List<TemporaryExposureKey> list = new ArrayList<>();
-        list.add(generateAt(LocalDate.parse("2020-10-20"), 144, 0));
-        list.add(generateAt(LocalDate.parse("2020-10-20"), 144, 1));
-        list.add(generateAt(LocalDate.parse("2020-10-20"), 144, 2));
-        list.add(generateAt(LocalDate.parse("2020-10-20"), 144, 3));
-        list.add(generateAt(LocalDate.parse("2020-10-20"), 144, 7));
+        list.add(generateDomainKeyAt(LocalDate.parse("2020-10-20"), 144, 0));
+        list.add(generateDomainKeyAt(LocalDate.parse("2020-10-20"), 144, 1));
+        list.add(generateDomainKeyAt(LocalDate.parse("2020-10-20"), 144, 2));
+        list.add(generateDomainKeyAt(LocalDate.parse("2020-10-20"), 144, 3));
+        list.add(generateDomainKeyAt(LocalDate.parse("2020-10-20"), 144, 7));
 
         return list;
     }
 
-    private List<TemporaryExposureKey> filter(List<TemporaryExposureKey> keys, String now) {
+    private List<TemporaryExposureKeyRequest> filter(List<TemporaryExposureKeyRequest> keys, String now) {
         return sut.filter(keys, Instant.parse(now));
     }
 
-    private TemporaryExposureKey generateAt(LocalDate keyDate) {
+    private TemporaryExposureKeyRequest generateAt(LocalDate keyDate) {
         return generateAt(keyDate, 144);
     }
 
-    private TemporaryExposureKey generateAt(LocalDate keyDate, int rollingPeriod) {
+    private TemporaryExposureKeyRequest generateAt(LocalDate keyDate, int rollingPeriod) {
         return generateAt(keyDate, rollingPeriod, 1);
     }
 
-    private TemporaryExposureKey generateAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {
+    private TemporaryExposureKeyRequest generateAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {
+        int interval = to10MinInterval(keyDate.atStartOfDay(UTC).toInstant());
+        return new TemporaryExposureKeyRequest("c9Uau9icuBlvDvtokvlNaA==", transmissionRiskLevel, interval,
+                rollingPeriod, Optional.empty(), Optional.empty());
+    }
+
+    private TemporaryExposureKey generateDomainKeyAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {
         int interval = to10MinInterval(keyDate.atStartOfDay(UTC).toInstant());
         return new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==", transmissionRiskLevel, interval,
                 rollingPeriod, Set.of(), 0, "FI", false);

@@ -130,8 +130,6 @@ public class DiagnosisKeyDao {
         return new ArrayList<>(jdbcTemplate.query(sql, Map.of("efgs_operation", operationId), (rs, i) -> mapKey(rs)));
     }
 
-
-
     @Transactional
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
         if (!keys.isEmpty()) {
