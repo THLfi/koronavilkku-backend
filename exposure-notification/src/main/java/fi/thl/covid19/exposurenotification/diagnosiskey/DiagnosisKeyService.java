@@ -20,6 +20,8 @@ import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskB
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
+import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DsosInterpretationMapper.SYMPTOMS_WITH_DATE;
+
 
 @Service
 public class DiagnosisKeyService {
@@ -65,7 +67,11 @@ public class DiagnosisKeyService {
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
                 requestKey.visitedCountries,
-                Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber))),
+                SYMPTOMS_WITH_DATE.apply(
+                        Math.toIntExact(
+                                ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber))
+                        )
+                ),
                 DEFAULT_ORIGIN_COUNTRY,
                 requestKey.consentToShareWithEfgs
         )).collect(Collectors.toList());

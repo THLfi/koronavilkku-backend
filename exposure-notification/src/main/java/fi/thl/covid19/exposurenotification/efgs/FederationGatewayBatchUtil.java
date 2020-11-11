@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
+import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DsosInterpretationMapper;
 
 public class FederationGatewayBatchUtil {
 
@@ -47,17 +48,16 @@ public class FederationGatewayBatchUtil {
                         remoteKey.getRollingStartIntervalNumber(),
                         remoteKey.getRollingPeriod(),
                         new HashSet<>(remoteKey.getVisitedCountriesList()),
-                        remoteKey.getDaysSinceOnsetOfSymptoms(),
+                        DsosInterpretationMapper.mapFrom(remoteKey.getDaysSinceOnsetOfSymptoms()),
                         remoteKey.getOrigin(),
                         true
                 )).collect(Collectors.toList());
     }
 
-    // TODO: FIXME: implement more sophisticated mapping
     public static int calculateTransmissionRisk(EfgsProto.DiagnosisKey key) {
         LocalDate keyDate = utcDateOf10MinInterval(key.getRollingStartIntervalNumber());
-
-        return getRiskBucket(LocalDate.from(keyDate).plusDays(key.getDaysSinceOnsetOfSymptoms()), keyDate);
+        int mappedDsos = DsosInterpretationMapper.mapFrom(key.getDaysSinceOnsetOfSymptoms());
+        return getRiskBucket(LocalDate.from(keyDate).plusDays(mappedDsos), keyDate);
     }
 
     public static byte[] serialize(EfgsProto.DiagnosisKeyBatch batch) {
