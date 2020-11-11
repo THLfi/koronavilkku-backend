@@ -86,13 +86,14 @@ covid19:
     url: "${EN_PT_URL:}"
   federation-gateway:
     url-template: http://localhost:8080/diagnosiskeys/{operation}/{variable}
-    trust-store:
-      path: "${tech-ec-europa-eu:}"
-      password: "${efgs-store-password:3fgs-p4ssw0rd}"
-    client-key-store:
-      path: "${koronavilkku-efgs-keystore:}"
-      password: "${efgs-store-password:devdev}"
-      alias: efgs
+    rest-client:
+      trust-store:
+        path: "${tech-ec-europa-eu:}"
+        password: "${efgs-store-password:3fgs-p4ssw0rd}"
+      client-key-store:
+        path: "${koronavilkku-efgs-keystore:}"
+        password: "${efgs-store-password:devdev}"
+        alias: efgs
     signing-key-store:
       path: "${koronavilkku-efgs-signing-keystore:}"
       password: "${efgs-store-password:devdev}"

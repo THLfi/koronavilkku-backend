@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
+
 @Component
 public class FederationSyncProcessor {
 
@@ -23,8 +25,8 @@ public class FederationSyncProcessor {
             fixedRateString = "${covid19.federation-gateway.upload-interval}")
     private void runExportToEfgs() {
         LOG.info("Starting scheduled export to efgs.");
-        fgs.startOutbound();
-        LOG.info("Scheduled export to efgs finished.");
+        Optional<Long> operationId = fgs.startOutbound();
+        LOG.info("Scheduled export to efgs finished. {}", keyValue("operationId", operationId.orElse(-1L)));
     }
 
     @Scheduled(initialDelayString = "${covid19.federation-gateway.download-interval}",

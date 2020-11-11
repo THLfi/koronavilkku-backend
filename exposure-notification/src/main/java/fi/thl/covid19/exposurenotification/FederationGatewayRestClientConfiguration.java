@@ -6,7 +6,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.PrivateKeyStrategy;
 import org.apache.http.ssl.SSLContextBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,24 +26,12 @@ public class FederationGatewayRestClientConfiguration {
     private final Duration readTimeout = Duration.ofSeconds(60);
     private final Duration socketTimeout = Duration.ofSeconds(60);
 
-    private final String trustStorePath;
-    private final char[] trustStorePassword;
-    private final String keyStorePath;
-    private final char[] keyStorePassword;
-    private final String keyStoreKeyAlias;
+    private final FederationGatewayRestClientProperties properties;
 
     public FederationGatewayRestClientConfiguration(
-            @Value("${covid19.federation-gateway.trust-store.path}") String trustStorePath,
-            @Value("${covid19.federation-gateway.trust-store.password}") String trustStorePassword,
-            @Value("${covid19.federation-gateway.client-key-store.path}") String keyStorePath,
-            @Value("${covid19.federation-gateway.client-key-store.password}") String keyStorePassword,
-            @Value("${covid19.federation-gateway.client-key-store.alias}") String keyStoreKeyAlias
+            FederationGatewayRestClientProperties properties
     ) {
-        this.trustStorePath = trustStorePath;
-        this.trustStorePassword = trustStorePassword.toCharArray();
-        this.keyStorePath = keyStorePath;
-        this.keyStorePassword = keyStorePassword.toCharArray();
-        this.keyStoreKeyAlias = keyStoreKeyAlias;
+        this.properties = properties;
     }
 
     @Bean("federationGatewayRestTemplate")
@@ -60,10 +47,8 @@ public class FederationGatewayRestClientConfiguration {
 
     private HttpComponentsClientHttpRequestFactory requestFactory() {
         try {
-            SSLContext context = (!trustStorePath.isBlank() &&
-                    trustStorePassword.length > 0 &&
-                    !keyStorePath.isBlank() &&
-                    keyStorePassword.length > 0) ? createSSLContextWithKey() : SSLContextBuilder.create().build();
+            SSLContext context = properties.isMandatoryPropertiesAvailable() ?
+                    createSSLContextWithKey() : SSLContextBuilder.create().build();
 
             SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(context);
             CloseableHttpClient client = HttpClients.custom()
@@ -76,10 +61,16 @@ public class FederationGatewayRestClientConfiguration {
     }
 
     private SSLContext createSSLContextWithKey() throws Exception {
-        PrivateKeyStrategy privateKeyStrategy = (v1, v2) -> keyStoreKeyAlias;
+        PrivateKeyStrategy privateKeyStrategy = (v1, v2) -> properties.getClientKeyStore().getAlias();
         return SSLContextBuilder.create()
-                .loadKeyMaterial(keyStore(keyStorePath, keyStorePassword), keyStorePassword, privateKeyStrategy)
-                .loadTrustMaterial(new File(trustStorePath), trustStorePassword)
+                .loadKeyMaterial(
+                        keyStore(
+                                properties.getClientKeyStore().getPath(),
+                                properties.getClientKeyStore().getPassword()
+                        ), properties.getClientKeyStore().getPassword(), privateKeyStrategy)
+                .loadTrustMaterial(
+                        new File(properties.getTrustStore().getPath()),
+                        properties.getTrustStore().getPassword())
                 .build();
     }
 

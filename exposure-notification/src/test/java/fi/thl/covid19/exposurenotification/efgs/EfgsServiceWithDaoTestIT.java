@@ -107,7 +107,7 @@ public class EfgsServiceWithDaoTestIT {
                 );
         dd.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
         // TODO: check keys are bound to correct operation
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(), 5, 5, 0, 0);
+        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 5, 0, 0);
     }
 
     @Test
@@ -131,7 +131,7 @@ public class EfgsServiceWithDaoTestIT {
                         .body("")
                 );
 
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(), 5, 2, 2, 1);
+        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 2, 2, 1);
     }
 
     @Test
@@ -153,7 +153,7 @@ public class EfgsServiceWithDaoTestIT {
         dd.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
 
         try {
-            federationGatewayService.startOutbound();
+            federationGatewayService.startOutbound().orElseThrow();
         } catch (Exception e) {
             assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
         }
