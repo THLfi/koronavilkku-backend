@@ -15,7 +15,7 @@ public class DsosMapperUtil {
         SYMPTOMS_WITHOUT_DATE (() -> IntStream.rangeClosed(1986,2014), dsos -> DEFAULT_VALUE),
         SYMPTOMS_UNKNOWN (() -> IntStream.rangeClosed(3986,4014), dsos -> DEFAULT_VALUE),
         NO_SYMPTOMS (() -> IntStream.rangeClosed(2986,3014), dsos -> DEFAULT_VALUE),
-        UNKNOWN (() -> IntStream.rangeClosed(4015,Integer.MAX_VALUE), dsos -> DEFAULT_VALUE);
+        UNKNOWN (() -> IntStream.rangeClosed(Integer.MAX_VALUE - 1,Integer.MAX_VALUE), dsos -> DEFAULT_VALUE);
 
         private final Supplier<IntStream> range;
         private final IntFunction<Integer> mapper;
