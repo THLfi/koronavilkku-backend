@@ -13,10 +13,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
+import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DEFAULT_DAYS_SINCE_SYMPTOMS;
 import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DsosInterpretationMapper;
 
 public class FederationGatewayBatchUtil {
@@ -33,7 +36,7 @@ public class FederationGatewayBatchUtil {
                         .addAllVisitedCountries(localKey.visitedCountries)
                         .setOrigin(localKey.origin)
                         .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
-                        .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms)
+                        .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms.orElse(DEFAULT_DAYS_SINCE_SYMPTOMS))
                         .build())
                 .collect(Collectors.toList());
 
@@ -56,8 +59,8 @@ public class FederationGatewayBatchUtil {
 
     public static int calculateTransmissionRisk(EfgsProto.DiagnosisKey key) {
         LocalDate keyDate = utcDateOf10MinInterval(key.getRollingStartIntervalNumber());
-        int mappedDsos = DsosInterpretationMapper.mapFrom(key.getDaysSinceOnsetOfSymptoms());
-        return getRiskBucket(LocalDate.from(keyDate).plusDays(mappedDsos), keyDate);
+        Optional<Integer> mappedDsos = DsosInterpretationMapper.mapFrom(key.getDaysSinceOnsetOfSymptoms());
+        return mappedDsos.map(dsos -> getRiskBucket(LocalDate.from(keyDate).plusDays(dsos), keyDate)).orElse(DEFAULT_RISK_BUCKET);
     }
 
     public static byte[] serialize(EfgsProto.DiagnosisKeyBatch batch) {

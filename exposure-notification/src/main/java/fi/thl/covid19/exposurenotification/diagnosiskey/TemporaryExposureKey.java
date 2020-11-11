@@ -2,6 +2,7 @@ package fi.thl.covid19.exposurenotification.diagnosiskey;
 
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.Validation.*;
@@ -19,7 +20,7 @@ public final class TemporaryExposureKey {
     /** List of visited countries in ISO-3166 alpha-2 format  **/
     public final Set<String> visitedCountries;
     /** Days since onset of symptoms **/
-    public final int daysSinceOnsetOfSymptoms;
+    public final Optional<Integer> daysSinceOnsetOfSymptoms;
     /** Origin country in ISO-3166 alpha-2 format **/
     public final String origin;
     /** Consent to share data with efgs **/
@@ -31,7 +32,7 @@ public final class TemporaryExposureKey {
                                 int rollingStartIntervalNumber,
                                 int rollingPeriod,
                                 Set<String> visitedCountries,
-                                int daysSinceOnsetOfSymptoms,
+                                Optional<Integer> daysSinceOnsetOfSymptoms,
                                 String origin,
                                 boolean consentToShareWithEfgs) {
         this.keyData = validateKeyData(requireNonNull(keyData));
@@ -39,7 +40,7 @@ public final class TemporaryExposureKey {
         this.rollingStartIntervalNumber = validateRollingStartIntervalNumber(rollingStartIntervalNumber);
         this.rollingPeriod = validateRollingPeriod(rollingPeriod);
         this.visitedCountries = Validation.validateISOCountryCodes(requireNonNull(visitedCountries));
-        this.daysSinceOnsetOfSymptoms = Validation.validateDaysSinceOnsetOfSymptoms(daysSinceOnsetOfSymptoms);
+        this.daysSinceOnsetOfSymptoms = daysSinceOnsetOfSymptoms;
         this.origin = Validation.getValidatedISOCountryCode(requireNonNull(origin));
         this.consentToShareWithEfgs = consentToShareWithEfgs;
     }
@@ -54,7 +55,7 @@ public final class TemporaryExposureKey {
                 rollingPeriod == that.rollingPeriod &&
                 keyData.equals(that.keyData) &&
                 visitedCountries.equals(that.visitedCountries) &&
-                daysSinceOnsetOfSymptoms == that.daysSinceOnsetOfSymptoms &&
+                daysSinceOnsetOfSymptoms.equals(that.daysSinceOnsetOfSymptoms) &&
                 origin.equals(that.origin) &&
                 consentToShareWithEfgs == that.consentToShareWithEfgs;
     }

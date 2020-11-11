@@ -44,7 +44,7 @@ public class TestKeyGenerator {
                 dayFirst10MinInterval(Instant.now().minus(ageDays, ChronoUnit.DAYS)),
                 INTERVALS_10MIN_PER_24H,
                 Set.of(),
-                0,
+                Optional.of(0),
                 "FI",
                 consentToShare
         );

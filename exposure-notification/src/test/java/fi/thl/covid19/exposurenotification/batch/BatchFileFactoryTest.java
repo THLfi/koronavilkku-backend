@@ -87,7 +87,7 @@ public class BatchFileFactoryTest {
                 to10MinInterval(Instant.now())-rand.nextInt(10)*6*24,
                 144,
                 Set.of(),
-                0,
+                Optional.of(0),
                 "FI",
                 false
         );

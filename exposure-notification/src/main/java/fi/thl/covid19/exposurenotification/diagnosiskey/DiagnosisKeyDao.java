@@ -191,14 +191,14 @@ public class DiagnosisKeyDao {
                 rs.getInt("rolling_start_interval_number"),
                 rs.getInt("rolling_period"),
                 Set.of((String[]) rs.getArray("visited_countries").getArray()),
-                rs.getInt("days_since_onset_of_symptoms"),
+                Optional.ofNullable((Integer) rs.getObject("days_since_onset_of_symptoms")),
                 rs.getString("origin"),
                 rs.getBoolean("consent_to_share")
         );
     }
 
     private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key, long operationId) {
-        return Map.of(
+        Map<String, Object> params = new HashMap<>(Map.of(
                 "key_data", key.keyData,
                 "rolling_period", key.rollingPeriod,
                 "rolling_start_interval_number", key.rollingStartIntervalNumber,
@@ -206,9 +206,10 @@ public class DiagnosisKeyDao {
                 "submission_interval", interval,
                 "origin", key.origin,
                 "visited_countries", key.visitedCountries.toArray(new String[0]),
-                "days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms,
                 "consent_to_share", key.consentToShareWithEfgs,
                 "efgs_operation", operationId
-        );
+        ));
+        params.put("days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms.orElse(null));
+        return params;
     }
 }

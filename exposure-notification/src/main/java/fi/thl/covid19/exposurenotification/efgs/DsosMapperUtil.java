@@ -1,13 +1,14 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 public class DsosMapperUtil {
-
-    public static int DEFAULT_VALUE = 6;
+    public static final int DEFAULT_DAYS_SINCE_SYMPTOMS = 4000;
+    private static final Integer DEFAULT_VALUE = null;
 
     public enum DsosInterpretationMapper {
         SYMPTOMS_WITH_DATE (() -> IntStream.rangeClosed(-14,14), dsos -> dsos),
@@ -25,11 +26,11 @@ public class DsosMapperUtil {
             this.mapper = mapper;
         }
 
-        public Integer apply(int dsos) {
-            return mapper.apply(dsos);
+        public Optional<Integer> apply(Integer dsos) {
+            return Optional.ofNullable(mapper.apply(dsos));
         }
 
-        public static int mapFrom(int dsos) {
+        public static Optional<Integer> mapFrom(int dsos) {
            DsosInterpretationMapper mapperInRange = Arrays.stream(values())
                    .filter(e -> e.range.get().anyMatch(i -> i == dsos))
                    .findFirst()
