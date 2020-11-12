@@ -61,16 +61,16 @@ public class FederationGatewayRestClientConfiguration {
     }
 
     private SSLContext createSSLContextWithKey() throws Exception {
-        PrivateKeyStrategy privateKeyStrategy = (v1, v2) -> properties.getClientKeyStore().getAlias();
+        PrivateKeyStrategy privateKeyStrategy = (v1, v2) -> properties.clientKeyStore.alias;
         return SSLContextBuilder.create()
                 .loadKeyMaterial(
                         keyStore(
-                                properties.getClientKeyStore().getPath(),
-                                properties.getClientKeyStore().getPassword()
-                        ), properties.getClientKeyStore().getPassword(), privateKeyStrategy)
+                                properties.clientKeyStore.path,
+                                properties.clientKeyStore.password
+                        ), properties.clientKeyStore.password, privateKeyStrategy)
                 .loadTrustMaterial(
-                        new File(properties.getTrustStore().getPath()),
-                        properties.getTrustStore().getPassword())
+                        new File(properties.trustStore.path),
+                        properties.trustStore.password)
                 .build();
     }
 

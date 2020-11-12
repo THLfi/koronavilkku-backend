@@ -19,14 +19,16 @@ import org.springframework.test.web.client.SimpleRequestExpectationManager;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to24HourInterval;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.serialize;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.transform;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
+import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.FederationOperationDao.EfgsOperationState;
 import static fi.thl.covid19.exposurenotification.efgs.FederationOperationDao.EfgsOperationDirection;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.BATCH_TAG_HEADER;
@@ -39,7 +41,7 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
 
 @SpringBootTest
 @ActiveProfiles({"dev", "test"})
-public class EfgsServiceWithDaoTestIT {
+public class FederationServiceWithDaoTestIT {
 
     private static MediaType PROTOBUF_MEDIATYPE = new MediaType("application", "protobuf", 1.0);
 
@@ -97,6 +99,38 @@ public class EfgsServiceWithDaoTestIT {
     }
 
     @Test
+    public void downloadKeysTransmissionRiskLevel() {
+        List<TemporaryExposureKey> keys = FederationGatewayBatchUtil.transform(FederationGatewayBatchUtil.transform(
+                List.of(
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 1),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 1000),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 2000),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 3000),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 4000)
+                )
+        ));
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + FederationGatewayBatchUtil.getDateString(Instant.now())))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(PROTOBUF_MEDIATYPE)
+                        .headers(getDownloadResponseHeaders())
+                        .body(serialize(transform(keys)))
+                );
+        federationGatewayService.startInbound(Optional.empty());
+
+        List<TemporaryExposureKey> dbKeys = dd.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
+        assertEquals(dbKeys.size(), keys.size());
+        assertTrue(dbKeys.get(0).daysSinceOnsetOfSymptoms.get() == 1 &&
+                calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKeys.get(0).transmissionRiskLevel);
+        assertTrue(dbKeys.get(1).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(1).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+        assertTrue(dbKeys.get(2).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(2).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+        assertTrue(dbKeys.get(3).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(3).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+        assertTrue(dbKeys.get(4).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(4).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+
+    }
+
+    @Test
     public void uploadKeys() {
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/upload/"))
@@ -106,8 +140,8 @@ public class EfgsServiceWithDaoTestIT {
                         .body("")
                 );
         dd.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
-        // TODO: check keys are bound to correct operation
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 5, 0, 0);
+        long expectedOperationId = getQueuedOperation();
+        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 5, 0, 0, expectedOperationId);
     }
 
     @Test
@@ -130,8 +164,8 @@ public class EfgsServiceWithDaoTestIT {
                         .contentType(PROTOBUF_MEDIATYPE)
                         .body("")
                 );
-
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 2, 2, 1);
+        long expectedOperationId = getQueuedOperation();
+        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 2, 2, 1, expectedOperationId);
     }
 
     @Test
@@ -176,8 +210,9 @@ public class EfgsServiceWithDaoTestIT {
         return objectMapper.writeValueAsString(body);
     }
 
-    private void assertUploadOperationStateIsCorrect(long operationId, int total, int c201, int c409, int c500) {
+    private void assertUploadOperationStateIsCorrect(long operationId, int total, int c201, int c409, int c500, long expectedOperationId) {
         Map<String, Object> resultSet = getOperation(operationId);
+        assertEquals(expectedOperationId, operationId);
         assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
         assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
         assertEquals(total, resultSet.get("keys_count_total"));
@@ -204,6 +239,11 @@ public class EfgsServiceWithDaoTestIT {
         return jdbcTemplate.queryForMap(sql, Map.of());
     }
 
+    private long getQueuedOperation() {
+        String sql = "select id from en.efgs_operation where state = cast(:state as en.state_t)";
+        return jdbcTemplate.queryForObject(sql, Map.of("state", EfgsOperationState.QUEUED.name()), Long.class);
+    }
+
     private Map<String, Object> getOperation(long operationId) {
         String sql = "select * from en.efgs_operation where id = :id";
         return jdbcTemplate.queryForMap(sql, Map.of("id", operationId));
@@ -219,5 +259,10 @@ public class EfgsServiceWithDaoTestIT {
     private void deleteOperations() {
         String sql = "delete from en.efgs_operation where state <> cast(:state as en.state_t)";
         jdbcTemplate.update(sql, Map.of("state", EfgsOperationState.QUEUED.name()));
+    }
+
+    private int calculateTransmissionRisk(int rollingStartIntervalNumber, int dsos) {
+        LocalDate keyDate = utcDateOf10MinInterval(rollingStartIntervalNumber);
+        return getRiskBucket(LocalDate.from(keyDate).plusDays(dsos), keyDate);
     }
 }

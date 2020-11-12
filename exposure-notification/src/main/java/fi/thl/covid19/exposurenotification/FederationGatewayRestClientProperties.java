@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.ConstructorBinding;
 @ConstructorBinding
 public class FederationGatewayRestClientProperties {
 
-    private final TrustStore trustStore;
-    private final ClientKeyStore clientKeyStore;
+    public final TrustStore trustStore;
+    public final ClientKeyStore clientKeyStore;
 
     public FederationGatewayRestClientProperties(TrustStore trustStore, ClientKeyStore clientKeyStore) {
         this.trustStore = trustStore;
@@ -16,59 +16,31 @@ public class FederationGatewayRestClientProperties {
     }
 
     public boolean isMandatoryPropertiesAvailable() {
-        return !this.getTrustStore().path.isBlank() &&
-                this.getTrustStore().password.length > 0 &&
-                !this.clientKeyStore.getPath().isBlank() &&
-                this.clientKeyStore.getPassword().length > 0;
+        return !this.trustStore.path.isBlank() &&
+                this.trustStore.password.length > 0 &&
+                !this.clientKeyStore.path.isBlank() &&
+                this.clientKeyStore.password.length > 0;
     }
 
     public static class TrustStore {
-        private final String path;
-        private final char[] password;
+        public final String path;
+        public final char[] password;
 
         public TrustStore(String path, char[] password) {
             this.path = path;
             this.password = password;
         }
-
-        public String getPath() {
-            return path;
-        }
-
-        public char[] getPassword() {
-            return password;
-        }
     }
 
     public static class ClientKeyStore {
-        private final String path;
-        private final char[] password;
-        private final String alias;
+        public final String path;
+        public final char[] password;
+        public final String alias;
 
         public ClientKeyStore(String path, char[] password, String alias) {
             this.path = path;
             this.password = password;
             this.alias = alias;
         }
-
-        public String getPath() {
-            return path;
-        }
-
-        public char[] getPassword() {
-            return password;
-        }
-
-        public String getAlias() {
-            return alias;
-        }
-    }
-
-    public TrustStore getTrustStore() {
-        return trustStore;
-    }
-
-    public ClientKeyStore getClientKeyStore() {
-        return clientKeyStore;
     }
 }
