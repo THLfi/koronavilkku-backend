@@ -38,12 +38,9 @@ public class FederationGatewayService {
         this.signer = signer;
     }
 
-    public long startOutbound() {
-        long operationId = fod.startOutboundOperation();
-
-        if (operationId > 0) {
-            doOutbound(operationId);
-        }
+    public Optional<Long> startOutbound() {
+        Optional<Long> operationId = fod.startOutboundOperation();
+        operationId.ifPresent(this::doOutbound);
         return operationId;
     }
 
@@ -58,7 +55,6 @@ public class FederationGatewayService {
         errorOperations.forEach(this::doOutbound);
     }
 
-    // TODO: which interval should be used? Should we change interval to be more precise?
     private void doInbound(String date, Optional<String> batchTag) {
         client.download(date, batchTag).forEach(
                 d -> dd.addInboundKeys(transform(d), IntervalNumber.to24HourInterval(Instant.now()))

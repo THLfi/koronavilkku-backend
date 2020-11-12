@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
-@EnableConfigurationProperties({ SignatureConfig.class })
+@EnableConfigurationProperties({ SignatureConfig.class, FederationGatewayRestClientProperties.class })
 @SpringBootApplication
 public class ExposureNotificationApplication {
 

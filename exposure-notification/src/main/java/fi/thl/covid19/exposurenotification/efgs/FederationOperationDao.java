@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
@@ -41,16 +42,16 @@ public class FederationOperationDao {
     }
 
     @Transactional(timeout = 10)
-    public long startOutboundOperation() {
+    public Optional<Long> startOutboundOperation() {
         String lock = "lock table en.efgs_operation in access exclusive mode";
         jdbcTemplate.update(lock, Map.of());
         if (isOutboundOperationAvailable()) {
             long operationId = this.getQueueId();
             markOutboundOperationStartedAndCreateNewQueue(operationId);
-            return operationId;
+            return Optional.of(operationId);
         } else {
             LOG.info("Update to efgs unavailble. Skipping.");
-            return -1;
+            return Optional.empty();
         }
     }
 

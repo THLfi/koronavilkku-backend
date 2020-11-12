@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
@@ -20,6 +21,7 @@ import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskB
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
+
 
 @Service
 public class DiagnosisKeyService {
@@ -65,7 +67,7 @@ public class DiagnosisKeyService {
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
                 requestKey.visitedCountries,
-                Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber))),
+                Optional.of(Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)))),
                 DEFAULT_ORIGIN_COUNTRY,
                 requestKey.consentToShareWithEfgs
         )).collect(Collectors.toList());
