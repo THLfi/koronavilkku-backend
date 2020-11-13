@@ -32,7 +32,7 @@ public class CallbackControllerTest {
     }
 
     @Test
-    public void callBackReturnsInvalidDate() throws Exception {
+    public void callBackInvalidDateReturnsClientError() throws Exception {
         mvc.perform(get("/efgs/callback")
                 .param("batchTag", "tag-1")
                 .param("date", "2020-11-13455647"))
