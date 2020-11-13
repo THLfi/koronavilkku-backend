@@ -1,19 +1,20 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import fi.thl.covid19.exposurenotification.ExposureNotificationApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-@SpringBootTest
 @ActiveProfiles({"dev", "test"})
-@AutoConfigureMockMvc
+@WebMvcTest(CallbackController.class)
+@ContextConfiguration(classes= ExposureNotificationApplication.class)
 public class CallbackControllerTest {
 
     @Autowired
