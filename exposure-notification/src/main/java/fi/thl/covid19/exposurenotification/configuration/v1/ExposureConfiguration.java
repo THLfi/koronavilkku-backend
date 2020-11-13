@@ -5,8 +5,11 @@ package fi.thl.covid19.exposurenotification.configuration.v1;
  * https://static.googleusercontent.com/media/www.google.com/en//covid19/exposurenotifications/pdfs/Android-Exposure-Notification-API-documentation-v1.3.2.pdf
  */
 
+import fi.thl.covid19.exposurenotification.diagnosiskey.Validation;
+
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -139,6 +142,12 @@ public class ExposureConfiguration {
      */
     public final int exposureRiskDuration;
 
+    /*
+     * Set of participating countries in ISO-3166 alpha-2 format
+     * Source: https://ec.europa.eu/info/live-work-travel-eu/health/coronavirus-response/travel-during-coronavirus-pandemic/mobile-contact-tracing-apps-eu-member-states_en
+     */
+    public final Set<String> participatingCountries;
+
     public ExposureConfiguration(
             int version,
             int minimumRiskScore,
@@ -148,7 +157,8 @@ public class ExposureConfiguration {
             List<Integer> transmissionRiskScores,
             List<Integer> durationAtAttenuationThresholds,
             List<BigDecimal> durationAtAttenuationWeights,
-            int exposureRiskDuration
+            int exposureRiskDuration,
+            Set<String> participatingCountries
     ) {
         this.version = version;
         this.minimumRiskScore = minimumRiskScore;
@@ -168,6 +178,7 @@ public class ExposureConfiguration {
         this.durationAtAttenuationWeights =
                 assertParams(3, "durationAtAttenuationWeights", durationAtAttenuationWeights);
         this.exposureRiskDuration = exposureRiskDuration;
+        this.participatingCountries = Validation.validateISOCountryCodes(requireNonNull(participatingCountries));
     }
 
     private <T extends Number> List<T> assertParams(int size, String name, List<T> params) {
