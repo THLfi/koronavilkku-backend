@@ -9,9 +9,8 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Array;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -39,7 +38,8 @@ public class ConfigurationDao {
                 "transmission_risk_scores, " +
                 "duration_at_attenuation_thresholds, " +
                 "duration_at_attenuation_weights, " +
-                "exposure_risk_duration " +
+                "exposure_risk_duration, " +
+                "participating_countries " +
                 "from en.exposure_configuration " +
                 "order by version desc " +
                 "limit 1";
@@ -52,7 +52,8 @@ public class ConfigurationDao {
                 toList(rs.getArray("transmission_risk_scores")),
                 toList(rs.getArray("duration_at_attenuation_thresholds")),
                 toList(rs.getArray("duration_at_attenuation_weights")),
-                rs.getInt("exposure_risk_duration")
+                rs.getInt("exposure_risk_duration"),
+                Arrays.stream((String[]) rs.getArray("participating_countries").getArray()).collect(Collectors.toSet())
         ));
     }
 

@@ -23,7 +23,7 @@ public final class TemporaryExposureKeyRequest {
     public final int rollingStartIntervalNumber;
     /** Increments of 10 minutes describing how long a key is valid **/
     public final int rollingPeriod;
-    /** List of visited countries in ISO-3166 alpha-2 format **/
+    /** Set of visited countries in ISO-3166 alpha-2 format **/
     public final Set<String> visitedCountries;
     /** Consent to share data with efgs **/
     public final boolean consentToShareWithEfgs;

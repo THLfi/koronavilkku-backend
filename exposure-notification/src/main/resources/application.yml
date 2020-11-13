@@ -98,6 +98,6 @@ covid19:
       path: "${koronavilkku-efgs-signing-keystore:}"
       password: "${efgs-store-password:devdev}"
       key-alias: signing
-    upload-interval: PT2M
-    download-interval: PT2M
+    upload-interval: PT5M
+    download-interval: PT5M
     error-handling-interval: PT1M
