@@ -6,9 +6,7 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.proto.EfgsProto;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashSet;
@@ -75,11 +73,11 @@ public class FederationGatewayBatchUtil {
         }
     }
 
-    public static String getBatchTag(Instant instant, String postfix) {
-        return getDateString(instant) + "-" + postfix;
+    public static String getBatchTag(LocalDate date, String postfix) {
+        return getDateString(date) + "-" + postfix;
     }
 
-    public static String getDateString(Instant date) {
-        return DateTimeFormatter.ISO_DATE.format(LocalDate.ofInstant(date, ZoneOffset.UTC));
+    public static String getDateString(LocalDate date) {
+        return DateTimeFormatter.ISO_DATE.format(date);
     }
 }

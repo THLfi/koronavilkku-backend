@@ -39,18 +39,18 @@ import java.util.Comparator;
 import java.util.Date;
 
 @Component
-public class FederationBatchSigner {
+public class FederationGatewayBatchSigner {
 
     private static final String DIGEST_ALGORITHM = "SHA256with";
 
-    private static final Logger LOG = LoggerFactory.getLogger(FederationBatchSigner.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FederationGatewayBatchSigner.class);
 
     private final String keyStorePath;
     private final char[] keyStorePassword;
     private final String keyStoreKeyAlias;
     private final KeyStore keyStore;
 
-    public FederationBatchSigner(
+    public FederationGatewayBatchSigner(
             @Value("${covid19.federation-gateway.signing-key-store.path}") String keyStorePath,
             @Value("${covid19.federation-gateway.signing-key-store.password}") String keyStorePassword,
             @Value("${covid19.federation-gateway.signing-key-store.key-alias}") String keyStoreKeyAlias

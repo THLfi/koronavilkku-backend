@@ -1,6 +1,6 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.efgs.FederationOperationDao;
+import fi.thl.covid19.exposurenotification.efgs.OperationDao;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
 import org.slf4j.Logger;
@@ -28,11 +28,11 @@ public class DiagnosisKeyDao {
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyDao.class);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final FederationOperationDao federationOperationDao;
+    private final OperationDao operationDao;
 
-    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate, FederationOperationDao federationOperationDao) {
+    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate, OperationDao operationDao) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
-        this.federationOperationDao = requireNonNull(federationOperationDao);
+        this.operationDao = requireNonNull(operationDao);
         LOG.info("Initialized");
     }
 
@@ -56,7 +56,7 @@ public class DiagnosisKeyDao {
     @Transactional
     public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys, long exportedKeyCount) {
         if (verify(verificationId, requestChecksum, keys.size(), exportedKeyCount) && !keys.isEmpty()) {
-            batchInsert(interval, keys, federationOperationDao.getQueueId());
+            batchInsert(interval, keys, operationDao.getQueueId());
             LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
     }
@@ -134,14 +134,14 @@ public class DiagnosisKeyDao {
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
         if (!keys.isEmpty()) {
             boolean finished = false;
-            long operationId = federationOperationDao.startInboundOperation();
+            long operationId = operationDao.startInboundOperation();
             try {
                 batchInsert(interval, keys, operationId);
                 LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
-                finished = federationOperationDao.finishOperation(operationId, keys.size());
+                finished = operationDao.finishOperation(operationId, keys.size());
             } finally {
                 if (!finished) {
-                    federationOperationDao.markErrorOperation(operationId);
+                    operationDao.markErrorOperation(operationId);
                 }
             }
         }

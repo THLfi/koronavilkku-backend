@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -23,14 +25,14 @@ public class FederationGatewayService {
 
     private final FederationGatewayClient client;
     private final DiagnosisKeyDao dd;
-    private final FederationOperationDao fod;
-    private final FederationBatchSigner signer;
+    private final OperationDao fod;
+    private final FederationGatewayBatchSigner signer;
 
     public FederationGatewayService(
             FederationGatewayClient client,
             DiagnosisKeyDao diagnosisKeyDao,
-            FederationOperationDao fod,
-            FederationBatchSigner signer
+            OperationDao fod,
+            FederationGatewayBatchSigner signer
     ) {
         this.client = client;
         this.dd = diagnosisKeyDao;
@@ -44,9 +46,9 @@ public class FederationGatewayService {
         return operationId;
     }
 
-    public void startInbound(Optional<String> batchTag) {
-        String date = getDateString(Instant.now());
-        doInbound(date, batchTag);
+    public void startInbound(LocalDate date, Optional<String> batchTag) {
+        String dateS = getDateString(date);
+        doInbound(dateS, batchTag);
     }
 
     public void startErronHandling() {
@@ -102,7 +104,7 @@ public class FederationGatewayService {
     }
 
     private ResponseEntity<UploadResponseEntity> handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
-        return client.upload(getBatchTag(Instant.now(), Long.toString(operationId)), signer.sign(batch), batch);
+        return client.upload(getBatchTag(LocalDate.now(ZoneOffset.UTC), Long.toString(operationId)), signer.sign(batch), batch);
     }
 
     private Map<Integer, Integer> handlePartialOutbound(UploadResponseEntity body, List<TemporaryExposureKey> localKeys, long operationId) {
