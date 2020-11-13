@@ -13,8 +13,8 @@ public class FederationGatewayRestClientProperties {
     public final ClientKeyStore clientKeyStore;
 
     public FederationGatewayRestClientProperties(TrustStore trustStore, ClientKeyStore clientKeyStore) {
-        this.trustStore = trustStore;
-        this.clientKeyStore = clientKeyStore;
+        this.trustStore = requireNonNull(trustStore);
+        this.clientKeyStore = requireNonNull(clientKeyStore);
     }
 
     public boolean isMandatoryPropertiesAvailable() {
