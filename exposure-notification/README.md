@@ -97,11 +97,13 @@ API for retrieving exposure configuration parameters as defined in:
 * [Google documentation](https://developers.google.com/android/exposure-notifications/exposure-notifications-api#data-structures)
 * [Apple documentation](https://developer.apple.com/documentation/exposurenotification/enexposureconfiguration)
 
+Participating countries is populated (mainly) from here: https://ec.europa.eu/info/live-work-travel-eu/health/coronavirus-response/travel-during-coronavirus-pandemic/mobile-contact-tracing-apps-eu-member-states_en
+
 ### About Config Versions
 Configuration API responses (AppConfiguration & ExposureConfiguration) return objects with version numbers. 
 The API user should store these objects and request new ones using the version of the previously received configuration.
 If the response comes back empty, the previously stored configuration is up-to-date and can be used as-is. 
-If a config is returned, it should be stored and used instead.  
+If a config is returned, it should be stored and used instead.
 
 ### Get Exposure Configuration
 * **Cache:** This data changes unpredicably, but not often. Cacheable for 1h.
@@ -126,7 +128,8 @@ If a config is returned, it should be stored and used instead.
           "transmissionRiskScoresAndroid": [1,1,1,1,1,1,1,1],
           "durationAtAttenuationThresholds": [50,70],
           "durationAtAttenuationWeights": [1.0, 0.5, 0.0],
-          "exposureRiskDuration": 15
+          "exposureRiskDuration": 15,
+          "participatingCountries": ["DK","DE","IE","IT","LV","ES"]
         }
         ```
   * Configuration is already up to date
