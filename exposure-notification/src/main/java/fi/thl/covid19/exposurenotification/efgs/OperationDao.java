@@ -18,9 +18,9 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 @Repository
-public class FederationOperationDao {
+public class OperationDao {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FederationOperationDao.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OperationDao.class);
 
     public enum EfgsOperationState {QUEUED, STARTED, FINISHED, ERROR}
     public enum EfgsOperationDirection {INBOUND, OUTBOUND}
@@ -28,7 +28,7 @@ public class FederationOperationDao {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    public FederationOperationDao(NamedParameterJdbcTemplate jdbcTemplate) {
+    public OperationDao(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
     }
 
@@ -36,8 +36,8 @@ public class FederationOperationDao {
         String sql = "select id from en.efgs_operation where state = cast(:state as en.state_t) and " +
                 "direction = cast(:direction as en.direction_t)";
         return requireNonNull(jdbcTemplate.queryForObject(sql, Map.of(
-                "state", FederationOperationDao.EfgsOperationState.QUEUED.name(),
-                "direction", FederationOperationDao.EfgsOperationDirection.OUTBOUND.name()
+                "state", OperationDao.EfgsOperationState.QUEUED.name(),
+                "direction", OperationDao.EfgsOperationDirection.OUTBOUND.name()
         ), Long.class));
     }
 

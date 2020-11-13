@@ -5,18 +5,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
-public class FederationSyncProcessor {
+public class FederationGatewaySyncProcessor {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FederationSyncProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);
 
     private final FederationGatewayService fgs;
 
-    public FederationSyncProcessor(FederationGatewayService fgs) {
+    public FederationGatewaySyncProcessor(FederationGatewayService fgs) {
         this.fgs = fgs;
     }
 
@@ -33,7 +35,7 @@ public class FederationSyncProcessor {
             fixedRateString = "${covid19.federation-gateway.download-interval}")
     private void runImportFromEfgs() {
         LOG.info("Starting scheduled import from efgs.");
-        fgs.startInbound(Optional.empty());
+        fgs.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
         LOG.info("Scheduled import from efgs finished.");
     }
 
