@@ -171,7 +171,7 @@ public class FederationServiceWithDaoTestIT {
                 );
         assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(false).orElseThrow(), 5, 2, 2, 1);
         assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).size());
+        assertEquals(3, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).size());
     }
 
     @Test
