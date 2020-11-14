@@ -144,7 +144,10 @@ public class FederationServiceWithDaoTestIT {
                         .body("")
                 );
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(false).orElseThrow(), 5, 5, 0, 0);
+        Set<Long> operationIds = federationGatewayService.startOutbound(false).orElseThrow();
+        assertFalse(operationIds.isEmpty());
+        long operationId = operationIds.stream().findFirst().get();
+        assertUploadOperationStateIsCorrect(operationId, 5, 5, 0, 0);
         assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
         assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).size());
     }
@@ -169,7 +172,10 @@ public class FederationServiceWithDaoTestIT {
                         .contentType(PROTOBUF_MEDIATYPE)
                         .body("")
                 );
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(false).orElseThrow(), 5, 2, 2, 1);
+        Set<Long> operationIds = federationGatewayService.startOutbound(false).orElseThrow();
+        assertFalse(operationIds.isEmpty());
+        long operationId = operationIds.stream().findFirst().get();
+        assertUploadOperationStateIsCorrect(operationId, 5, 2, 2, 1);
         assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
         assertEquals(3, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).size());
     }
@@ -222,6 +228,38 @@ public class FederationServiceWithDaoTestIT {
         assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
     }
 
+    @Test
+    public void uploadInBatch() {
+        mockServer.expect(ExpectedCount.twice(),
+                requestTo("http://localhost:8080/diagnosiskeys/upload/"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("")
+                );
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
+                to24HourInterval(Instant.now()), keyGenerator.someKeys(10000), 10000);
+
+        Set<Long> operationIds = federationGatewayService.startOutbound(false).orElseThrow();
+        assertFalse(operationIds.isEmpty());
+        assertEquals(2, operationIds.size());
+        operationIds.forEach(id -> assertUploadOperationStateIsCorrect(id, 5000, 5000, 0, 0));
+    }
+
+    @Test
+    public void fetchPartialBatch() {
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
+                to24HourInterval(Instant.now()), keyGenerator.someKeys(5005), 5005);
+
+        List<TemporaryExposureKey> batch1 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false);
+        List<TemporaryExposureKey> batch2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false);
+        List<TemporaryExposureKey> batch3 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false);
+
+        assertEquals(5000, batch1.size());
+        assertEquals(5, batch2.size());
+        assertEquals(0, batch3.size());
+    }
+
     private void doOutBound() {
         try {
             federationGatewayService.startOutbound(false).orElseThrow();
@@ -250,9 +288,7 @@ public class FederationServiceWithDaoTestIT {
         assertEquals(keysCount, resultSet.get("keys_count_total"));
     }
 
-    private void assertUploadOperationStateIsCorrect(Set<Long> operationIds, int total, int c201, int c409, int c500) {
-        assertFalse(operationIds.isEmpty());
-        long operationId = operationIds.stream().findFirst().get();
+    private void assertUploadOperationStateIsCorrect(long operationId, int total, int c201, int c409, int c500) {
         Map<String, Object> resultSet = getOperation(operationId);
         assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
         assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());

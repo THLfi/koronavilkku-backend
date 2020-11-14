@@ -120,12 +120,15 @@ public class DiagnosisKeyDao {
     public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(boolean retry) {
         LOG.info("Fetching queued keys not sent to efgs.");
 
-        String sql = "with queued_to_efgs as ( " +
-                "update en.diagnosis_key set sent_to_efgs = true, retry_count = retry_count + 1 " +
-                "where not sent_to_efgs and retry_count >= :min_retry_count and retry_count < :max_retry_count " +
-                "returning * ) " +
-                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share from queued_to_efgs limit 5000 ";
+        String sql = "with batch as ( " +
+                "select key_data " +
+                "from en.diagnosis_key " +
+                "where not sent_to_efgs and retry_count >= :min_retry_count and retry_count < :max_retry_count limit 5000 ) " +
+                "update en.diagnosis_key " +
+                "set sent_to_efgs = true, retry_count = retry_count + 1 " +
+                "where key_data in (select key_data from batch) " +
+                "returning key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share";
 
         return new ArrayList<>(jdbcTemplate.query(sql, Map.of(
                 "min_retry_count", retry ? 1 : 0,
