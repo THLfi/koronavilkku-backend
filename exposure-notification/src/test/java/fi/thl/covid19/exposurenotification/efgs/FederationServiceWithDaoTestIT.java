@@ -25,7 +25,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.IntStream;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.MAX_RETRY_COUNT;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
@@ -44,13 +47,13 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
 @ActiveProfiles({"dev", "test"})
 public class FederationServiceWithDaoTestIT {
 
-    private static MediaType PROTOBUF_MEDIATYPE = new MediaType("application", "protobuf", 1.0);
+    private static final MediaType PROTOBUF_MEDIATYPE = new MediaType("application", "protobuf", 1.0);
 
     @Autowired
-    DiagnosisKeyDao dd;
+    DiagnosisKeyDao diagnosisKeyDao;
 
     @Autowired
-    OperationDao fod;
+    OperationDao operationDao;
 
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
@@ -76,8 +79,8 @@ public class FederationServiceWithDaoTestIT {
     public void setUp() {
         mockServer = MockRestServiceServer.bindTo(restTemplate).build(new SimpleRequestExpectationManager());
         keyGenerator = new TestKeyGenerator(123);
-        dd.deleteKeysBefore(Integer.MAX_VALUE);
-        dd.deleteVerificationsBefore(Instant.now().plus(24, ChronoUnit.HOURS));
+        diagnosisKeyDao.deleteKeysBefore(Integer.MAX_VALUE);
+        diagnosisKeyDao.deleteVerificationsBefore(Instant.now().plus(24, ChronoUnit.HOURS));
         deleteOperations();
     }
 
@@ -94,9 +97,9 @@ public class FederationServiceWithDaoTestIT {
                 );
         federationGatewayService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
-        List<TemporaryExposureKey> dbKeys = dd.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
+        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
         assertTrue(keys.size() == dbKeys.size() && dbKeys.containsAll(keys) && keys.containsAll(dbKeys));
-        assertDownloadOperationStateIsCorrect(keys.get(1), 10);
+        assertDownloadOperationStateIsCorrect(10);
     }
 
     @Test
@@ -120,7 +123,7 @@ public class FederationServiceWithDaoTestIT {
                 );
         federationGatewayService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
-        List<TemporaryExposureKey> dbKeys = dd.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
+        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
         assertEquals(dbKeys.size(), keys.size());
         assertTrue(dbKeys.get(0).daysSinceOnsetOfSymptoms.get() == 1 &&
                 calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKeys.get(0).transmissionRiskLevel);
@@ -140,15 +143,16 @@ public class FederationServiceWithDaoTestIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
-        dd.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
-        long expectedOperationId = getQueuedOperation();
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 5, 0, 0, expectedOperationId);
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(false).orElseThrow(), 5, 5, 0, 0);
+        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
+        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).size());
     }
 
     @Test
     public void uploadKeysPartialSuccess() throws Exception {
         List<TemporaryExposureKey> keys = keyGenerator.someKeys(5);
-        dd.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keys, 5);
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keys, 5);
 
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/upload/"))
@@ -165,8 +169,9 @@ public class FederationServiceWithDaoTestIT {
                         .contentType(PROTOBUF_MEDIATYPE)
                         .body("")
                 );
-        long expectedOperationId = getQueuedOperation();
-        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound().orElseThrow(), 5, 2, 2, 1, expectedOperationId);
+        assertUploadOperationStateIsCorrect(federationGatewayService.startOutbound(false).orElseThrow(), 5, 2, 2, 1);
+        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
+        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).size());
     }
 
     @Test
@@ -185,36 +190,70 @@ public class FederationServiceWithDaoTestIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
-        dd.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
+                to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
 
         try {
-            federationGatewayService.startOutbound().orElseThrow();
+            federationGatewayService.startOutbound(false).orElseThrow();
         } catch (Exception e) {
             assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
         }
-        federationGatewayService.startErronHandling();
-        assertUploadOperationErrorStateIsChangedToFinished();
-        assertEquals(0, fod.getOutboundOperationsInError().size());
+        Set<Long> operationIds = federationGatewayService.startOutbound(true).orElseThrow();
+        assertUploadOperationErrorStateIsFinished(operationIds.stream().findFirst().get());
+        assertEquals(1, getOutboundOperationsInError().size());
+        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
     }
 
-    private void assertDownloadOperationStateIsCorrect(TemporaryExposureKey key, int keysCount) {
-        String sql = "select * from en.efgs_operation where id = (select efgs_operation from en.diagnosis_key where key_data = :key_data)";
-        Map<String, Object> resultSet = jdbcTemplate.queryForMap(sql, Map.of("key_data", key.keyData));
+    @Test
+    public void uploadKeysRetriedUntilMaxRetryCount() {
+        mockServer.expect(ExpectedCount.manyTimes(),
+                requestTo("http://localhost:8080/diagnosiskeys/upload/"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("")
+                );
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
+                to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+
+        doOutBound();
+        IntStream.range(1, MAX_RETRY_COUNT).forEach(this::doOutBoundRetry);
+        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).size());
+        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
+    }
+
+    private void doOutBound() {
+        try {
+            federationGatewayService.startOutbound(false).orElseThrow();
+        } catch (Exception e) {
+            assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
+            assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
+        }
+    }
+
+    private void doOutBoundRetry(int i) {
+        try {
+            federationGatewayService.startOutbound(true).orElseThrow();
+        } catch (Exception e) {
+            assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
+            assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).size());
+            getAllDiagnosisKeys().forEach(key ->
+                    assertEquals(i + 1, key.get("retry_count"))
+            );
+        }
+    }
+
+    private void assertDownloadOperationStateIsCorrect(int keysCount) {
+        Map<String, Object> resultSet = getLatestOperation();
         assertEquals(EfgsOperationDirection.INBOUND.name(), resultSet.get("direction").toString());
         assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
         assertEquals(keysCount, resultSet.get("keys_count_total"));
     }
 
-    private String generateMultiStatusUploadResponseBody() throws Exception {
-        UploadResponseEntity body = new UploadResponseEntity();
-        body.putAll(Map.of(201, List.of(0, 1), 409, List.of(2, 3), 500, List.of(4)));
-        return objectMapper.writeValueAsString(body);
-    }
-
-    private void assertUploadOperationStateIsCorrect(long operationId, int total, int c201, int c409, int c500, long expectedOperationId) {
+    private void assertUploadOperationStateIsCorrect(Set<Long> operationIds, int total, int c201, int c409, int c500) {
+        assertFalse(operationIds.isEmpty());
+        long operationId = operationIds.stream().findFirst().get();
         Map<String, Object> resultSet = getOperation(operationId);
-        assertEquals(expectedOperationId, operationId);
-        assertEquals(total, getDiagnosisKeyByOperation(expectedOperationId).size());
         assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
         assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
         assertEquals(total, resultSet.get("keys_count_total"));
@@ -229,16 +268,10 @@ public class FederationServiceWithDaoTestIT {
         assertEquals(EfgsOperationState.ERROR.name(), resultSet.get("state").toString());
     }
 
-    private void assertUploadOperationErrorStateIsChangedToFinished() {
-        Map<String, Object> resultSet = getLatestOperation();
+    private void assertUploadOperationErrorStateIsFinished(long operationId) {
+        Map<String, Object> resultSet = getOperation(operationId);
         assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
         assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
-        assertEquals(2, resultSet.get("run_count"));
-    }
-
-    private List<Map<String, Object>> getDiagnosisKeyByOperation(long operationId) {
-        String sql = "select * from en.diagnosis_key where efgs_operation = :operation_id";
-        return jdbcTemplate.queryForList(sql, Map.of("operation_id", operationId));
     }
 
     private Map<String, Object> getLatestOperation() {
@@ -246,14 +279,20 @@ public class FederationServiceWithDaoTestIT {
         return jdbcTemplate.queryForMap(sql, Map.of());
     }
 
-    private long getQueuedOperation() {
-        String sql = "select id from en.efgs_operation where state = cast(:state as en.state_t)";
-        return jdbcTemplate.queryForObject(sql, Map.of("state", EfgsOperationState.QUEUED.name()), Long.class);
-    }
-
     private Map<String, Object> getOperation(long operationId) {
         String sql = "select * from en.efgs_operation where id = :id";
         return jdbcTemplate.queryForMap(sql, Map.of("id", operationId));
+    }
+
+    private List<Map<String, Object>> getAllDiagnosisKeys() {
+        String sql = "select * from en.diagnosis_key";
+        return jdbcTemplate.queryForList(sql, Map.of());
+    }
+
+    private String generateMultiStatusUploadResponseBody() throws Exception {
+        FederationGatewayClient.UploadResponseEntityInner body = new FederationGatewayClient.UploadResponseEntityInner();
+        body.putAll(Map.of(201, List.of(0, 1), 409, List.of(2, 3), 500, List.of(4)));
+        return objectMapper.writeValueAsString(body);
     }
 
     private HttpHeaders getDownloadResponseHeaders() {
@@ -264,12 +303,22 @@ public class FederationServiceWithDaoTestIT {
     }
 
     private void deleteOperations() {
-        String sql = "delete from en.efgs_operation where state <> cast(:state as en.state_t)";
-        jdbcTemplate.update(sql, Map.of("state", EfgsOperationState.QUEUED.name()));
+        String sql = "delete from en.efgs_operation";
+        jdbcTemplate.update(sql, Map.of());
     }
 
     private int calculateTransmissionRisk(int rollingStartIntervalNumber, int dsos) {
         LocalDate keyDate = utcDateOf10MinInterval(rollingStartIntervalNumber);
         return getRiskBucket(LocalDate.from(keyDate).plusDays(dsos), keyDate);
+    }
+
+    public List<Long> getOutboundOperationsInError() {
+        String sql = "select id from en.efgs_operation " +
+                "where state = cast(:state as en.state_t) " +
+                "and direction = cast(:direction as en.direction_t) ";
+        return jdbcTemplate.queryForList(sql, Map.of(
+                "state", EfgsOperationState.ERROR.name(),
+                "direction", EfgsOperationDirection.OUTBOUND.name()
+        ), Long.class);
     }
 }

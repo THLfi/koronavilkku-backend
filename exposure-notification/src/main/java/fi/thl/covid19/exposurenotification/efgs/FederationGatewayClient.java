@@ -1,8 +1,6 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
 import fi.thl.covid19.proto.EfgsProto;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -14,6 +12,7 @@ import java.util.*;
 
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.deserialize;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.serialize;
+import static java.util.Objects.requireNonNull;
 
 @Component
 public class FederationGatewayClient {
@@ -41,14 +40,14 @@ public class FederationGatewayClient {
         this.devDN = devDN;
     }
 
-    public ResponseEntity<UploadResponseEntity> upload(String batchTag, String batchSignature, EfgsProto.DiagnosisKeyBatch batchData) {
-        return restTemplate.exchange(
+    public UploadResponseEntity upload(String batchTag, String batchSignature, EfgsProto.DiagnosisKeyBatch batchData) {
+        return transform(restTemplate.exchange(
                 gatewayUrl,
                 HttpMethod.POST,
                 new HttpEntity<>(serialize(batchData), getUploadHttpHeaders(batchTag, batchSignature)),
-                UploadResponseEntity.class,
+                UploadResponseEntityInner.class,
                 getUriVariables("upload", "")
-        );
+        ));
     }
 
     public List<EfgsProto.DiagnosisKeyBatch> download(String dateVar, Optional<String> batchTag) {
@@ -66,6 +65,18 @@ public class FederationGatewayClient {
         } while (nextTag.isPresent());
 
         return data;
+    }
+
+    private UploadResponseEntity transform(ResponseEntity<UploadResponseEntityInner> res) {
+        Optional<Map<Integer, List<Integer>>> body =
+                res.getStatusCodeValue() == 207 ?
+                        Optional.of(Map.of(
+                                201, requireNonNull(requireNonNull(res.getBody()).get(201)),
+                                409, requireNonNull(requireNonNull(res.getBody()).get(409)),
+                                500, requireNonNull(requireNonNull(res.getBody()).get(500))
+                        )) : Optional.empty();
+
+        return new UploadResponseEntity(res.getStatusCode(), body);
     }
 
     private ResponseEntity<byte[]> doDownload(String dateVar, Optional<String> batchTag) {
@@ -122,5 +133,8 @@ public class FederationGatewayClient {
         } else {
             return Optional.empty();
         }
+    }
+
+    public static class UploadResponseEntityInner extends HashMap<Integer, List<Integer>> {
     }
 }

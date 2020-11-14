@@ -3,47 +3,48 @@ package fi.thl.covid19.exposurenotification.efgs;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
-import fi.thl.covid19.exposurenotification.error.EfgsOperationException;
 import fi.thl.covid19.proto.EfgsProto;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
 
 @Service
 public class FederationGatewayService {
-
-    private static final int BATCH_MAX_SIZE = 5000;
-
     private final FederationGatewayClient client;
-    private final DiagnosisKeyDao dd;
-    private final OperationDao fod;
+    private final DiagnosisKeyDao diagnosisKeyDao;
+    private final OperationDao operationDao;
     private final FederationGatewayBatchSigner signer;
 
     public FederationGatewayService(
             FederationGatewayClient client,
             DiagnosisKeyDao diagnosisKeyDao,
-            OperationDao fod,
+            OperationDao operationDao,
             FederationGatewayBatchSigner signer
     ) {
         this.client = client;
-        this.dd = diagnosisKeyDao;
-        this.fod = fod;
+        this.diagnosisKeyDao = diagnosisKeyDao;
+        this.operationDao = operationDao;
         this.signer = signer;
     }
 
-    public Optional<Long> startOutbound() {
-        Optional<Long> operationId = fod.startOutboundOperation();
-        operationId.ifPresent(this::doOutbound);
-        return operationId;
+    public Optional<Set<Long>> startOutbound(boolean retry) {
+        List<TemporaryExposureKey> localKeys = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry);
+        Set<Long> operationsProcessed = new HashSet<>();
+
+        while (!localKeys.isEmpty()) {
+            long operationId = operationDao.startOperation(OperationDao.EfgsOperationDirection.OUTBOUND);
+            operationsProcessed.add(operationId);
+            doOutbound(localKeys, operationId);
+            localKeys = diagnosisKeyDao.fetchAvailableKeysForEfgs(false);
+        }
+
+        return Optional.of(operationsProcessed);
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {
@@ -51,72 +52,62 @@ public class FederationGatewayService {
         doInbound(dateS, batchTag);
     }
 
-    public void startErronHandling() {
-        fod.setStalledToError();
-        List<Long> errorOperations = fod.getOutboundOperationsInError();
-        errorOperations.forEach(this::doOutbound);
-    }
-
     private void doInbound(String date, Optional<String> batchTag) {
-        client.download(date, batchTag).forEach(
-                d -> dd.addInboundKeys(transform(d), IntervalNumber.to24HourInterval(Instant.now()))
-        );
+        client.download(date, batchTag).forEach(this::addInboundKeys);
     }
 
-    private void doOutbound(long operationId) {
+    private void addInboundKeys(EfgsProto.DiagnosisKeyBatch batch) {
+        long operationId = operationDao.startOperation(OperationDao.EfgsOperationDirection.INBOUND);
         boolean finished = false;
+
         try {
-            List<List<TemporaryExposureKey>> localKeys = partitionIntoBatches(dd.fetchAvailableKeysForEfgs(operationId));
+            List<TemporaryExposureKey> keys = transform(batch);
+            diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
+            finished = operationDao.finishOperation(operationId, keys.size());
 
-            AtomicInteger total201Count = new AtomicInteger();
-            AtomicInteger total409Count = new AtomicInteger();
-            AtomicInteger total500Count = new AtomicInteger();
-
-            localKeys.forEach(
-                    batch -> {
-                        ResponseEntity<UploadResponseEntity> res = handleOutbound(transform(batch), operationId);
-                        // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
-                        if (res.getStatusCodeValue() == 207) {
-                            Map<Integer, Integer> responseCounts = handlePartialOutbound(res.getBody(), batch, operationId);
-                            total201Count.addAndGet(responseCounts.get(201));
-                            total409Count.addAndGet(responseCounts.get(409));
-                            total500Count.addAndGet(responseCounts.get(500));
-                        } else {
-                            total201Count.addAndGet(batch.size());
-                        }
-                    }
-            );
-            finished = fod.finishOperation(operationId,
-                    total201Count.get() + total409Count.get() + total500Count.get(),
-                    total201Count.get(),
-                    total409Count.get(), total500Count.get());
         } finally {
             if (!finished) {
-                fod.markErrorOperation(operationId);
+                operationDao.markErrorOperation(operationId);
             }
         }
     }
 
-    private List<List<TemporaryExposureKey>> partitionIntoBatches(List<TemporaryExposureKey> objs) {
-        return new ArrayList<>(IntStream.range(0, objs.size()).boxed().collect(
-                Collectors.groupingBy(e -> e / BATCH_MAX_SIZE, Collectors.mapping(objs::get, Collectors.toList())
-                )).values());
+    private void doOutbound(List<TemporaryExposureKey> localKeys, long operationId) {
+        boolean finished = false;
+        try {
+            UploadResponseEntity res = handleOutbound(transform(localKeys), operationId);
+            // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
+            if (res.httpStatus.value() == 207) {
+                Map<Integer, Integer> responseCounts = handlePartialOutbound(res.multiStatuses.orElseThrow(), localKeys, operationId);
+                finished = operationDao.finishOperation(operationId,
+                        responseCounts.get(201) + responseCounts.get(409) + responseCounts.get(500),
+                        responseCounts.get(201), responseCounts.get(409), responseCounts.get(500));
+            } else {
+                finished = operationDao.finishOperation(operationId,
+                        localKeys.size(), localKeys.size(), 0, 0);
+            }
+        } finally {
+            if (!finished) {
+                operationDao.markErrorOperation(operationId);
+                diagnosisKeyDao.setNotSend(localKeys);
+            }
+        }
     }
 
-    private ResponseEntity<UploadResponseEntity> handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
+    private UploadResponseEntity handleOutbound(EfgsProto.DiagnosisKeyBatch batch, long operationId) {
         return client.upload(getBatchTag(LocalDate.now(ZoneOffset.UTC), Long.toString(operationId)), signer.sign(batch), batch);
     }
 
-    private Map<Integer, Integer> handlePartialOutbound(UploadResponseEntity body, List<TemporaryExposureKey> localKeys, long operationId) {
-        List<Integer> successKeysIdx = Objects.requireNonNull(body).get(201);
-        List<Integer> keysIdx409 = Objects.requireNonNull(body).get(409);
-        List<Integer> keysIdx500 = Objects.requireNonNull(body).get(500);
+    private Map<Integer, Integer> handlePartialOutbound(Map<Integer, List<Integer>> statuses, List<TemporaryExposureKey> localKeys, long operationId) {
+        List<Integer> successKeysIdx = statuses.get(201);
+        List<Integer> keysIdx409 = statuses.get(409);
+        List<Integer> keysIdx500 = statuses.get(500);
         List<TemporaryExposureKey> successKeys = successKeysIdx.stream().map(localKeys::get).collect(Collectors.toList());
 
-        ResponseEntity<UploadResponseEntity> resendRes = handleOutbound(transform(successKeys), operationId);
+        UploadResponseEntity resendRes = handleOutbound(transform(successKeys), operationId);
 
-        if (resendRes.getStatusCodeValue() == 207)
-            throw new EfgsOperationException("Upload to efgs still failing after resend.");
+        if (resendRes.httpStatus.value() == 207)
+            throw new IllegalStateException("Upload to efgs still failing after resend 207 success keys.");
 
         return Map.of(201, successKeysIdx.size(), 409, keysIdx409.size(), 500, keysIdx500.size());
     }

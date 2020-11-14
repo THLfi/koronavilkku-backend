@@ -46,7 +46,6 @@ spring:
       connection-timeout: 20000
       leak-detection-threshold: 60000
       validation-timeout: 5000
-      connection-test-query: SELECT 1
   servlet:
     multipart:
       max-file-size: 10MB
@@ -99,5 +98,5 @@ covid19:
       password: "${efgs-store-password:devdev}"
       key-alias: signing
     upload-interval: PT5M
-    download-interval: PT5M
+    download-interval: PT10M
     error-handling-interval: PT1M

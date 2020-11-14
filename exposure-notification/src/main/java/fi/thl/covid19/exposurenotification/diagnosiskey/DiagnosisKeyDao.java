@@ -1,6 +1,5 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.efgs.OperationDao;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
 import org.slf4j.Logger;
@@ -26,13 +25,12 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class DiagnosisKeyDao {
 
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyDao.class);
+    public static final int MAX_RETRY_COUNT = 3;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final OperationDao operationDao;
 
-    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate, OperationDao operationDao) {
+    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
-        this.operationDao = requireNonNull(operationDao);
         LOG.info("Initialized");
     }
 
@@ -56,7 +54,7 @@ public class DiagnosisKeyDao {
     @Transactional
     public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys, long exportedKeyCount) {
         if (verify(verificationId, requestChecksum, keys.size(), exportedKeyCount) && !keys.isEmpty()) {
-            batchInsert(interval, keys, operationDao.getQueueId());
+            batchInsert(interval, keys, false);
             LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
     }
@@ -119,31 +117,31 @@ public class DiagnosisKeyDao {
         }
     }
 
-    public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(long operationId) {
+    public List<TemporaryExposureKey> fetchAvailableKeysForEfgs(boolean retry) {
         LOG.info("Fetching queued keys not sent to efgs.");
-        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share " +
-                "from en.diagnosis_key " +
-                "where efgs_operation = :efgs_operation " +
-                "order by key_data";
 
-        return new ArrayList<>(jdbcTemplate.query(sql, Map.of("efgs_operation", operationId), (rs, i) -> mapKey(rs)));
+        String sql = "with queued_to_efgs as ( " +
+                "update en.diagnosis_key set sent_to_efgs = true, retry_count = retry_count + 1 " +
+                "where not sent_to_efgs and retry_count >= :min_retry_count and retry_count < :max_retry_count " +
+                "returning * ) " +
+                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share from queued_to_efgs limit 5000 ";
+
+        return new ArrayList<>(jdbcTemplate.query(sql, Map.of(
+                "min_retry_count", retry ? 1 : 0,
+                "max_retry_count", retry ? MAX_RETRY_COUNT : 1
+        ), (rs, i) -> mapKey(rs)));
     }
 
-    @Transactional
+    public void setNotSend(List<TemporaryExposureKey> keys) {
+        String sql = "update en.diagnosis_key set sent_to_efgs = false where key_data in (:key_datas)";
+        jdbcTemplate.update(sql, Map.of("key_datas", keys.stream().map(key -> key.keyData).collect(Collectors.toList())));
+    }
+
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
         if (!keys.isEmpty()) {
-            boolean finished = false;
-            long operationId = operationDao.startInboundOperation();
-            try {
-                batchInsert(interval, keys, operationId);
-                LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
-                finished = operationDao.finishOperation(operationId, keys.size());
-            } finally {
-                if (!finished) {
-                    operationDao.markErrorOperation(operationId);
-                }
-            }
+            batchInsert(interval, keys, true);
+            LOG.info("Inserted keys from efgs: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
     }
 
@@ -152,15 +150,15 @@ public class DiagnosisKeyDao {
         return jdbcTemplate.queryForObject(sql, Map.of("verification_id", verificationId), String.class);
     }
 
-    private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, long operationId) {
+    private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, boolean sentToEfgs) {
         String sql = "insert into " +
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_operation) " +
+                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, sent_to_efgs) " +
                 "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, " +
-                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_operation) " +
+                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :sent_to_efgs) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
-                .map(key -> createParamsMap(interval, key, operationId))
+                .map(key -> createParamsMap(interval, key, sentToEfgs))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);
         jdbcTemplate.batchUpdate(sql, params);
     }
@@ -197,7 +195,7 @@ public class DiagnosisKeyDao {
         );
     }
 
-    private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key, long operationId) {
+    private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key, boolean sentToEfgs) {
         Map<String, Object> params = new HashMap<>();
         params.put("key_data", key.keyData);
         params.put("rolling_period", key.rollingPeriod);
@@ -208,7 +206,7 @@ public class DiagnosisKeyDao {
         params.put("visited_countries", key.visitedCountries.toArray(new String[0]));
         params.put("consent_to_share", key.consentToShareWithEfgs);
         params.put("days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms.orElse(null));
-        params.put("efgs_operation", operationId);
+        params.put("sent_to_efgs", sentToEfgs);
         return params;
     }
 }

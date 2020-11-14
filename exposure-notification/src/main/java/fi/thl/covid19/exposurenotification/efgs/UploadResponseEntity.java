@@ -1,7 +1,18 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
-import java.util.HashMap;
-import java.util.List;
+import org.springframework.http.HttpStatus;
 
-public class UploadResponseEntity extends HashMap<Integer, List<Integer>> {
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+public class UploadResponseEntity {
+
+    public HttpStatus httpStatus;
+    public Optional<Map<Integer, List<Integer>>> multiStatuses;
+
+    public UploadResponseEntity(HttpStatus httpStatus, Optional<Map<Integer, List<Integer>>> multiStatuses) {
+        this.httpStatus = httpStatus;
+        this.multiStatuses = multiStatuses;
+    }
 }
