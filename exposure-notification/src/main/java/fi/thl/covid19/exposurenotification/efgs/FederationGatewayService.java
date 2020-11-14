@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
 
@@ -109,6 +110,9 @@ public class FederationGatewayService {
         if (resendRes.httpStatus.value() == 207)
             throw new IllegalStateException("Upload to efgs still failing after resend 207 success keys.");
 
+        // There is not much sense to resend 409 keys again, or even 500, but for simplicity this will be done anyway for now
+        List<TemporaryExposureKey> failedKeys = Stream.concat(keysIdx409.stream(), keysIdx500.stream()).map(localKeys::get).collect(Collectors.toList());
+        diagnosisKeyDao.setNotSend(failedKeys);
         return Map.of(201, successKeysIdx.size(), 409, keysIdx409.size(), 500, keysIdx500.size());
     }
 }
