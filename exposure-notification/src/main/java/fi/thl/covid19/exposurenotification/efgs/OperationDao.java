@@ -67,7 +67,7 @@ public class OperationDao {
         ));
     }
 
-    public List<Timestamp> getCrashed() {
+    public List<Timestamp> getOutboundCrashed() {
         String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t) " +
                 "where state = cast(:current_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
                 "and updated_at < :max_age returning updated_at";
@@ -77,6 +77,18 @@ public class OperationDao {
                 "direction", EfgsOperationDirection.OUTBOUND.name(),
                 "max_age", new Timestamp(Instant.now().minus(Duration.ofMinutes(STALLED_MIN_AGE_IN_MINUTES)).toEpochMilli())
         ), Timestamp.class);
+    }
+
+    public void updateInboundCrashedToError() {
+        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t) " +
+                "where state = cast(:current_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
+                "and updated_at < :max_age";
+        jdbcTemplate.update(sql, Map.of(
+                "new_state", EfgsOperationState.ERROR.name(),
+                "current_state", EfgsOperationState.STARTED.name(),
+                "direction", EfgsOperationDirection.INBOUND.name(),
+                "max_age", new Timestamp(Instant.now().minus(Duration.ofMinutes(STALLED_MIN_AGE_IN_MINUTES)).toEpochMilli())
+        ));
     }
 
     public long startOperation(EfgsOperationDirection direction) {

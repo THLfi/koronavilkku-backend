@@ -100,6 +100,7 @@ public class FederationServiceWithDaoTestIT {
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
         assertTrue(keys.size() == dbKeys.size() && dbKeys.containsAll(keys) && keys.containsAll(dbKeys));
+        operationDao.updateInboundCrashedToError();
         assertDownloadOperationStateIsCorrect(10);
     }
 
@@ -280,12 +281,12 @@ public class FederationServiceWithDaoTestIT {
         assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
         assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         createCrashed();
-        diagnosisKeyDao.resolveCrash();
+        diagnosisKeyDao.resolveOutboundCrash();
         assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
     }
 
     private void assertCrashDoNotReturnKeys() {
-        diagnosisKeyDao.resolveCrash();
+        diagnosisKeyDao.resolveOutboundCrash();
         assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
         assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
     }

@@ -47,7 +47,8 @@ public class FederationGatewayService {
     }
 
     public void resolveCrash() {
-        diagnosisKeyDao.resolveCrash();
+        operationDao.updateInboundCrashedToError();
+        diagnosisKeyDao.resolveOutboundCrash();
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {

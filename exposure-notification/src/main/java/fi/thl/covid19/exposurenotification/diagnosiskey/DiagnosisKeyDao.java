@@ -159,8 +159,8 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public void resolveCrash() {
-        List<Timestamp> crashed = operationDao.getCrashed();
+    public void resolveOutboundCrash() {
+        List<Timestamp> crashed = operationDao.getOutboundCrashed();
 
         if (!crashed.isEmpty()) {
             String sql = "update en.diagnosis_key set sent_to_efgs = null, retry_count = 0 where sent_to_efgs in (:timestamp)";
