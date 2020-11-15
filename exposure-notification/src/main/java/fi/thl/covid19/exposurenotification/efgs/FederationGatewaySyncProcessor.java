@@ -27,8 +27,8 @@ public class FederationGatewaySyncProcessor {
             fixedRateString = "${covid19.federation-gateway.upload-interval}")
     private void runExportToEfgs() {
         LOG.info("Starting scheduled export to efgs.");
-        Optional<Set<Long>> operationIds = federationGatewayService.startOutbound(false);
-        LOG.info("Scheduled export to efgs finished. {}", keyValue("operationId", operationIds.orElse(Set.of())));
+        Set<Long> operationIds = federationGatewayService.startOutbound(false);
+        LOG.info("Scheduled export to efgs finished. {}", keyValue("operationId", operationIds));
     }
 
     @Scheduled(initialDelayString = "${covid19.federation-gateway.download-interval}",

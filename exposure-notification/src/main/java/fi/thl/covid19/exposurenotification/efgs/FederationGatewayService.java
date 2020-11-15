@@ -34,16 +34,16 @@ public class FederationGatewayService {
         this.signer = signer;
     }
 
-    public Optional<Set<Long>> startOutbound(boolean retry) {
-        FederationOutboundOperation operation;
+    public Set<Long> startOutbound(boolean retry) {
+        Optional<FederationOutboundOperation> operation;
         Set<Long> operationsProcessed = new HashSet<>();
 
-        while (!(operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).keys.isEmpty()) {
-            operationsProcessed.add(operation.operationId);
-            doOutbound(operation);
+        while ((operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).isPresent()) {
+            operationsProcessed.add(operation.get().operationId);
+            doOutbound(operation.get());
         }
 
-        return Optional.of(operationsProcessed);
+        return operationsProcessed;
     }
 
     public void resolveCrash() {

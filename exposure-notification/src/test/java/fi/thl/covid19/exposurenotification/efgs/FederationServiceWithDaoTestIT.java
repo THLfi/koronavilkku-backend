@@ -145,12 +145,12 @@ public class FederationServiceWithDaoTestIT {
                         .body("")
                 );
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
-        Set<Long> operationIds = federationGatewayService.startOutbound(false).orElseThrow();
+        Set<Long> operationIds = federationGatewayService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
         long operationId = operationIds.stream().findFirst().get();
         assertUploadOperationStateIsCorrect(operationId, 5, 5, 0, 0);
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).keys.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
         assertCrashDoNotReturnKeys();
     }
 
@@ -174,12 +174,12 @@ public class FederationServiceWithDaoTestIT {
                         .contentType(PROTOBUF_MEDIATYPE)
                         .body("")
                 );
-        Set<Long> operationIds = federationGatewayService.startOutbound(false).orElseThrow();
+        Set<Long> operationIds = federationGatewayService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
         long operationId = operationIds.stream().findFirst().get();
         assertUploadOperationStateIsCorrect(operationId, 5, 2, 2, 1);
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
-        assertEquals(3, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).keys.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertEquals(3, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).get().keys.size());
         assertCrashDoNotReturnKeys();
     }
 
@@ -203,14 +203,14 @@ public class FederationServiceWithDaoTestIT {
                 to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
 
         try {
-            federationGatewayService.startOutbound(false).orElseThrow();
+            federationGatewayService.startOutbound(false);
         } catch (Exception e) {
             assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
         }
-        Set<Long> operationIds = federationGatewayService.startOutbound(true).orElseThrow();
+        Set<Long> operationIds = federationGatewayService.startOutbound(true);
         assertUploadOperationErrorStateIsFinished(operationIds.stream().findFirst().get());
         assertEquals(1, getOutboundOperationsInError().size());
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         assertCrashDoNotReturnKeys();
     }
 
@@ -228,8 +228,8 @@ public class FederationServiceWithDaoTestIT {
 
         doOutBound();
         IntStream.range(1, MAX_RETRY_COUNT).forEach(this::doOutBoundRetry);
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).keys.size());
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         assertCrashDoNotReturnKeys();
     }
 
@@ -245,7 +245,7 @@ public class FederationServiceWithDaoTestIT {
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
                 to24HourInterval(Instant.now()), keyGenerator.someKeys(10000), 10000);
 
-        Set<Long> operationIds = federationGatewayService.startOutbound(false).orElseThrow();
+        Set<Long> operationIds = federationGatewayService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
         assertEquals(2, operationIds.size());
         operationIds.forEach(id -> assertUploadOperationStateIsCorrect(id, 5000, 5000, 0, 0));
@@ -257,20 +257,19 @@ public class FederationServiceWithDaoTestIT {
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
                 to24HourInterval(Instant.now()), keyGenerator.someKeys(5005), 5005);
 
-        List<TemporaryExposureKey> batch1 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys;
-        List<TemporaryExposureKey> batch2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys;
-        List<TemporaryExposureKey> batch3 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys;
+        List<TemporaryExposureKey> batch1 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
+        List<TemporaryExposureKey> batch2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
 
         assertEquals(5000, batch1.size());
         assertEquals(5, batch2.size());
-        assertEquals(0, batch3.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
     }
 
     @Test
     public void crashDoNotReturnKeys() {
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
                 to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
-        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
         assertCrashDoNotReturnKeys();
     }
 
@@ -278,34 +277,34 @@ public class FederationServiceWithDaoTestIT {
     public void crashDoReturnKeys() {
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
                 to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
-        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         createCrashed();
         diagnosisKeyDao.resolveCrash();
-        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
     }
 
     private void assertCrashDoNotReturnKeys() {
         diagnosisKeyDao.resolveCrash();
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).keys.size());
-        assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
     }
 
     private void doOutBound() {
         try {
-            federationGatewayService.startOutbound(false).orElseThrow();
+            federationGatewayService.startOutbound(false);
         } catch (Exception e) {
             assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
-            assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+            assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         }
     }
 
     private void doOutBoundRetry(int i) {
         try {
-            federationGatewayService.startOutbound(true).orElseThrow();
+            federationGatewayService.startOutbound(true);
         } catch (Exception e) {
             assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
-            assertEquals(0, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).keys.size());
+            assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
             getAllDiagnosisKeys().forEach(key ->
                     assertEquals(i + 1, key.get("retry_count"))
             );

@@ -123,7 +123,7 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public FederationOutboundOperation fetchAvailableKeysForEfgs(boolean retry) {
+    public Optional<FederationOutboundOperation> fetchAvailableKeysForEfgs(boolean retry) {
         LOG.info("Fetching queued keys not sent to efgs.");
         Timestamp timestamp = new Timestamp(Instant.now().toEpochMilli());
         String sql = "with batch as ( " +
@@ -142,7 +142,11 @@ public class DiagnosisKeyDao {
                 "timestamp", timestamp
         ), (rs, i) -> mapKey(rs)));
 
-        return new FederationOutboundOperation(keys, operationDao.startOperation(OperationDao.EfgsOperationDirection.OUTBOUND, timestamp));
+        if (keys.isEmpty()) {
+            return Optional.empty();
+        } else {
+            return Optional.of(new FederationOutboundOperation(keys, operationDao.startOperation(OperationDao.EfgsOperationDirection.OUTBOUND, timestamp)));
+        }
     }
 
     @Transactional
