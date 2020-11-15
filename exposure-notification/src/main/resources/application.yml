@@ -97,6 +97,6 @@ covid19:
       path: "${koronavilkku-efgs-signing-keystore:}"
       password: "${efgs-store-password:devdev}"
       key-alias: signing
-    upload-sched: "0 ${random.int[1,59]} * * * ?"
-    download-sched: "0 ${random.int[1,59]} * * * ?"
-    error-handling-sched: "0 ${random.int[1,59]} * * * ?"
+    upload-interval: PT5M
+    download-interval: PT10M
+    error-handling-interval: PT1M
