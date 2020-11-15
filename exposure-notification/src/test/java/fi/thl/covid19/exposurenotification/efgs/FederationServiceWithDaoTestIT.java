@@ -100,7 +100,7 @@ public class FederationServiceWithDaoTestIT {
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
         assertTrue(keys.size() == dbKeys.size() && dbKeys.containsAll(keys) && keys.containsAll(dbKeys));
-        operationDao.updateInboundCrashedToError();
+        operationDao.getCrashed(EfgsOperationDirection.INBOUND);
         assertDownloadOperationStateIsCorrect(10);
     }
 

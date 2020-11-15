@@ -47,10 +47,11 @@ public class FederationGatewayService {
     }
 
     public void resolveCrash() {
-        operationDao.updateInboundCrashedToError();
+        operationDao.getCrashed(OperationDao.EfgsOperationDirection.INBOUND);
         diagnosisKeyDao.resolveOutboundCrash();
     }
 
+    // TODO: we'll need to keep log which batches are already fetch for retry and to avoid downloading same batch again
     public void startInbound(LocalDate date, Optional<String> batchTag) {
         String dateS = getDateString(date);
         doInbound(dateS, batchTag);
