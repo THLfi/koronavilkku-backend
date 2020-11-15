@@ -35,14 +35,13 @@ public class FederationGatewayService {
     }
 
     public Optional<Set<Long>> startOutbound(boolean retry) {
-        List<TemporaryExposureKey> localKeys = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry);
+        List<TemporaryExposureKey> localKeys;
         Set<Long> operationsProcessed = new HashSet<>();
 
-        while (!localKeys.isEmpty()) {
+        while (!(localKeys = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).isEmpty()) {
             long operationId = operationDao.startOperation(OperationDao.EfgsOperationDirection.OUTBOUND);
             operationsProcessed.add(operationId);
             doOutbound(localKeys, operationId);
-            localKeys = diagnosisKeyDao.fetchAvailableKeysForEfgs(false);
         }
 
         return Optional.of(operationsProcessed);
