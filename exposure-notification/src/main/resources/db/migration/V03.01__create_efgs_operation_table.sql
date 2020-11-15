@@ -9,5 +9,5 @@ create table en.efgs_operation (
     keys_count_201 int,
     keys_count_409 int,
     keys_count_500 int,
-    updated_at timestamptz not null default now()
+    updated_at timestamptz not null
 );

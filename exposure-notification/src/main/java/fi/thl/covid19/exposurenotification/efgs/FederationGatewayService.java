@@ -35,16 +35,19 @@ public class FederationGatewayService {
     }
 
     public Optional<Set<Long>> startOutbound(boolean retry) {
-        List<TemporaryExposureKey> localKeys;
+        FederationOutboundOperation operation;
         Set<Long> operationsProcessed = new HashSet<>();
 
-        while (!(localKeys = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).isEmpty()) {
-            long operationId = operationDao.startOperation(OperationDao.EfgsOperationDirection.OUTBOUND);
-            operationsProcessed.add(operationId);
-            doOutbound(localKeys, operationId);
+        while (!(operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).keys.isEmpty()) {
+            operationsProcessed.add(operation.operationId);
+            doOutbound(operation);
         }
 
         return Optional.of(operationsProcessed);
+    }
+
+    public void resolveCrash() {
+        diagnosisKeyDao.resolveCrash();
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {
@@ -72,24 +75,23 @@ public class FederationGatewayService {
         }
     }
 
-    private void doOutbound(List<TemporaryExposureKey> localKeys, long operationId) {
+    private void doOutbound(FederationOutboundOperation operation) {
         boolean finished = false;
         try {
-            UploadResponseEntity res = handleOutbound(transform(localKeys), operationId);
+            UploadResponseEntity res = handleOutbound(transform(operation.keys), operation.operationId);
             // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
             if (res.httpStatus.value() == 207) {
-                Map<Integer, Integer> responseCounts = handlePartialOutbound(res.multiStatuses.orElseThrow(), localKeys, operationId);
-                finished = operationDao.finishOperation(operationId,
+                Map<Integer, Integer> responseCounts = handlePartialOutbound(res.multiStatuses.orElseThrow(), operation.keys, operation.operationId);
+                finished = operationDao.finishOperation(operation.operationId,
                         responseCounts.get(201) + responseCounts.get(409) + responseCounts.get(500),
                         responseCounts.get(201), responseCounts.get(409), responseCounts.get(500));
             } else {
-                finished = operationDao.finishOperation(operationId,
-                        localKeys.size(), localKeys.size(), 0, 0);
+                finished = operationDao.finishOperation(operation.operationId,
+                        operation.keys.size(), operation.keys.size(), 0, 0);
             }
         } finally {
             if (!finished) {
-                operationDao.markErrorOperation(operationId);
-                diagnosisKeyDao.setNotSend(localKeys);
+                diagnosisKeyDao.setNotSent(operation);
             }
         }
     }
@@ -111,7 +113,7 @@ public class FederationGatewayService {
 
         // There is not much sense to resend 409 keys again, or even 500, but for simplicity this will be done anyway for now
         List<TemporaryExposureKey> failedKeys = Stream.concat(keysIdx409.stream(), keysIdx500.stream()).map(localKeys::get).collect(Collectors.toList());
-        diagnosisKeyDao.setNotSend(failedKeys);
+        diagnosisKeyDao.setNotSent(new FederationOutboundOperation(failedKeys, operationId));
         return Map.of(201, successKeysIdx.size(), 409, keysIdx409.size(), 500, keysIdx500.size());
     }
 }

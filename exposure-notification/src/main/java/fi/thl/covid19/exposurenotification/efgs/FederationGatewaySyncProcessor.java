@@ -43,6 +43,7 @@ public class FederationGatewaySyncProcessor {
             fixedRateString = "${covid19.federation-gateway.error-handling-interval}")
     private void runErrorHandling() {
         LOG.info("Starting scheduled efgs error handling.");
+        federationGatewayService.resolveCrash();
         federationGatewayService.startOutbound(true);
         LOG.info("Scheduled efgs error handling finished.");
     }
