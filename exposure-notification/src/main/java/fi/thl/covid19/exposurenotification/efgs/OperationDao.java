@@ -1,30 +1,30 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationState.*;
 import static java.util.Objects.requireNonNull;
 
 @Repository
 public class OperationDao {
+    public enum EfgsOperationState {STARTED, FINISHED, ERROR}
 
-    private static final Logger LOG = LoggerFactory.getLogger(OperationDao.class);
-
-    public enum EfgsOperationState {QUEUED, STARTED, FINISHED, ERROR}
     public enum EfgsOperationDirection {INBOUND, OUTBOUND}
-    private static final long MAX_RUN_COUNT = 2;
+
+    public static final long STALLED_MIN_AGE_IN_MINUTES = 10;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -32,130 +32,101 @@ public class OperationDao {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
     }
 
-    public long getQueueId() {
-        String sql = "select id from en.efgs_operation where state = cast(:state as en.state_t) and " +
-                "direction = cast(:direction as en.direction_t)";
-        return requireNonNull(jdbcTemplate.queryForObject(sql, Map.of(
-                "state", OperationDao.EfgsOperationState.QUEUED.name(),
-                "direction", OperationDao.EfgsOperationDirection.OUTBOUND.name()
-        ), Long.class));
-    }
-
-    @Transactional(timeout = 10)
-    public Optional<Long> startOutboundOperation() {
-        String lock = "lock table en.efgs_operation in access exclusive mode";
-        jdbcTemplate.update(lock, Map.of());
-        if (isOutboundOperationAvailable()) {
-            long operationId = this.getQueueId();
-            markOutboundOperationStartedAndCreateNewQueue(operationId);
-            return Optional.of(operationId);
-        } else {
-            LOG.info("Update to efgs unavailble. Skipping.");
-            return Optional.empty();
-        }
-    }
-
-    public boolean finishOperation(long operationId, int keysCountTotal) {
-        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), keys_count_total = :keys_count_total, " +
-                "run_count = run_count + 1 " +
+    public boolean finishOperation(long operationId, int keysCountTotal, Optional<String> batchTag) {
+        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), batch_tag = :batch_tag, " +
+                "keys_count_total = :keys_count_total, updated_at = :updated_at " +
                 "where id = :id";
-        return jdbcTemplate.update(sql, Map.of(
-                "new_state", EfgsOperationState.FINISHED.name(),
-                "id", operationId,
-                "keys_count_total", keysCountTotal
-        )) == 1;
+        Map<String, Object> params = new HashMap<>();
+        params.put("new_state", FINISHED.name());
+        params.put("id", operationId);
+        params.put("batch_tag", batchTag.orElse(null));
+        params.put("keys_count_total", keysCountTotal);
+        params.put("updated_at", new Timestamp(Instant.now().toEpochMilli()));
+        return jdbcTemplate.update(sql, params) == 1;
     }
 
-    public boolean finishOperation(long operationId, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
-        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), " +
+    public boolean finishOperation(FederationOutboundOperation operation, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
+        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), batch_tag = :batch_tag, " +
                 "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201, " +
-                "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500, " +
-                "run_count = run_count + 1 " +
+                "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500, updated_at = :updated_at " +
                 "where id = :id";
         return jdbcTemplate.update(sql, Map.of(
-                "new_state", EfgsOperationState.FINISHED.name(),
-                "id", operationId,
+                "new_state", FINISHED.name(),
+                "id", operation.operationId,
+                "batch_tag", operation.batchTag,
                 "keys_count_total", keysCountTotal,
                 "keys_count_201", keysCount201,
                 "keys_count_409", keysCount409,
-                "keys_count_500", keysCount500
+                "keys_count_500", keysCount500,
+                "updated_at", new Timestamp(Instant.now().toEpochMilli())
         )) == 1;
     }
 
-    public void markErrorOperation(long operationId) {
-        String sql = "update en.efgs_operation set state = cast(:error_state as en.state_t), updated_at = :updated_at, " +
-                "run_count = run_count + 1 " +
+    public void markErrorOperation(long operationId, Optional<String> batchTag) {
+        markErrorOperation(operationId, batchTag, new Timestamp(Instant.now().toEpochMilli()));
+    }
+
+    public void markErrorOperation(long operationId, Optional<String> batchTag, Timestamp timestamp) {
+        String sql = "update en.efgs_operation set " +
+                "state = cast(:error_state as en.state_t), " +
+                "updated_at = :updated_at, " +
+                "batch_tag = :batch_tag " +
                 "where id = :id";
-        jdbcTemplate.update(sql, Map.of(
-                "error_state", EfgsOperationState.ERROR.name(),
-                "updated_at", new Timestamp(Instant.now().toEpochMilli()),
-                "id", operationId
-        ));
+        Map<String, Object> params = new HashMap<>();
+        params.put("error_state", ERROR.name());
+        params.put("updated_at", timestamp);
+        params.put("batch_tag", batchTag.orElse(null));
+        params.put("id", operationId);
+        jdbcTemplate.update(sql, params);
     }
 
-    public void setStalledToError() {
-        String sql = "update en.efgs_operation set state = cast(:error_state as en.state_t), updated_at = :updated_at " +
-                "where state = cast(:started_state as en.state_t) and (now() > (updated_at + interval '10 minute')) ";
-        jdbcTemplate.update(sql, Map.of(
-                "error_state", EfgsOperationState.ERROR.name(),
-                "started_state", EfgsOperationState.STARTED.name(),
-                "updated_at", new Timestamp(Instant.now().toEpochMilli())
-        ));
-    }
-
-    public List<Long> getOutboundOperationsInError() {
-        String sql = "select id from en.efgs_operation " +
-                "where state = cast(:state as en.state_t) " +
-                "and direction = cast(:direction as en.direction_t) " +
-                "and run_count < :run_count";
+    public List<Timestamp> getAndResolveCrashed(EfgsOperationDirection direction) {
+        String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t) " +
+                "where state = cast(:current_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
+                "and updated_at < :stalled_operation_limit returning updated_at";
         return jdbcTemplate.queryForList(sql, Map.of(
-                "state", EfgsOperationState.ERROR.name(),
-                "direction", EfgsOperationDirection.OUTBOUND.name(),
-                "run_count", MAX_RUN_COUNT
-        ), Long.class);
+                "new_state", ERROR.name(),
+                "current_state", STARTED.name(),
+                "direction", direction.name(),
+                "stalled_operation_limit",
+                new Timestamp(Instant.now().minus(Duration.ofMinutes(STALLED_MIN_AGE_IN_MINUTES)).toEpochMilli())
+        ), Timestamp.class);
     }
 
-    public long startInboundOperation() {
-        KeyHolder operationKeyHolder = new GeneratedKeyHolder();
+    public long startOperation(EfgsOperationDirection direction) {
+        return startOperation(direction, new Timestamp(Instant.now().toEpochMilli()));
+    }
 
-        String createOperation = "insert into en.efgs_operation (state, direction) " +
-                "values (cast(:state as en.state_t), cast(:direction as en.direction_t))";
-        jdbcTemplate.update(createOperation,
-                new MapSqlParameterSource(Map.of(
-                        "state", EfgsOperationState.STARTED.name(),
-                        "direction", EfgsOperationDirection.INBOUND.name())
+    public long startOperation(EfgsOperationDirection direction, Timestamp timestamp) {
+        String createOperation = "insert into en.efgs_operation (state, direction, updated_at) " +
+                "values (cast(:state as en.state_t), cast(:direction as en.direction_t), :updated_at) returning id";
+        return jdbcTemplate.query(createOperation,
+                Map.of(
+                        "state", STARTED.name(),
+                        "direction", direction.name(),
+                        "updated_at", timestamp
                 ),
-                operationKeyHolder);
-        return (Long) requireNonNull(operationKeyHolder.getKeys()).get("id");
+                (rs, i) -> rs.getLong(1))
+                .stream().findFirst().orElseThrow(() -> new IllegalStateException("OperationId not returned."));
     }
 
-    private boolean isOutboundOperationAvailable() {
-        String sql = "select count(*) from en.efgs_operation " +
-                "where state = cast(:state as en.state_t) and direction = cast(:direction as en.direction_t)";
-        return jdbcTemplate.query(sql, Map.of(
-                "state", EfgsOperationState.STARTED.name(),
-                "direction", EfgsOperationDirection.OUTBOUND.name()
-        ), (rs, i) -> rs.getInt(1))
-                .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing.")) == 0;
-    }
+    public Map<String, Long> getInboundErrorBatchTags(LocalDate date) {
+        String sql = "with finished as ( " +
+                "select batch_tag from en.efgs_operation " +
+                "where state = cast(:finished_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
+                "and updated_at > :start ) " +
+                "select batch_tag from en.efgs_operation " +
+                "where state = cast(:error_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
+                "and updated_at > :start and updated_at < :end and batch_tag not in (select batch_tag from finished)";
+        List<String> inboundErrors = jdbcTemplate.queryForList(sql,
+                Map.of(
+                        "finished_state", FINISHED.name(),
+                        "error_state", ERROR.name(),
+                        "direction", INBOUND.name(),
+                        "start", Timestamp.valueOf(date.atStartOfDay()),
+                        "end", Timestamp.valueOf(date.atStartOfDay().plus(Duration.ofDays(1)))
+                ), String.class);
 
-    private void markOutboundOperationStartedAndCreateNewQueue(long operationId) {
-        String startQueuedOperation = "update en.efgs_operation " +
-                "set state = cast(:state as en.state_t), " +
-                "updated_at = :updated_at " +
-                "where id = :id";
-
-        jdbcTemplate.update(startQueuedOperation, Map.of(
-                "state", EfgsOperationState.STARTED.name(),
-                "updated_at", new Timestamp(Instant.now().toEpochMilli()),
-                "id", operationId)
-        );
-
-        String createNewQueueOperation = "insert into en.efgs_operation (state, direction) " +
-                "values (cast(:state as en.state_t), cast(:direction as en.direction_t))";
-        jdbcTemplate.update(createNewQueueOperation, Map.of(
-                "state", EfgsOperationState.QUEUED.name(),
-                "direction", EfgsOperationDirection.OUTBOUND.name()
-        ));
+        return inboundErrors.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
     }
 }
