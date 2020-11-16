@@ -1,5 +1,6 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
@@ -16,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.client.SimpleRequestExpectationManager;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.sql.Timestamp;
@@ -38,6 +40,8 @@ import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUti
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.NEXT_BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.*;
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationState.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -101,7 +105,7 @@ public class FederationServiceWithDaoTestIT {
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
         assertTrue(keys.size() == dbKeys.size() && dbKeys.containsAll(keys) && keys.containsAll(dbKeys));
-        operationDao.getAndResolveCrashed(EfgsOperationDirection.INBOUND);
+        operationDao.getAndResolveCrashed(INBOUND);
         federationGatewayService.startInboundRetry(LocalDate.now(ZoneOffset.UTC));
         assertDownloadOperationStateIsCorrect(10);
     }
@@ -127,7 +131,7 @@ public class FederationServiceWithDaoTestIT {
         LocalDate date = LocalDate.now(ZoneOffset.UTC);
         try {
             federationGatewayService.startInbound(date, Optional.of(TEST_TAG_NAME));
-        } catch (Exception e) {
+        } catch (HttpServerErrorException e) {
             assertEquals(1, operationDao.getInboundErrorBatchTags(date).get(TEST_TAG_NAME));
             federationGatewayService.startInboundRetry(date);
             assertFalse(operationDao.getInboundErrorBatchTags(date).containsKey(TEST_TAG_NAME));
@@ -146,13 +150,14 @@ public class FederationServiceWithDaoTestIT {
         LocalDate date = LocalDate.now(ZoneOffset.UTC);
         try {
             federationGatewayService.startInbound(date, Optional.of(TEST_TAG_NAME));
-        } catch (Exception e) {
+        } catch (HttpServerErrorException e) {
             assertEquals(1, operationDao.getInboundErrorBatchTags(date).get(TEST_TAG_NAME));
         }
-        IntStream.rangeClosed(2, MAX_RETRY_COUNT).forEach(i -> {
+        IntStream.rangeClosed(2, MAX_RETRY_COUNT).forEach(i ->
+                {
                     try {
                         federationGatewayService.startInboundRetry(date);
-                    } catch (Exception e) {
+                    } catch (HttpServerErrorException e) {
                         if (i < MAX_RETRY_COUNT) {
                             assertEquals(i, operationDao.getInboundErrorBatchTags(date).get(TEST_TAG_NAME));
                         } else {
@@ -161,7 +166,6 @@ public class FederationServiceWithDaoTestIT {
                     }
                 }
         );
-
     }
 
     @Test
@@ -216,7 +220,7 @@ public class FederationServiceWithDaoTestIT {
     }
 
     @Test
-    public void uploadKeysPartialSuccess() throws Exception {
+    public void uploadKeysPartialSuccess() throws JsonProcessingException {
         List<TemporaryExposureKey> keys = keyGenerator.someKeys(5);
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keys, 5);
 
@@ -265,8 +269,8 @@ public class FederationServiceWithDaoTestIT {
 
         try {
             federationGatewayService.startOutbound(false);
-        } catch (Exception e) {
-            assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
+        } catch (HttpServerErrorException e) {
+            assertOperationErrorStateIsCorrect(OUTBOUND);
         }
         Set<Long> operationIds = federationGatewayService.startOutbound(true);
         assertUploadOperationErrorStateIsFinished(operationIds.stream().findFirst().get());
@@ -354,8 +358,8 @@ public class FederationServiceWithDaoTestIT {
     private void doOutBound() {
         try {
             federationGatewayService.startOutbound(false);
-        } catch (Exception e) {
-            assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
+        } catch (HttpServerErrorException e) {
+            assertOperationErrorStateIsCorrect(OUTBOUND);
             assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         }
     }
@@ -363,8 +367,8 @@ public class FederationServiceWithDaoTestIT {
     private void doOutBoundRetry(int i) {
         try {
             federationGatewayService.startOutbound(true);
-        } catch (Exception e) {
-            assertOperationErrorStateIsCorrect(EfgsOperationDirection.OUTBOUND);
+        } catch (HttpServerErrorException e) {
+            assertOperationErrorStateIsCorrect(OUTBOUND);
             assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
             getAllDiagnosisKeys().forEach(key ->
                     assertEquals(i + 1, key.get("retry_count"))
@@ -374,15 +378,15 @@ public class FederationServiceWithDaoTestIT {
 
     private void assertDownloadOperationStateIsCorrect(int keysCount) {
         Map<String, Object> resultSet = getLatestOperation();
-        assertEquals(EfgsOperationDirection.INBOUND.name(), resultSet.get("direction").toString());
-        assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
+        assertEquals(INBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(FINISHED.name(), resultSet.get("state").toString());
         assertEquals(keysCount, resultSet.get("keys_count_total"));
     }
 
     private void assertUploadOperationStateIsCorrect(long operationId, int total, int c201, int c409, int c500) {
         Map<String, Object> resultSet = getOperation(operationId);
-        assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
-        assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
+        assertEquals(OUTBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(FINISHED.name(), resultSet.get("state").toString());
         assertEquals(total, resultSet.get("keys_count_total"));
         assertEquals(c201, resultSet.get("keys_count_201"));
         assertEquals(c409, resultSet.get("keys_count_409"));
@@ -392,13 +396,13 @@ public class FederationServiceWithDaoTestIT {
     private void assertOperationErrorStateIsCorrect(EfgsOperationDirection direction) {
         Map<String, Object> resultSet = getLatestOperation();
         assertEquals(direction.name(), resultSet.get("direction").toString());
-        assertEquals(EfgsOperationState.ERROR.name(), resultSet.get("state").toString());
+        assertEquals(ERROR.name(), resultSet.get("state").toString());
     }
 
     private void assertUploadOperationErrorStateIsFinished(long operationId) {
         Map<String, Object> resultSet = getOperation(operationId);
-        assertEquals(EfgsOperationDirection.OUTBOUND.name(), resultSet.get("direction").toString());
-        assertEquals(EfgsOperationState.FINISHED.name(), resultSet.get("state").toString());
+        assertEquals(OUTBOUND.name(), resultSet.get("direction").toString());
+        assertEquals(FINISHED.name(), resultSet.get("state").toString());
     }
 
     private Map<String, Object> getLatestOperation() {
@@ -416,7 +420,7 @@ public class FederationServiceWithDaoTestIT {
         return jdbcTemplate.queryForList(sql, Map.of());
     }
 
-    private String generateMultiStatusUploadResponseBody() throws Exception {
+    private String generateMultiStatusUploadResponseBody() throws JsonProcessingException {
         FederationGatewayClient.UploadResponseEntityInner body = new FederationGatewayClient.UploadResponseEntityInner();
         body.putAll(Map.of(201, List.of(0, 1), 409, List.of(2, 3), 500, List.of(4)));
         return objectMapper.writeValueAsString(body);
@@ -444,8 +448,8 @@ public class FederationServiceWithDaoTestIT {
                 "where state = cast(:state as en.state_t) " +
                 "and direction = cast(:direction as en.direction_t) ";
         return jdbcTemplate.queryForList(sql, Map.of(
-                "state", EfgsOperationState.ERROR.name(),
-                "direction", EfgsOperationDirection.OUTBOUND.name()
+                "state", ERROR.name(),
+                "direction", OUTBOUND.name()
         ), Long.class);
     }
 

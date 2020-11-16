@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.MAX_RETRY_COUNT;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 
 @Service
 public class FederationGatewayService {
@@ -47,7 +48,7 @@ public class FederationGatewayService {
     }
 
     public void resolveCrash() {
-        operationDao.getAndResolveCrashed(OperationDao.EfgsOperationDirection.INBOUND);
+        operationDao.getAndResolveCrashed(INBOUND);
         diagnosisKeyDao.resolveOutboundCrash();
     }
 
@@ -75,7 +76,7 @@ public class FederationGatewayService {
 
     private Optional<String> addInboundKeys(String date, Optional<String> batchTag) {
         boolean finished = false;
-        long operationId = operationDao.startOperation(OperationDao.EfgsOperationDirection.INBOUND);
+        long operationId = operationDao.startOperation(INBOUND);
         Optional<String> localBatchTag = batchTag;
 
         try {

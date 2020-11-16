@@ -14,6 +14,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationState.*;
 import static java.util.Objects.requireNonNull;
 
 @Repository
@@ -35,7 +37,7 @@ public class OperationDao {
                 "keys_count_total = :keys_count_total, updated_at = :updated_at " +
                 "where id = :id";
         Map<String, Object> params = new HashMap<>();
-        params.put("new_state", EfgsOperationState.FINISHED.name());
+        params.put("new_state", FINISHED.name());
         params.put("id", operationId);
         params.put("batch_tag", batchTag.orElse(null));
         params.put("keys_count_total", keysCountTotal);
@@ -49,7 +51,7 @@ public class OperationDao {
                 "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500, updated_at = :updated_at " +
                 "where id = :id";
         return jdbcTemplate.update(sql, Map.of(
-                "new_state", EfgsOperationState.FINISHED.name(),
+                "new_state", FINISHED.name(),
                 "id", operation.operationId,
                 "batch_tag", operation.batchTag,
                 "keys_count_total", keysCountTotal,
@@ -65,11 +67,13 @@ public class OperationDao {
     }
 
     public void markErrorOperation(long operationId, Optional<String> batchTag, Timestamp timestamp) {
-        String sql = "update en.efgs_operation set state = cast(:error_state as en.state_t), updated_at = :updated_at, " +
+        String sql = "update en.efgs_operation set " +
+                "state = cast(:error_state as en.state_t), " +
+                "updated_at = :updated_at, " +
                 "batch_tag = :batch_tag " +
                 "where id = :id";
         Map<String, Object> params = new HashMap<>();
-        params.put("error_state", EfgsOperationState.ERROR.name());
+        params.put("error_state", ERROR.name());
         params.put("updated_at", timestamp);
         params.put("batch_tag", batchTag.orElse(null));
         params.put("id", operationId);
@@ -79,12 +83,13 @@ public class OperationDao {
     public List<Timestamp> getAndResolveCrashed(EfgsOperationDirection direction) {
         String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t) " +
                 "where state = cast(:current_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
-                "and updated_at < :max_age returning updated_at";
+                "and updated_at < :stalled_operation_limit returning updated_at";
         return jdbcTemplate.queryForList(sql, Map.of(
-                "new_state", EfgsOperationState.ERROR.name(),
-                "current_state", EfgsOperationState.STARTED.name(),
+                "new_state", ERROR.name(),
+                "current_state", STARTED.name(),
                 "direction", direction.name(),
-                "max_age", new Timestamp(Instant.now().minus(Duration.ofMinutes(STALLED_MIN_AGE_IN_MINUTES)).toEpochMilli())
+                "stalled_operation_limit",
+                new Timestamp(Instant.now().minus(Duration.ofMinutes(STALLED_MIN_AGE_IN_MINUTES)).toEpochMilli())
         ), Timestamp.class);
     }
 
@@ -97,7 +102,7 @@ public class OperationDao {
                 "values (cast(:state as en.state_t), cast(:direction as en.direction_t), :updated_at) returning id";
         return jdbcTemplate.query(createOperation,
                 Map.of(
-                        "state", EfgsOperationState.STARTED.name(),
+                        "state", STARTED.name(),
                         "direction", direction.name(),
                         "updated_at", timestamp
                 ),
@@ -115,9 +120,9 @@ public class OperationDao {
                 "and updated_at > :start and updated_at < :end and batch_tag not in (select batch_tag from finished)";
         List<String> inboundErrors = jdbcTemplate.queryForList(sql,
                 Map.of(
-                        "finished_state", EfgsOperationState.FINISHED.name(),
-                        "error_state", EfgsOperationState.ERROR.name(),
-                        "direction", EfgsOperationDirection.INBOUND.name(),
+                        "finished_state", FINISHED.name(),
+                        "error_state", ERROR.name(),
+                        "direction", INBOUND.name(),
                         "start", Timestamp.valueOf(date.atStartOfDay()),
                         "end", Timestamp.valueOf(date.atStartOfDay().plus(Duration.ofDays(1)))
                 ), String.class);

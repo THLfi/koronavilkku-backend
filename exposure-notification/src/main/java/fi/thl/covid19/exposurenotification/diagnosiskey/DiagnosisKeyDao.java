@@ -10,6 +10,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
@@ -20,6 +21,7 @@ import java.util.*;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.OUTBOUND;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -122,7 +124,7 @@ public class DiagnosisKeyDao {
         }
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public Optional<FederationOutboundOperation> fetchAvailableKeysForEfgs(boolean retry) {
         LOG.info("Fetching queued keys not sent to efgs.");
         Timestamp timestamp = new Timestamp(Instant.now().toEpochMilli());
@@ -145,29 +147,30 @@ public class DiagnosisKeyDao {
         if (keys.isEmpty()) {
             return Optional.empty();
         } else {
-            return Optional.of(new FederationOutboundOperation(keys, operationDao.startOperation(OperationDao.EfgsOperationDirection.OUTBOUND, timestamp)));
+            return Optional.of(
+                    new FederationOutboundOperation(
+                            keys,
+                            operationDao.startOperation(OUTBOUND, timestamp)));
         }
     }
 
     @Transactional
     public void setNotSent(FederationOutboundOperation operation) {
-        String sql = "update en.diagnosis_key set sent_to_efgs = null where key_data in (:key_datas)";
-        jdbcTemplate.update(sql, Map.of(
-                "key_datas", operation.keys.stream().map(key -> key.keyData).collect(Collectors.toList())
-        ));
+        String sql = "update en.diagnosis_key set sent_to_efgs = null where key_data = :key_data";
+        jdbcTemplate.batchUpdate(sql, operation.keys.stream().map(key -> Map.of("key_data", key.keyData))
+                .toArray((IntFunction<Map<String, String>[]>) Map[]::new)
+        );
+
         operationDao.markErrorOperation(operation.operationId, Optional.of(operation.batchTag));
     }
 
     @Transactional
     public void resolveOutboundCrash() {
-        List<Timestamp> crashed = operationDao.getAndResolveCrashed(OperationDao.EfgsOperationDirection.OUTBOUND);
+        List<Timestamp> crashed = operationDao.getAndResolveCrashed(OUTBOUND);
 
         if (!crashed.isEmpty()) {
             String sql = "update en.diagnosis_key set sent_to_efgs = null, retry_count = 0 where sent_to_efgs in (:timestamp)";
-            jdbcTemplate.update(sql, Map.of(
-                    "timestamp", crashed
-                    )
-            );
+            jdbcTemplate.update(sql, Map.of("timestamp", crashed));
         }
     }
 
