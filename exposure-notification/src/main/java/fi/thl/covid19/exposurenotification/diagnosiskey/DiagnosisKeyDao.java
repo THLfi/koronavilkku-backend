@@ -155,12 +155,12 @@ public class DiagnosisKeyDao {
         jdbcTemplate.update(sql, Map.of(
                 "key_datas", operation.keys.stream().map(key -> key.keyData).collect(Collectors.toList())
         ));
-        operationDao.markErrorOperation(operation.operationId);
+        operationDao.markErrorOperation(operation.operationId, Optional.of(operation.batchTag));
     }
 
     @Transactional
     public void resolveOutboundCrash() {
-        List<Timestamp> crashed = operationDao.getCrashed(OperationDao.EfgsOperationDirection.OUTBOUND);
+        List<Timestamp> crashed = operationDao.getAndResolveCrashed(OperationDao.EfgsOperationDirection.OUTBOUND);
 
         if (!crashed.isEmpty()) {
             String sql = "update en.diagnosis_key set sent_to_efgs = null, retry_count = 0 where sent_to_efgs in (:timestamp)";

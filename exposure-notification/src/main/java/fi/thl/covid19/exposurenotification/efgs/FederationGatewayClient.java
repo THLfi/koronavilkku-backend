@@ -50,21 +50,14 @@ public class FederationGatewayClient {
         ));
     }
 
-    public List<EfgsProto.DiagnosisKeyBatch> download(String dateVar, Optional<String> batchTag) {
-        Optional<String> nextTag = batchTag;
-        List<EfgsProto.DiagnosisKeyBatch> data = new ArrayList<>();
-
-        do {
-            ResponseEntity<byte[]> res = doDownload(dateVar, nextTag);
-
-            if (res.hasBody()) {
-                data.add(deserialize(res.getBody()));
-            }
-
-            nextTag = getNextBatchTag(res.getHeaders());
-        } while (nextTag.isPresent());
-
-        return data;
+    public DownloadData download(String dateVar, Optional<String> batchTag) {
+        ResponseEntity<byte[]> res = doDownload(dateVar, batchTag);
+        byte[] body = requireNonNull(res.getBody());
+        return new DownloadData(
+                deserialize(body),
+                getHeader(res.getHeaders(), BATCH_TAG_HEADER).orElseThrow(),
+                getHeader(res.getHeaders(), NEXT_BATCH_TAG_HEADER)
+        );
     }
 
     private UploadResponseEntity transform(ResponseEntity<UploadResponseEntityInner> res) {
@@ -126,8 +119,8 @@ public class FederationGatewayClient {
         headers.add("X-SSL-Client-DN", devDN);
     }
 
-    private Optional<String> getNextBatchTag(HttpHeaders headers) {
-        List<String> nextBatchTagHeader = headers.get(NEXT_BATCH_TAG_HEADER);
+    private Optional<String> getHeader(HttpHeaders headers, String name) {
+        List<String> nextBatchTagHeader = headers.get(name);
         if (nextBatchTagHeader != null && !nextBatchTagHeader.contains("null")) {
             return nextBatchTagHeader.stream().findFirst();
         } else {

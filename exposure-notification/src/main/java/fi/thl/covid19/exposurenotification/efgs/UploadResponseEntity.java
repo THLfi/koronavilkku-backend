@@ -8,8 +8,8 @@ import java.util.Optional;
 
 public class UploadResponseEntity {
 
-    public HttpStatus httpStatus;
-    public Optional<Map<Integer, List<Integer>>> multiStatuses;
+    public final HttpStatus httpStatus;
+    public final Optional<Map<Integer, List<Integer>>> multiStatuses;
 
     public UploadResponseEntity(HttpStatus httpStatus, Optional<Map<Integer, List<Integer>>> multiStatuses) {
         this.httpStatus = httpStatus;

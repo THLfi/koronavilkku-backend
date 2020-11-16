@@ -49,6 +49,7 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
 public class FederationServiceWithDaoTestIT {
 
     private static final MediaType PROTOBUF_MEDIATYPE = new MediaType("application", "protobuf", 1.0);
+    private static final String TEST_TAG_NAME = "test-1";
 
     @Autowired
     DiagnosisKeyDao diagnosisKeyDao;
@@ -100,8 +101,67 @@ public class FederationServiceWithDaoTestIT {
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
         assertTrue(keys.size() == dbKeys.size() && dbKeys.containsAll(keys) && keys.containsAll(dbKeys));
-        operationDao.getCrashed(EfgsOperationDirection.INBOUND);
+        operationDao.getAndResolveCrashed(EfgsOperationDirection.INBOUND);
+        federationGatewayService.startInboundRetry(LocalDate.now(ZoneOffset.UTC));
         assertDownloadOperationStateIsCorrect(10);
+    }
+
+    @Test
+    public void downloadRetry() {
+        List<TemporaryExposureKey> keys = FederationGatewayBatchUtil.transform(FederationGatewayBatchUtil.transform(keyGenerator.someKeys(10)));
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + FederationGatewayBatchUtil.getDateString(LocalDate.now(ZoneOffset.UTC))))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("")
+                );
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + FederationGatewayBatchUtil.getDateString(LocalDate.now(ZoneOffset.UTC))))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(PROTOBUF_MEDIATYPE)
+                        .headers(getDownloadResponseHeaders())
+                        .body(serialize(transform(keys)))
+                );
+        LocalDate date = LocalDate.now(ZoneOffset.UTC);
+        try {
+            federationGatewayService.startInbound(date, Optional.of(TEST_TAG_NAME));
+        } catch (Exception e) {
+            assertEquals(1, operationDao.getInboundErrorBatchTags(date).get(TEST_TAG_NAME));
+            federationGatewayService.startInboundRetry(date);
+            assertFalse(operationDao.getInboundErrorBatchTags(date).containsKey(TEST_TAG_NAME));
+        }
+    }
+
+    public void downloadRetryMaxLimit() {
+        List<TemporaryExposureKey> keys = FederationGatewayBatchUtil.transform(FederationGatewayBatchUtil.transform(keyGenerator.someKeys(10)));
+        mockServer.expect(ExpectedCount.manyTimes(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + FederationGatewayBatchUtil.getDateString(LocalDate.now(ZoneOffset.UTC))))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("")
+                );
+        LocalDate date = LocalDate.now(ZoneOffset.UTC);
+        try {
+            federationGatewayService.startInbound(date, Optional.of(TEST_TAG_NAME));
+        } catch (Exception e) {
+            assertEquals(1, operationDao.getInboundErrorBatchTags(date).get(TEST_TAG_NAME));
+        }
+        IntStream.rangeClosed(2, MAX_RETRY_COUNT).forEach(i -> {
+                    try {
+                        federationGatewayService.startInboundRetry(date);
+                    } catch (Exception e) {
+                        if (i < MAX_RETRY_COUNT) {
+                            assertEquals(i, operationDao.getInboundErrorBatchTags(date).get(TEST_TAG_NAME));
+                        } else {
+                            assertFalse(operationDao.getInboundErrorBatchTags(date).containsKey(TEST_TAG_NAME));
+                        }
+                    }
+                }
+        );
+
     }
 
     @Test
@@ -365,7 +425,7 @@ public class FederationServiceWithDaoTestIT {
     private HttpHeaders getDownloadResponseHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(NEXT_BATCH_TAG_HEADER, "null");
-        headers.add(BATCH_TAG_HEADER, "test-1");
+        headers.add(BATCH_TAG_HEADER, TEST_TAG_NAME);
         return headers;
     }
 

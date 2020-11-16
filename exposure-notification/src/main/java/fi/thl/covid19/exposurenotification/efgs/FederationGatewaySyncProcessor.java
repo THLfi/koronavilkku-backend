@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -45,6 +46,7 @@ public class FederationGatewaySyncProcessor {
         LOG.info("Starting scheduled efgs error handling.");
         federationGatewayService.resolveCrash();
         federationGatewayService.startOutbound(true);
+        federationGatewayService.startInboundRetry(LocalDate.now(ZoneOffset.UTC).minus(Duration.ofDays(1)));
         LOG.info("Scheduled efgs error handling finished.");
     }
 }
