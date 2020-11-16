@@ -124,14 +124,15 @@ public class DiagnosisKeyDao {
         }
     }
 
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Transactional
     public Optional<FederationOutboundOperation> fetchAvailableKeysForEfgs(boolean retry) {
         LOG.info("Fetching queued keys not sent to efgs.");
         Timestamp timestamp = new Timestamp(Instant.now().toEpochMilli());
         String sql = "with batch as ( " +
                 "select key_data " +
                 "from en.diagnosis_key " +
-                "where sent_to_efgs is null and retry_count >= :min_retry_count and retry_count < :max_retry_count limit 5000 ) " +
+                "where sent_to_efgs is null and retry_count >= :min_retry_count and retry_count < :max_retry_count " +
+                "order by key_data for update skip locked limit 5000 ) " +
                 "update en.diagnosis_key " +
                 "set sent_to_efgs = :timestamp, retry_count = retry_count + 1 " +
                 "where key_data in (select key_data from batch) " +
