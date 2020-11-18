@@ -132,6 +132,7 @@ public class DiagnosisKeyDao {
                 "select key_data " +
                 "from en.diagnosis_key " +
                 "where sent_to_efgs is null and retry_count >= :min_retry_count and retry_count < :max_retry_count " +
+                "and consent_to_share " +
                 "order by key_data for update skip locked limit 5000 ) " +
                 "update en.diagnosis_key " +
                 "set sent_to_efgs = :timestamp, retry_count = retry_count + 1 " +
