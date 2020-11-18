@@ -124,7 +124,7 @@ public class OperationDao {
                         "error_state", ERROR.name(),
                         "direction", INBOUND.name(),
                         "start", Timestamp.valueOf(date.atStartOfDay()),
-                        "end", Timestamp.valueOf(date.atStartOfDay().plus(Duration.ofDays(1)))
+                        "end", Timestamp.valueOf(date.plusDays(1).atStartOfDay())
                 ), String.class);
 
         return inboundErrors.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
