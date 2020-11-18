@@ -1,11 +1,14 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
 import fi.thl.covid19.proto.EfgsProto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -13,12 +16,16 @@ import java.util.*;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.deserialize;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.serialize;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
 public class FederationGatewayClient {
 
     public static final String BATCH_TAG_HEADER = "batchTag";
     public static final String NEXT_BATCH_TAG_HEADER = "nextBatchTag";
+
+    private static final Logger LOG = LoggerFactory.getLogger(FederationGatewayClient.class);
+
 
     private final RestTemplate restTemplate;
     private final String gatewayUrl;
@@ -50,14 +57,23 @@ public class FederationGatewayClient {
         ));
     }
 
-    public DownloadData download(String dateVar, Optional<String> batchTag) {
-        ResponseEntity<byte[]> res = doDownload(dateVar, batchTag);
-        byte[] body = requireNonNull(res.getBody());
-        return new DownloadData(
-                deserialize(body),
-                getHeader(res.getHeaders(), BATCH_TAG_HEADER).orElseThrow(),
-                getHeader(res.getHeaders(), NEXT_BATCH_TAG_HEADER)
-        );
+    public Optional<DownloadData> download(String dateVar, Optional<String> batchTag) {
+        try {
+            ResponseEntity<byte[]> res = doDownload(dateVar, batchTag);
+            byte[] body = requireNonNull(res.getBody());
+            return Optional.of(new DownloadData(
+                    deserialize(body),
+                    getHeader(res.getHeaders(), BATCH_TAG_HEADER).orElseThrow(),
+                    getHeader(res.getHeaders(), NEXT_BATCH_TAG_HEADER)
+            ));
+        } catch (HttpClientErrorException e) {
+            if (e.getRawStatusCode() == 404) {
+                LOG.info("Download from efgs failed with response code 404. {}", keyValue("statusText", e.getStatusText()));
+                return Optional.empty();
+            } else {
+                throw e;
+            }
+        }
     }
 
     private UploadResponseEntity transform(ResponseEntity<UploadResponseEntityInner> res) {

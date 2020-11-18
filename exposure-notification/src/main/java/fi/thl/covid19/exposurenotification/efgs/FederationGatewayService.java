@@ -80,12 +80,19 @@ public class FederationGatewayService {
         Optional<String> localBatchTag = batchTag;
 
         try {
-            DownloadData download = client.download(date, localBatchTag);
-            localBatchTag = Optional.of(download.batchTag);
-            List<TemporaryExposureKey> keys = transform(download.batch);
-            diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
-            finished = operationDao.finishOperation(operationId, keys.size(), localBatchTag);
-            return download.nextBatchTag;
+            Optional<DownloadData> downloadO = client.download(date, localBatchTag);
+
+            if (downloadO.isPresent()) {
+                DownloadData download = downloadO.get();
+                localBatchTag = Optional.of(download.batchTag);
+                List<TemporaryExposureKey> keys = transform(download.batch);
+                diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
+                finished = operationDao.finishOperation(operationId, keys.size(), localBatchTag);
+                return download.nextBatchTag;
+
+            } else {
+                return Optional.empty();
+            }
         } finally {
             if (!finished) {
                 operationDao.markErrorOperation(operationId, localBatchTag);
