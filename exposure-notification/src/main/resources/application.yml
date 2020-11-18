@@ -90,6 +90,6 @@ covid19:
         alias: efgs
     signing-key-store:
       key-alias: efgs-signing
-    upload-interval: PT30M
-    download-interval: PT20M
-    error-handling-interval: PT11M
+    upload-interval: PT23H
+    download-interval: PT24H
+    error-handling-interval: PT60M
