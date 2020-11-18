@@ -46,7 +46,7 @@ public class FederationGatewaySyncProcessor {
         LOG.info("Starting scheduled efgs error handling.");
         federationGatewayService.resolveCrash();
         federationGatewayService.startOutbound(true);
-        federationGatewayService.startInboundRetry(LocalDate.now(ZoneOffset.UTC).minus(Duration.ofDays(1)));
+        federationGatewayService.startInboundRetry(LocalDate.now(ZoneOffset.UTC).minusDays(1));
         LOG.info("Scheduled efgs error handling finished.");
     }
 }
