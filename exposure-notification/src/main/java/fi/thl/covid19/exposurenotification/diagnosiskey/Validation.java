@@ -76,6 +76,10 @@ public final class Validation {
         return codes.stream().filter(Validation::validateISOCountryCode).collect(Collectors.toSet());
     }
 
+    public static Set<String> validateISOCountryCodesWithoutFI(Set<String> codes) {
+        return codes.stream().filter(code -> !code.equals("FI")).filter(Validation::validateISOCountryCode).collect(Collectors.toSet());
+    }
+
     public static String getValidatedISOCountryCode(String code) {
         if (validateISOCountryCode(code)) {
             return code;

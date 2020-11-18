@@ -39,7 +39,7 @@ public final class TemporaryExposureKeyRequest {
         this.transmissionRiskLevel = validateTransmissionRiskLevel(transmissionRiskLevel);
         this.rollingStartIntervalNumber = validateRollingStartIntervalNumber(rollingStartIntervalNumber);
         this.rollingPeriod = validateRollingPeriod(rollingPeriod);
-        this.visitedCountries = Validation.validateISOCountryCodes(requireNonNull(visitedCountries).orElse(Set.of()));
+        this.visitedCountries = Validation.validateISOCountryCodesWithoutFI(requireNonNull(visitedCountries).orElse(Set.of()));
         this.consentToShareWithEfgs = requireNonNull(consentToShareWithEfgs).orElse(false);
     }
 
