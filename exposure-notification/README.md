@@ -262,6 +262,7 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
 * **Request Body:**
   * keys: List of TemporaryExposureKey objects, as per [the API docs](https://developers.google.com/android/exposure-notifications/verification-system#metadata)
     * <u>Note, that the key data bytes need to be base64 encoded</u>
+    * <u>Note, for visitedCountries and consentToShareWithEfgs value is boolean, use 1 for true and 0 for false</u>
   * Sample Body 
     ```json
     {
@@ -274,10 +275,10 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
           "keyData": "/MwsNfC4Rgnl8SxV3YWrqA==",
           "transmissionRiskLevel": 5,
           "rollingStartIntervalNumber":  123456,
-          "rollingPeriod": 144,
-          "visitedCountries": "DE",
-          "consentToShareWithEfgs": true
-        }] 
+          "rollingPeriod": 144
+        }],
+      "visitedCountries": {"DE":1,"IT":0},
+      "consentToShareWithEfgs": 1
     }
     ```
 * **Success Response:**

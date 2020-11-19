@@ -1,5 +1,6 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
+import fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisPublishRequest;
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKeyRequest;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerification;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerificationService;
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
@@ -40,17 +42,17 @@ public class DiagnosisKeyService {
         LOG.info("Initialized");
     }
 
-    public void handlePublishRequest(String publishToken, List<TemporaryExposureKeyRequest> requestKeys) {
+    public void handlePublishRequest(String publishToken, DiagnosisPublishRequest request) {
         Instant now = Instant.now();
         PublishTokenVerification verification = tokenVerificationService.getVerification(publishToken);
-        List<TemporaryExposureKeyRequest> filtered = filter(requestKeys, now);
-        List<TemporaryExposureKey> keys = transform(filtered, verification.symptomsOnset);
+        List<TemporaryExposureKeyRequest> filtered = filter(request.keys, now);
+        List<TemporaryExposureKey> keys = transform(filtered, request.visitedCountriesSet, request.consentToShareWithEfgs, verification.symptomsOnset);
         int currentInterval = IntervalNumber.to24HourInterval(now);
         LOG.info("Publish token verified: {} {} {} {} {}",
                 keyValue("currentInterval", currentInterval),
                 keyValue("filterStart", verification.symptomsOnset.toString()),
                 keyValue("filterEnd", now.toString()),
-                keyValue("postedCount", requestKeys.size()),
+                keyValue("postedCount", request.keys.size()),
                 keyValue("filteredCount", filtered.size())
         );
         dao.addKeys(verification.id, checksum(keys), currentInterval, keys, getExportedKeyCount(keys));
@@ -60,16 +62,20 @@ public class DiagnosisKeyService {
         return keys.stream().filter(key -> key.transmissionRiskLevel > 0 && key.transmissionRiskLevel < 7).count();
     }
 
-    private List<TemporaryExposureKey> transform(List<TemporaryExposureKeyRequest> requestKeys, LocalDate symptomsOnset) {
+    private List<TemporaryExposureKey> transform(
+            List<TemporaryExposureKeyRequest> requestKeys,
+            Set<String> visitedCountries,
+            boolean consentToShareWithEfgs, LocalDate symptomsOnset
+    ) {
         return requestKeys.stream().map(requestKey -> new TemporaryExposureKey(
                 requestKey.keyData,
                 getRiskBucket(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)),
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
-                requestKey.visitedCountries,
+                visitedCountries,
                 Optional.of(Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)))),
                 DEFAULT_ORIGIN_COUNTRY,
-                requestKey.consentToShareWithEfgs
+                consentToShareWithEfgs
         )).collect(Collectors.toList());
     }
 

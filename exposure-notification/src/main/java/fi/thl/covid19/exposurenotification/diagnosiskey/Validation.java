@@ -4,13 +4,15 @@ import fi.thl.covid19.exposurenotification.error.InputValidationException;
 
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class Validation {
-    private Validation() {}
+    private Validation() {
+    }
 
     private static final String TOKEN_REGEX = "[0-9]{12}";
 
@@ -80,6 +82,15 @@ public final class Validation {
         return codes.stream().filter(code -> !code.equals("FI")).filter(Validation::validateISOCountryCode).collect(Collectors.toSet());
     }
 
+    public static Set<String> validateISOCountryCodesWithoutFI(Map<String, Boolean> codes) {
+        return validateISOCountryCodesWithoutFI(
+                codes.entrySet().stream().filter(Map.Entry::getValue)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet())
+        );
+
+    }
+
     public static String getValidatedISOCountryCode(String code) {
         if (validateISOCountryCode(code)) {
             return code;
@@ -89,7 +100,7 @@ public final class Validation {
     }
 
     public static boolean validateISOCountryCode(String code) {
-            return Locale.getISOCountries(Locale.IsoCountryCode.PART1_ALPHA2).contains(code);
+        return Locale.getISOCountries(Locale.IsoCountryCode.PART1_ALPHA2).contains(code);
     }
 
     public static int validateDaysSinceOnsetOfSymptoms(int daysSinceOnsetOfSymptoms) {

@@ -70,8 +70,6 @@ public class TestKeyGenerator {
                 keyData,
                 getRiskBucket(symptomsDays - ageDays),
                 dayFirst10MinInterval(Instant.now().minus(ageDays, ChronoUnit.DAYS)),
-                INTERVALS_10MIN_PER_24H,
-                Optional.empty(),
-                Optional.empty());
+                INTERVALS_10MIN_PER_24H);
     }
 }
