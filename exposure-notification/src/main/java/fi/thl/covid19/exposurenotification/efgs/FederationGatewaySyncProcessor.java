@@ -17,7 +17,7 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class FederationGatewaySyncProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);
-    private AtomicReference<LocalDate> lastInboundSyncFromEfgs;
+    private final AtomicReference<LocalDate> lastInboundSyncFromEfgs;
 
     private final FederationGatewaySyncService federationGatewaySyncService;
 
