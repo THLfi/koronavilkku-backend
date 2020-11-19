@@ -70,6 +70,7 @@ public class DiagnosisKeyDao {
         return getAvailableIntervalsDirect();
     }
 
+    @Transactional
     public List<Integer> getAvailableIntervalsDirect() {
         LOG.info("Fetching available intervals");
         String sql = "select distinct submission_interval from en.diagnosis_key order by submission_interval";
@@ -85,6 +86,7 @@ public class DiagnosisKeyDao {
                 .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing."));
     }
 
+    @Transactional
     public List<TemporaryExposureKey> getIntervalKeys(int interval) {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
@@ -175,6 +177,7 @@ public class DiagnosisKeyDao {
         }
     }
 
+    @Transactional
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
         if (!keys.isEmpty()) {
             batchInsert(interval, keys, Optional.of(new Timestamp(Instant.now().toEpochMilli())));
