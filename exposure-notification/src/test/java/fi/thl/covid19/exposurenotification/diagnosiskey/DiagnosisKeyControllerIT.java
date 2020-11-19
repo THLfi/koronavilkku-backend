@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -50,7 +51,7 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
  * NOTE: These tests require the DB to be available and configured through ENV.
  */
 @SpringBootTest
-@ActiveProfiles({"dev","test"})
+@ActiveProfiles({"dev", "test"})
 @AutoConfigureMockMvc
 public class DiagnosisKeyControllerIT {
 
@@ -109,7 +110,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void listWithKeysReturnsBatchIds() throws Exception {
-        BatchId batchId1 = new BatchId(INTERVALS.last -1);
+        BatchId batchId1 = new BatchId(INTERVALS.last - 1);
         BatchId batchId2 = new BatchId(INTERVALS.last);
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
@@ -130,7 +131,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void statusWithKeysReturnsBatchIds() throws Exception {
-        BatchId batchId1 = new BatchId(INTERVALS.last -1);
+        BatchId batchId1 = new BatchId(INTERVALS.last - 1);
         BatchId batchId2 = new BatchId(INTERVALS.last);
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
@@ -175,7 +176,7 @@ public class DiagnosisKeyControllerIT {
     public void postSucceeds() throws Exception {
         List<TemporaryExposureKeyRequest> keys = keyGenerator.someRequestKeys(14, 7);
         // Generator produces appropriate risk levels. Set them all to zero to verify that service calculates them OK.
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys,0));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys, 0), Optional.empty(), Optional.empty());
 
         assertTrue(dao.getAvailableIntervals().isEmpty());
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
@@ -199,7 +200,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void batchFetchingSucceeds() throws Exception {
-        int interval = to24HourInterval(Instant.now())-1;
+        int interval = to24HourInterval(Instant.now()) - 1;
         dao.addKeys(123, "TEST", interval, keyGenerator.someKeys(14), 14);
         mockMvc.perform(get("/diagnosis/v1/batch/" + interval))
                 .andExpect(status().isOk())
@@ -210,7 +211,10 @@ public class DiagnosisKeyControllerIT {
     public void validRetryIsNotAnError() throws Exception {
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.of(
+                Map.of("DE", false, "IT", true)
+        ),
+                Optional.of(true));
         verifiedPost("123654032165", request);
         verifiedPost("123654032165", request);
         verify(tokenVerificationService, times(2)).getVerification("123654032165");
@@ -220,8 +224,8 @@ public class DiagnosisKeyControllerIT {
     public void reusingTokenForDifferentRequestIs403() throws Exception {
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        DiagnosisPublishRequest request1 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
-        DiagnosisPublishRequest request2 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
+        DiagnosisPublishRequest request1 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
+        DiagnosisPublishRequest request2 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         verifiedPost("123654032165", request1);
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -252,7 +256,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void invalidPublishTokenIs400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "123")
@@ -266,22 +270,22 @@ public class DiagnosisKeyControllerIT {
     @Test
     public void tooFewOrTooManyKeysIsInvalidInput() {
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(13)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(13), Optional.empty(), Optional.empty()));
         Assertions.assertDoesNotThrow(
-                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty()));
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(15)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(15), Optional.empty(), Optional.empty()));
     }
 
     @Test
     public void noKeysIsInvalidInput() {
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(List.of()));
+                () -> new DiagnosisPublishRequest(List.of(), Optional.empty(), Optional.empty()));
     }
 
     @Test
     public void fakeRequestIsValidRegardlessOfToken() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -293,7 +297,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void missingFakeRequestHeaderIsError400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -313,7 +317,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void invalidFakeRequestHeaderIsError400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -411,7 +415,7 @@ public class DiagnosisKeyControllerIT {
     private List<TemporaryExposureKeyRequest> resetRiskLevelsRequest(List<TemporaryExposureKeyRequest> originals, int level) {
         return originals.stream()
                 .map(k -> new TemporaryExposureKeyRequest(
-                        k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod, Optional.empty(), Optional.empty()))
+                        k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod))
                 .collect(Collectors.toList());
     }
 
@@ -420,7 +424,7 @@ public class DiagnosisKeyControllerIT {
                 .sorted((k1, k2) -> Integer.compare(k2.rollingStartIntervalNumber, k1.rollingStartIntervalNumber))
                 .map(key -> new TemporaryExposureKeyRequest(
                         key.keyData, key.transmissionRiskLevel, key.rollingStartIntervalNumber,
-                        key.rollingPeriod, Optional.empty(), Optional.empty()))
+                        key.rollingPeriod))
                 .collect(Collectors.toList());
     }
 }

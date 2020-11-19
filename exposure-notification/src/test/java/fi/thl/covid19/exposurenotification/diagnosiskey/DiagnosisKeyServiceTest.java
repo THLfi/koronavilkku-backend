@@ -19,7 +19,7 @@ import static java.time.ZoneOffset.UTC;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-@ActiveProfiles({"dev","test","nodb"})
+@ActiveProfiles({"dev", "test", "nodb"})
 @SpringBootTest
 public class DiagnosisKeyServiceTest {
 
@@ -57,7 +57,7 @@ public class DiagnosisKeyServiceTest {
     @Test
     public void filterAcceptsTodaysKeys() {
         List<TemporaryExposureKeyRequest> keys = List.of(
-                generateAt(LocalDate.parse("2020-07-16"), 14*6),
+                generateAt(LocalDate.parse("2020-07-16"), 14 * 6),
                 generateAt(LocalDate.parse("2020-07-16"), 144));
         assertEquals(keys, filter(keys, "2020-07-16T14:00:00Z"));
     }
@@ -108,7 +108,7 @@ public class DiagnosisKeyServiceTest {
     private TemporaryExposureKeyRequest generateAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {
         int interval = to10MinInterval(keyDate.atStartOfDay(UTC).toInstant());
         return new TemporaryExposureKeyRequest("c9Uau9icuBlvDvtokvlNaA==", transmissionRiskLevel, interval,
-                rollingPeriod, Optional.empty(), Optional.empty());
+                rollingPeriod);
     }
 
     private TemporaryExposureKey generateDomainKeyAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {

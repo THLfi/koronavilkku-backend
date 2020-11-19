@@ -117,17 +117,17 @@ public class ValidationTest {
 
     @Test
     public void publishRejectsTooSmallPost() {
-        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(13)));
+        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(13), Optional.empty(), Optional.empty()));
     }
 
     @Test
     public void publishAcceptsCorrectPost() {
-        assertDoesNotThrow(() -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14)));
+        assertDoesNotThrow(() -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty()));
     }
 
     @Test
     public void publishRejectsTooLargePost() {
-        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(15)));
+        assertThrows(InputValidationException.class, () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(15), Optional.empty(), Optional.empty()));
     }
 
     @Test
@@ -139,12 +139,10 @@ public class ValidationTest {
                         "AAAAAAAAAAAAAAAAAAAAAA==",
                         0,
                         dayFirst10MinInterval(Instant.now()),
-                        IntervalNumber.INTERVALS_10MIN_PER_24H,
-                        Optional.empty(),
-                        Optional.empty()
+                        IntervalNumber.INTERVALS_10MIN_PER_24H
                 ));
             }
-            new DiagnosisPublishRequest(keys);
+            new DiagnosisPublishRequest(keys, Optional.empty(), Optional.empty());
         });
     }
 }

@@ -11,7 +11,8 @@ import java.util.stream.Collectors;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class Validation {
-    private Validation() {}
+    private Validation() {
+    }
 
     private static final String TOKEN_REGEX = "[0-9]{12}";
 
@@ -81,12 +82,13 @@ public final class Validation {
         return codes.stream().filter(code -> !code.equals("FI")).filter(Validation::validateISOCountryCode).collect(Collectors.toSet());
     }
 
-    public static Map<String, Boolean> validateISOCountryCodesWithoutFI(Map<String, Boolean> codes) {
-        return validateISOCountryCodesWithoutFI(codes.entrySet().stream().filter(Map.Entry::getValue)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet()))
-                .stream()
-                .collect(Collectors.toMap(v -> v, stringBooleanEntry -> true));
+    public static Set<String> validateISOCountryCodesWithoutFI(Map<String, Boolean> codes) {
+        return validateISOCountryCodesWithoutFI(
+                codes.entrySet().stream().filter(Map.Entry::getValue)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet())
+        );
+
     }
 
     public static String getValidatedISOCountryCode(String code) {
@@ -98,7 +100,7 @@ public final class Validation {
     }
 
     public static boolean validateISOCountryCode(String code) {
-            return Locale.getISOCountries(Locale.IsoCountryCode.PART1_ALPHA2).contains(code);
+        return Locale.getISOCountries(Locale.IsoCountryCode.PART1_ALPHA2).contains(code);
     }
 
     public static int validateDaysSinceOnsetOfSymptoms(int daysSinceOnsetOfSymptoms) {
