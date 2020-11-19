@@ -21,7 +21,7 @@ public class CallbackControllerTest {
     private MockMvc mvc;
 
     @MockBean
-    private FederationGatewayService federationGatewayService;
+    private FederationGatewaySyncService federationGatewaySyncService;
 
 
     @Test

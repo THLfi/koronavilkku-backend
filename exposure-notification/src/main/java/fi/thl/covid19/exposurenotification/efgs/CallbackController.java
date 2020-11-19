@@ -19,16 +19,16 @@ public class CallbackController {
 
     private static final Logger LOG = LoggerFactory.getLogger(CallbackController.class);
 
-    private final FederationGatewayService federationGatewayService;
+    private final FederationGatewaySyncService federationGatewaySyncService;
 
-    public CallbackController(FederationGatewayService federationGatewayService) {
-        this.federationGatewayService = federationGatewayService;
+    public CallbackController(FederationGatewaySyncService federationGatewaySyncService) {
+        this.federationGatewaySyncService = federationGatewaySyncService;
     }
 
     @GetMapping("/callback")
     public void triggerCallback(@RequestParam("batchTag") String batchTag, @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         LOG.info("Import from efgs triggered by callback {} {}.", keyValue("batchTag", batchTag), keyValue("date", date.toString()));
-        federationGatewayService.startInbound(date, Optional.of(batchTag));
+        federationGatewaySyncService.startInbound(date, Optional.of(batchTag));
         LOG.info("Import from efgs triggered by callback finished.");
     }
 }

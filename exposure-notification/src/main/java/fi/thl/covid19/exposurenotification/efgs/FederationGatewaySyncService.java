@@ -17,13 +17,13 @@ import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUti
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 
 @Service
-public class FederationGatewayService {
+public class FederationGatewaySyncService {
     private final FederationGatewayClient client;
     private final DiagnosisKeyDao diagnosisKeyDao;
     private final OperationDao operationDao;
     private final FederationGatewayBatchSigner signer;
 
-    public FederationGatewayService(
+    public FederationGatewaySyncService(
             FederationGatewayClient client,
             DiagnosisKeyDao diagnosisKeyDao,
             OperationDao operationDao,
@@ -76,27 +76,31 @@ public class FederationGatewayService {
 
     private Optional<String> addInboundKeys(String date, Optional<String> batchTag) {
         boolean finished = false;
-        long operationId = operationDao.startOperation(INBOUND);
         Optional<String> localBatchTag = batchTag;
+        Optional<Long> operationId = operationDao.startOperation(INBOUND, localBatchTag);
 
-        try {
-            Optional<DownloadData> downloadO = client.download(date, localBatchTag);
+        if (operationId.isPresent()) {
+            try {
+                Optional<DownloadData> downloadO = client.download(date, localBatchTag);
 
-            if (downloadO.isPresent()) {
-                DownloadData download = downloadO.get();
-                localBatchTag = Optional.of(download.batchTag);
-                List<TemporaryExposureKey> keys = transform(download.batch);
-                diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
-                finished = operationDao.finishOperation(operationId, keys.size(), localBatchTag);
-                return download.nextBatchTag;
+                if (downloadO.isPresent()) {
+                    DownloadData download = downloadO.get();
+                    localBatchTag = Optional.of(download.batchTag);
+                    List<TemporaryExposureKey> keys = transform(download.batch);
+                    diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
+                    finished = operationDao.finishOperation(operationId.get(), keys.size(), localBatchTag);
+                    return download.nextBatchTag;
 
-            } else {
-                return Optional.empty();
+                } else {
+                    return Optional.empty();
+                }
+            } finally {
+                if (!finished) {
+                    operationDao.markErrorOperation(operationId.get(), localBatchTag);
+                }
             }
-        } finally {
-            if (!finished) {
-                operationDao.markErrorOperation(operationId, localBatchTag);
-            }
+        } else {
+            return Optional.empty();
         }
     }
 
