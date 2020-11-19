@@ -178,7 +178,7 @@ public class ExposureConfiguration {
         this.durationAtAttenuationWeights =
                 assertParams(3, "durationAtAttenuationWeights", durationAtAttenuationWeights);
         this.exposureRiskDuration = exposureRiskDuration;
-        this.participatingCountries = Validation.validateISOCountryCodes(requireNonNull(participatingCountries));
+        this.participatingCountries = Validation.validateISOCountryCodesWithoutFI(requireNonNull(participatingCountries));
     }
 
     private <T extends Number> List<T> assertParams(int size, String name, List<T> params) {

@@ -4,6 +4,7 @@ import fi.thl.covid19.exposurenotification.error.InputValidationException;
 
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -78,6 +79,14 @@ public final class Validation {
 
     public static Set<String> validateISOCountryCodesWithoutFI(Set<String> codes) {
         return codes.stream().filter(code -> !code.equals("FI")).filter(Validation::validateISOCountryCode).collect(Collectors.toSet());
+    }
+
+    public static Map<String, Boolean> validateISOCountryCodesWithoutFI(Map<String, Boolean> codes) {
+        return validateISOCountryCodesWithoutFI(codes.entrySet().stream().filter(Map.Entry::getValue)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(v -> v, stringBooleanEntry -> true));
     }
 
     public static String getValidatedISOCountryCode(String code) {

@@ -66,7 +66,7 @@ public class DiagnosisKeyService {
                 getRiskBucket(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)),
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
-                requestKey.visitedCountries,
+                requestKey.visitedCountries.keySet(),
                 Optional.of(Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)))),
                 DEFAULT_ORIGIN_COUNTRY,
                 requestKey.consentToShareWithEfgs

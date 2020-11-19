@@ -3,9 +3,11 @@ package fi.thl.covid19.exposurenotification.diagnosiskey.v1;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import fi.thl.covid19.exposurenotification.diagnosiskey.Validation;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.Validation.*;
 import static java.util.Objects.requireNonNull;
@@ -15,17 +17,29 @@ import static java.util.Objects.requireNonNull;
  * https://developers.google.com/android/exposure-notifications/verification-system#metadata
  */
 public final class TemporaryExposureKeyRequest {
-    /** Key of infected user: the byte-array, Base64-encoded **/
+    /**
+     * Key of infected user: the byte-array, Base64-encoded
+     **/
     public final String keyData;
-    /** Varying risk associated with a key depending on diagnosis method **/
+    /**
+     * Varying risk associated with a key depending on diagnosis method
+     **/
     public final int transmissionRiskLevel;
-    /** The interval number since epoch for which a key starts **/
+    /**
+     * The interval number since epoch for which a key starts
+     **/
     public final int rollingStartIntervalNumber;
-    /** Increments of 10 minutes describing how long a key is valid **/
+    /**
+     * Increments of 10 minutes describing how long a key is valid
+     **/
     public final int rollingPeriod;
-    /** Set of visited countries in ISO-3166 alpha-2 format **/
-    public final Set<String> visitedCountries;
-    /** Consent to share data with efgs **/
+    /**
+     * Set of visited countries in ISO-3166 alpha-2 format
+     **/
+    public final Map<String, Boolean> visitedCountries;
+    /**
+     * Consent to share data with efgs
+     **/
     public final boolean consentToShareWithEfgs;
 
     @JsonCreator
@@ -33,13 +47,14 @@ public final class TemporaryExposureKeyRequest {
                                        int transmissionRiskLevel,
                                        int rollingStartIntervalNumber,
                                        int rollingPeriod,
-                                       Optional<Set<String>> visitedCountries,
+                                       Optional<Map<String, Boolean>> visitedCountries,
                                        Optional<Boolean> consentToShareWithEfgs) {
         this.keyData = validateKeyData(requireNonNull(keyData));
         this.transmissionRiskLevel = validateTransmissionRiskLevel(transmissionRiskLevel);
         this.rollingStartIntervalNumber = validateRollingStartIntervalNumber(rollingStartIntervalNumber);
         this.rollingPeriod = validateRollingPeriod(rollingPeriod);
-        this.visitedCountries = Validation.validateISOCountryCodesWithoutFI(requireNonNull(visitedCountries).orElse(Set.of()));
+        this.visitedCountries = Validation.validateISOCountryCodesWithoutFI(
+                requireNonNull(visitedCountries).orElse(Map.of()));
         this.consentToShareWithEfgs = requireNonNull(consentToShareWithEfgs).orElse(false);
     }
 
