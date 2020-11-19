@@ -66,7 +66,8 @@ public class OperationDao {
                 "keys_count_500", keysCount500,
                 "updated_at", new Timestamp(Instant.now().toEpochMilli())
         )) == 1;
-        LOG.info("Efgs sync finished. {} {} {}",
+        LOG.info("Efgs sync finished. {} {} {} {}",
+                keyValue("success", success),
                 keyValue("operationId", operation.operationId),
                 keyValue("batchTag", operation.batchTag),
                 keyValue("keys", keysCountTotal));

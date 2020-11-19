@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -16,13 +17,13 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class FederationGatewaySyncProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);
-    private LocalDate lastInboundSyncFromEfgs;
+    private AtomicReference<LocalDate> lastInboundSyncFromEfgs;
 
     private final FederationGatewaySyncService federationGatewaySyncService;
 
     public FederationGatewaySyncProcessor(FederationGatewaySyncService federationGatewaySyncService) {
         this.federationGatewaySyncService = federationGatewaySyncService;
-        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC);
+        this.lastInboundSyncFromEfgs = new AtomicReference<>(LocalDate.now(ZoneOffset.UTC));
     }
 
     @Scheduled(initialDelayString = "${covid19.federation-gateway.upload-interval}",
@@ -37,11 +38,11 @@ public class FederationGatewaySyncProcessor {
             fixedRateString = "${covid19.federation-gateway.download-interval}")
     private void runImportFromEfgs() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-
-        if (today.isAfter(lastInboundSyncFromEfgs)) {
+        LocalDate last = lastInboundSyncFromEfgs.get();
+        if (today.isAfter(last)) {
             LOG.info("Starting scheduled import from efgs.");
-            federationGatewaySyncService.startInbound(lastInboundSyncFromEfgs, Optional.empty());
-            lastInboundSyncFromEfgs = today;
+            federationGatewaySyncService.startInbound(last, Optional.empty());
+            lastInboundSyncFromEfgs.set(today);
             LOG.info("Scheduled import from efgs finished.");
         }
     }
@@ -52,7 +53,7 @@ public class FederationGatewaySyncProcessor {
         LOG.info("Starting scheduled efgs error handling.");
         federationGatewaySyncService.resolveCrash();
         federationGatewaySyncService.startOutbound(true);
-        federationGatewaySyncService.startInboundRetry(lastInboundSyncFromEfgs);
+        federationGatewaySyncService.startInboundRetry(lastInboundSyncFromEfgs.get());
         LOG.info("Scheduled efgs error handling finished.");
     }
 }
