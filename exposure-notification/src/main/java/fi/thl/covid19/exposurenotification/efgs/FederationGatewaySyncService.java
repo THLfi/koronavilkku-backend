@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -75,32 +77,27 @@ public class FederationGatewaySyncService {
     }
 
     private Optional<String> addInboundKeys(String date, Optional<String> batchTag) {
-        boolean finished = false;
-        Optional<String> localBatchTag = batchTag;
-        Optional<Long> operationId = operationDao.startOperation(INBOUND, localBatchTag);
+        Optional<Long> operationId = operationDao.startOperation(INBOUND, batchTag);
+        return operationId.flatMap(id -> downloadAndStore(id, batchTag, date));
+    }
 
-        if (operationId.isPresent()) {
-            try {
-                Optional<DownloadData> downloadO = client.download(date, localBatchTag);
-
-                if (downloadO.isPresent()) {
-                    DownloadData download = downloadO.get();
-                    localBatchTag = Optional.of(download.batchTag);
-                    List<TemporaryExposureKey> keys = transform(download.batch);
-                    diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
-                    finished = operationDao.finishOperation(operationId.get(), keys.size(), localBatchTag);
-                    return download.nextBatchTag;
-
-                } else {
-                    return Optional.empty();
-                }
-            } finally {
-                if (!finished) {
-                    operationDao.markErrorOperation(operationId.get(), localBatchTag);
-                }
+    private Optional<String> downloadAndStore(long operationId, Optional<String> batchTag, String date) {
+        AtomicBoolean finished = new AtomicBoolean(false);
+        AtomicReference<Optional<String>> localBatchTag = new AtomicReference<>(batchTag);
+        try {
+            Optional<DownloadData> downloadO = client.download(date, localBatchTag.get());
+            return downloadO.flatMap(downloadData -> {
+                DownloadData download = downloadO.get();
+                localBatchTag.set(Optional.of(download.batchTag));
+                List<TemporaryExposureKey> keys = transform(download.batch);
+                diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
+                finished.set(operationDao.finishOperation(operationId, keys.size(), localBatchTag.get()));
+                return download.nextBatchTag;
+            });
+        } finally {
+            if (!finished.get()) {
+                operationDao.markErrorOperation(operationId, localBatchTag.get());
             }
-        } else {
-            return Optional.empty();
         }
     }
 
