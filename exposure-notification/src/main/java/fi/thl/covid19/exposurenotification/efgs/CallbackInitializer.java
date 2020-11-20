@@ -3,6 +3,7 @@ package fi.thl.covid19.exposurenotification.efgs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
+@Profile("!dev & !test")
 public class CallbackInitializer {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);
@@ -35,7 +37,7 @@ public class CallbackInitializer {
         this.localUrl = requireNonNull(localUrl);
     }
 
-    @Scheduled(initialDelay = 60000, fixedDelay = 60000)
+    @Scheduled(initialDelay = 1000, fixedDelay = 60000)
     public void initializeCallback() {
         if (!this.initialized.get()) {
             try {
