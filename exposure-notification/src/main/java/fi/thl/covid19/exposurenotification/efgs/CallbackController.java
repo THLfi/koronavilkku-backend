@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @RestController
@@ -22,7 +23,7 @@ public class CallbackController {
     private final FederationGatewaySyncService federationGatewaySyncService;
 
     public CallbackController(FederationGatewaySyncService federationGatewaySyncService) {
-        this.federationGatewaySyncService = federationGatewaySyncService;
+        this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
     }
 
     @GetMapping("/callback")

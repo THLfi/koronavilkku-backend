@@ -6,6 +6,7 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TestKeyGenerator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,6 +89,11 @@ public class FederationServiceSyncWithDaoTestIT {
         diagnosisKeyDao.deleteKeysBefore(Integer.MAX_VALUE);
         diagnosisKeyDao.deleteVerificationsBefore(Instant.now().plus(24, ChronoUnit.HOURS));
         deleteOperations();
+    }
+
+    @AfterEach
+    public void tearDown() {
+        mockServer.verify();
     }
 
     @Test

@@ -28,28 +28,28 @@ public class FederationGatewayClient {
 
 
     private final RestTemplate restTemplate;
-    private final String gatewayUrl;
+    private final String gatewayBaseUrl;
     private final Environment environment;
     private final String devSha256;
     private final String devDN;
 
     public FederationGatewayClient(
             @Qualifier("federationGatewayRestTemplate") RestTemplate restTemplate,
-            @Value("${covid19.federation-gateway.url-template}") String gatewayUrl,
+            @Value("${covid19.federation-gateway.base-url}") String gatewayBaseUrl,
             Environment environment,
             @Value("${covid19.federation-gateway.client-sha256:not_set}") String devSha256,
             @Value("${covid19.federation-gateway.client-dn:not_set}") String devDN
     ) {
-        this.restTemplate = restTemplate;
-        this.gatewayUrl = gatewayUrl;
-        this.environment = environment;
-        this.devSha256 = devSha256;
-        this.devDN = devDN;
+        this.restTemplate = requireNonNull(restTemplate);
+        this.gatewayBaseUrl = requireNonNull(gatewayBaseUrl);
+        this.environment = requireNonNull(environment);
+        this.devSha256 = requireNonNull(devSha256);
+        this.devDN = requireNonNull(devDN);
     }
 
     public UploadResponseEntity upload(String batchTag, String batchSignature, EfgsProto.DiagnosisKeyBatch batchData) {
         return transform(restTemplate.exchange(
-                gatewayUrl,
+                gatewayBaseUrl + "/{operation}/{variable}",
                 HttpMethod.POST,
                 new HttpEntity<>(serialize(batchData), getUploadHttpHeaders(batchTag, batchSignature)),
                 UploadResponseEntityInner.class,
@@ -76,6 +76,32 @@ public class FederationGatewayClient {
         }
     }
 
+    public List<Callback> fetchCallbacks() {
+        ResponseEntity<Callback[]> response = restTemplate.getForEntity(
+                gatewayBaseUrl + "/callback",
+                Callback[].class
+        );
+        return Arrays.asList(requireNonNull(response.getBody()));
+    }
+
+    public void deleteCallback(String id) {
+        restTemplate.delete(
+                gatewayBaseUrl + "/callback/{id}",
+                Map.of("id", id)
+        );
+    }
+
+    public void putCallback(Callback callback) {
+        restTemplate.put(
+                gatewayBaseUrl + "/callback/{id}?url={url}",
+                null,
+                Map.of(
+                        "id", callback.callbackId,
+                        "url", callback.url
+                )
+        );
+    }
+
     private UploadResponseEntity transform(ResponseEntity<UploadResponseEntityInner> res) {
         Optional<Map<Integer, List<Integer>>> body =
                 res.getStatusCodeValue() == 207 ?
@@ -90,7 +116,7 @@ public class FederationGatewayClient {
 
     private ResponseEntity<byte[]> doDownload(String dateVar, Optional<String> batchTag) {
         return restTemplate.exchange(
-                gatewayUrl,
+                gatewayBaseUrl + "/{operation}/{variable}",
                 HttpMethod.GET,
                 new HttpEntity<>(getDownloadHttpHeaders(batchTag)),
                 byte[].class,
