@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
@@ -22,7 +23,7 @@ public class FederationGatewaySyncProcessor {
     private final FederationGatewaySyncService federationGatewaySyncService;
 
     public FederationGatewaySyncProcessor(FederationGatewaySyncService federationGatewaySyncService) {
-        this.federationGatewaySyncService = federationGatewaySyncService;
+        this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
         this.lastInboundSyncFromEfgs = new AtomicReference<>(LocalDate.now(ZoneOffset.UTC));
     }
 

@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.MAX_RETRY_COUNT;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
+import static java.util.Objects.requireNonNull;
 
 @Service
 public class FederationGatewaySyncService {
@@ -31,10 +32,10 @@ public class FederationGatewaySyncService {
             OperationDao operationDao,
             FederationGatewayBatchSigner signer
     ) {
-        this.client = client;
-        this.diagnosisKeyDao = diagnosisKeyDao;
-        this.operationDao = operationDao;
-        this.signer = signer;
+        this.client = requireNonNull(client);
+        this.diagnosisKeyDao = requireNonNull(diagnosisKeyDao);
+        this.operationDao = requireNonNull(operationDao);
+        this.signer = requireNonNull(signer);
     }
 
     public Set<Long> startOutbound(boolean retry) {

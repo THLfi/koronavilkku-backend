@@ -84,12 +84,15 @@ covid19:
   publish-token:
     url: "${EN_PT_URL:}"
   federation-gateway:
-    url-template: "${EN_EFGS_URL:https://test-efgs-ws.tech.ec.europa.eu/diagnosiskeys/{operation}/{variable}}"
     rest-client:
       client-key-store:
         alias: efgs
     signing-key-store:
       key-alias: efgs-signing
+    base-url: "${EN_EFGS_URL:https://test-efgs-ws.tech.ec.europa.eu/diagnosiskeys}"
     upload-interval: PT12H
     download-interval: PT10M
     error-handling-interval: PT30M
+    call-back:
+      enabled: false
+      local-url:
