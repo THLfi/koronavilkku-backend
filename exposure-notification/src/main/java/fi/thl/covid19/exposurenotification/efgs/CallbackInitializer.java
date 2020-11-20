@@ -53,7 +53,9 @@ public class CallbackInitializer {
                 LOG.info("Callback initialized. {}", keyValue("local-url", localUrl));
                 this.initialized.set(true);
             } finally {
-                LOG.info("Callback initialization failed. Retry in 60 seconds. {}", keyValue("local-url", localUrl));
+                if (!this.initialized.get()) {
+                    LOG.info("Callback initialization failed. Retry in 60 seconds. {}", keyValue("local-url", localUrl));
+                }
             }
         }
     }
