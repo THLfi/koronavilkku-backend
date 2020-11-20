@@ -2,6 +2,7 @@ package fi.thl.covid19.exposurenotification.efgs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,10 @@ import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "covid19.federation-gateway", value = "enabled",
+        havingValue = "true"
+)
 public class FederationGatewaySyncProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);

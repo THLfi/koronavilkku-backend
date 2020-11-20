@@ -19,6 +19,7 @@ covid19:
     base-url: "${EN_PT_URL:http://localhost:8080/diagnosiskeys}"
     client-sha256: "${EN_DEV_EFGS_SHA256:}"
     client-dn: C=FI,CN=koronavilkku.dev,O=koronavilkku dev
+    enabled: false
     rest-client:
       trust-store:
         path:

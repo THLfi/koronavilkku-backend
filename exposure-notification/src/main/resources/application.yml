@@ -90,6 +90,7 @@ covid19:
     signing-key-store:
       key-alias: efgs-signing
     base-url: "${EN_EFGS_URL:https://test-efgs-ws.tech.ec.europa.eu/diagnosiskeys}"
+    enabled: true
     upload-interval: PT12H
     download-interval: PT10M
     error-handling-interval: PT30M
