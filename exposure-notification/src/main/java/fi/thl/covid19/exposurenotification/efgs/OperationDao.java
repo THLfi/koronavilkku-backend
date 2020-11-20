@@ -1,7 +1,10 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -17,9 +20,13 @@ import java.util.stream.Collectors;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationState.*;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Repository
 public class OperationDao {
+
+    private static final Logger LOG = LoggerFactory.getLogger(OperationDao.class);
+
     public enum EfgsOperationState {STARTED, FINISHED, ERROR}
 
     public enum EfgsOperationDirection {INBOUND, OUTBOUND}
@@ -32,6 +39,7 @@ public class OperationDao {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
     }
 
+    @Transactional
     public boolean finishOperation(long operationId, int keysCountTotal, Optional<String> batchTag) {
         String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), batch_tag = :batch_tag, " +
                 "keys_count_total = :keys_count_total, updated_at = :updated_at " +
@@ -45,12 +53,13 @@ public class OperationDao {
         return jdbcTemplate.update(sql, params) == 1;
     }
 
+    @Transactional
     public boolean finishOperation(FederationOutboundOperation operation, int keysCountTotal, int keysCount201, int keysCount409, int keysCount500) {
         String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), batch_tag = :batch_tag, " +
                 "keys_count_total = :keys_count_total, keys_count_201 = :keys_count_201, " +
                 "keys_count_409 = :keys_count_409, keys_count_500 = :keys_count_500, updated_at = :updated_at " +
                 "where id = :id";
-        return jdbcTemplate.update(sql, Map.of(
+        boolean success = jdbcTemplate.update(sql, Map.of(
                 "new_state", FINISHED.name(),
                 "id", operation.operationId,
                 "batch_tag", operation.batchTag,
@@ -60,12 +69,20 @@ public class OperationDao {
                 "keys_count_500", keysCount500,
                 "updated_at", new Timestamp(Instant.now().toEpochMilli())
         )) == 1;
+        LOG.info("Efgs sync finished. {} {} {} {}",
+                keyValue("success", success),
+                keyValue("operationId", operation.operationId),
+                keyValue("batchTag", operation.batchTag),
+                keyValue("keys", keysCountTotal));
+        return success;
     }
 
+    @Transactional
     public void markErrorOperation(long operationId, Optional<String> batchTag) {
         markErrorOperation(operationId, batchTag, new Timestamp(Instant.now().toEpochMilli()));
     }
 
+    @Transactional
     public void markErrorOperation(long operationId, Optional<String> batchTag, Timestamp timestamp) {
         String sql = "update en.efgs_operation set " +
                 "state = cast(:error_state as en.state_t), " +
@@ -78,8 +95,12 @@ public class OperationDao {
         params.put("batch_tag", batchTag.orElse(null));
         params.put("id", operationId);
         jdbcTemplate.update(sql, params);
+        LOG.info("Efgs sync failed. {} {}",
+                keyValue("operationId", operationId),
+                keyValue("batchTag", batchTag));
     }
 
+    @Transactional
     public List<Timestamp> getAndResolveCrashed(EfgsOperationDirection direction) {
         String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t) " +
                 "where state = cast(:current_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
@@ -93,10 +114,14 @@ public class OperationDao {
         ), Timestamp.class);
     }
 
-    public long startOperation(EfgsOperationDirection direction) {
-        return startOperation(direction, new Timestamp(Instant.now().toEpochMilli()));
+    @Transactional
+    public Optional<Long> startOperation(EfgsOperationDirection direction, Optional<String> batchTag) {
+        return batchTag.map(tag ->
+                startOperation(direction, new Timestamp(Instant.now().toEpochMilli()), tag))
+                .orElseGet(() -> Optional.of(startOperation(direction, new Timestamp(Instant.now().toEpochMilli()))));
     }
 
+    @Transactional
     public long startOperation(EfgsOperationDirection direction, Timestamp timestamp) {
         String createOperation = "insert into en.efgs_operation (state, direction, updated_at) " +
                 "values (cast(:state as en.state_t), cast(:direction as en.direction_t), :updated_at) returning id";
@@ -110,6 +135,31 @@ public class OperationDao {
                 .stream().findFirst().orElseThrow(() -> new IllegalStateException("OperationId not returned."));
     }
 
+    @Transactional
+    public Optional<Long> startOperation(EfgsOperationDirection direction, Timestamp timestamp, String batchTag) {
+        String createOperation = "insert into en.efgs_operation (state, direction, updated_at, batch_tag) " +
+                "select cast(:state as en.state_t), cast(:direction as en.direction_t), :updated_at, :batch_tag " +
+                "where not exists ( " +
+                "select 1 from en.efgs_operation where " +
+                "batch_tag = :batch_tag and " +
+                "direction = cast(:direction as en.direction_t) and " +
+                "updated_at >= current_date::timestamp " +
+                "and state <> cast(:error_state as en.state_t) " +
+                ") " +
+                "returning id";
+        return jdbcTemplate.query(createOperation,
+                Map.of(
+                        "state", STARTED.name(),
+                        "error_state", ERROR.name(),
+                        "direction", direction.name(),
+                        "updated_at", timestamp,
+                        "batch_tag", batchTag
+                ),
+                (rs, i) -> rs.getLong(1))
+                .stream().findFirst();
+    }
+
+    @Transactional
     public Map<String, Long> getInboundErrorBatchTags(LocalDate date) {
         String sql = "with finished as ( " +
                 "select batch_tag from en.efgs_operation " +

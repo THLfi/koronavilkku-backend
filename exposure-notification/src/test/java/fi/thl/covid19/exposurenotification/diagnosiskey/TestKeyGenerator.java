@@ -43,7 +43,7 @@ public class TestKeyGenerator {
                 getRiskBucket(symptomsDays - ageDays),
                 dayFirst10MinInterval(Instant.now().minus(ageDays, ChronoUnit.DAYS)),
                 INTERVALS_10MIN_PER_24H,
-                Set.of(),
+                rand.nextBoolean() ? Set.of() : Set.of("DE","IT"),
                 Optional.of(dsos),
                 "FI",
                 consentToShare

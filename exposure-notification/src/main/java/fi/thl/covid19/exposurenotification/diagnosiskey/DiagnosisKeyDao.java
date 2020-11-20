@@ -10,7 +10,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
@@ -71,6 +70,7 @@ public class DiagnosisKeyDao {
         return getAvailableIntervalsDirect();
     }
 
+    @Transactional
     public List<Integer> getAvailableIntervalsDirect() {
         LOG.info("Fetching available intervals");
         String sql = "select distinct submission_interval from en.diagnosis_key order by submission_interval";
@@ -86,6 +86,7 @@ public class DiagnosisKeyDao {
                 .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing."));
     }
 
+    @Transactional
     public List<TemporaryExposureKey> getIntervalKeys(int interval) {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
@@ -131,11 +132,11 @@ public class DiagnosisKeyDao {
         String sql = "with batch as ( " +
                 "select key_data " +
                 "from en.diagnosis_key " +
-                "where sent_to_efgs is null and retry_count >= :min_retry_count and retry_count < :max_retry_count " +
+                "where efgs_sync is null and retry_count >= :min_retry_count and retry_count < :max_retry_count " +
                 "and consent_to_share " +
                 "order by key_data for update skip locked limit 5000 ) " +
                 "update en.diagnosis_key " +
-                "set sent_to_efgs = :timestamp, retry_count = retry_count + 1 " +
+                "set efgs_sync = :timestamp, retry_count = retry_count + 1 " +
                 "where key_data in (select key_data from batch) " +
                 "returning key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
                 "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share";
@@ -158,7 +159,7 @@ public class DiagnosisKeyDao {
 
     @Transactional
     public void setNotSent(FederationOutboundOperation operation) {
-        String sql = "update en.diagnosis_key set sent_to_efgs = null where key_data = :key_data";
+        String sql = "update en.diagnosis_key set efgs_sync = null where key_data = :key_data";
         jdbcTemplate.batchUpdate(sql, operation.keys.stream().map(key -> Map.of("key_data", key.keyData))
                 .toArray((IntFunction<Map<String, String>[]>) Map[]::new)
         );
@@ -171,11 +172,12 @@ public class DiagnosisKeyDao {
         List<Timestamp> crashed = operationDao.getAndResolveCrashed(OUTBOUND);
 
         if (!crashed.isEmpty()) {
-            String sql = "update en.diagnosis_key set sent_to_efgs = null, retry_count = 0 where sent_to_efgs in (:timestamp)";
+            String sql = "update en.diagnosis_key set efgs_sync = null, retry_count = 0 where efgs_sync in (:timestamp)";
             jdbcTemplate.update(sql, Map.of("timestamp", crashed));
         }
     }
 
+    @Transactional
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
         if (!keys.isEmpty()) {
             batchInsert(interval, keys, Optional.of(new Timestamp(Instant.now().toEpochMilli())));
@@ -188,15 +190,15 @@ public class DiagnosisKeyDao {
         return jdbcTemplate.queryForObject(sql, Map.of("verification_id", verificationId), String.class);
     }
 
-    private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, Optional<Timestamp> sentToEfgs) {
+    private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, Optional<Timestamp> efgsSync) {
         String sql = "insert into " +
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, sent_to_efgs) " +
+                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_sync) " +
                 "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, " +
-                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :sent_to_efgs) " +
+                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_sync) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
-                .map(key -> createParamsMap(interval, key, sentToEfgs))
+                .map(key -> createParamsMap(interval, key, efgsSync))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);
         jdbcTemplate.batchUpdate(sql, params);
     }
@@ -233,7 +235,7 @@ public class DiagnosisKeyDao {
         );
     }
 
-    private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key, Optional<Timestamp> sentToEfgs) {
+    private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key, Optional<Timestamp> efgsSync) {
         Map<String, Object> params = new HashMap<>();
         params.put("key_data", key.keyData);
         params.put("rolling_period", key.rollingPeriod);
@@ -244,7 +246,7 @@ public class DiagnosisKeyDao {
         params.put("visited_countries", key.visitedCountries.toArray(new String[0]));
         params.put("consent_to_share", key.consentToShareWithEfgs);
         params.put("days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms.orElse(null));
-        params.put("sent_to_efgs", sentToEfgs.orElse(null));
+        params.put("efgs_sync", efgsSync.orElse(null));
         return params;
     }
 }
