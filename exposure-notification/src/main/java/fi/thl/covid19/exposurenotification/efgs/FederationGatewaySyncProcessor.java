@@ -50,12 +50,16 @@ public class FederationGatewaySyncProcessor {
             fixedRateString = "${covid19.federation-gateway.download-interval}")
     private void runImportFromEfgs() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        LocalDate last = lastInboundSyncFromEfgs.get();
-        if (importEnabled && today.isAfter(last)) {
-            LOG.info("Starting scheduled import from efgs.");
-            federationGatewaySyncService.startInbound(last, Optional.empty());
-            lastInboundSyncFromEfgs.set(today);
-            LOG.info("Scheduled import from efgs finished.");
+        LocalDate previous = lastInboundSyncFromEfgs.getAndUpdate(c -> today.isAfter(c) ? today : c);
+        if (importEnabled && today.isAfter(previous)) {
+            try {
+                LOG.info("Starting scheduled import from efgs.");
+                federationGatewaySyncService.startInbound(previous, Optional.empty());
+                LOG.info("Scheduled import from efgs finished.");
+            } catch (Exception e) {
+                lastInboundSyncFromEfgs.set(previous);
+                throw e;
+            }
         }
     }
 
