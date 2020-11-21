@@ -38,6 +38,12 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.Date;
 
+/* This class encapsulates batch signing functionality.
+ *
+ * Some parts are strictly based on efgs implementation to achieve compability.
+ * See: https://github.com/eu-federation-gateway-service/efgs-federation-gateway/tree/master/src/main/java/eu/interop/federationgateway/batchsigning
+ *
+ */
 @Component
 public class FederationGatewayBatchSigner {
 

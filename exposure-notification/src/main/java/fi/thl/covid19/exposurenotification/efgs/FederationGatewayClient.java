@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -26,23 +25,22 @@ public class FederationGatewayClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewayClient.class);
 
-
     private final RestTemplate restTemplate;
     private final String gatewayBaseUrl;
-    private final Environment environment;
+    private final boolean devClient;
     private final String devSha256;
     private final String devDN;
 
     public FederationGatewayClient(
             @Qualifier("federationGatewayRestTemplate") RestTemplate restTemplate,
             @Value("${covid19.federation-gateway.base-url}") String gatewayBaseUrl,
-            Environment environment,
+            @Value("${covid19.federation-gateway.dev-client:false}") boolean devClient,
             @Value("${covid19.federation-gateway.client-sha256:not_set}") String devSha256,
             @Value("${covid19.federation-gateway.client-dn:not_set}") String devDN
     ) {
         this.restTemplate = requireNonNull(restTemplate);
         this.gatewayBaseUrl = requireNonNull(gatewayBaseUrl);
-        this.environment = requireNonNull(environment);
+        this.devClient = devClient;
         this.devSha256 = requireNonNull(devSha256);
         this.devDN = requireNonNull(devDN);
     }
@@ -130,7 +128,7 @@ public class FederationGatewayClient {
         headers.add("batchSignature", batchSignature);
         headers.add(HttpHeaders.CONTENT_TYPE, "application/protobuf; version=1.0");
 
-        if (Arrays.stream(environment.getActiveProfiles()).anyMatch("dev"::equalsIgnoreCase)) {
+        if (devClient) {
             addDevHeaders(headers);
         }
 
@@ -142,7 +140,7 @@ public class FederationGatewayClient {
         headers.add(HttpHeaders.ACCEPT, "application/protobuf; version=1.0");
         batchTag.ifPresent(s -> headers.add(BATCH_TAG_HEADER, s));
 
-        if (Arrays.stream(environment.getActiveProfiles()).anyMatch("dev"::equalsIgnoreCase)) {
+        if (devClient) {
             addDevHeaders(headers);
         }
 

@@ -3,7 +3,7 @@ package fi.thl.covid19.exposurenotification.efgs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +16,10 @@ import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
-@Profile("!dev & !test")
+@ConditionalOnProperty(
+        prefix = "covid19.federation-gateway", value = "callback-enabled",
+        matchIfMissing = true
+)
 public class CallbackInitializer {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);
