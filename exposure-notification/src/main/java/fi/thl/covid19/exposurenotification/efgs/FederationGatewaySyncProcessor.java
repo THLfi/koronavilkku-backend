@@ -2,6 +2,7 @@ package fi.thl.covid19.exposurenotification.efgs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -24,12 +25,17 @@ public class FederationGatewaySyncProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);
     private final AtomicReference<LocalDate> lastInboundSyncFromEfgs;
+    private final boolean importEnabled;
 
     private final FederationGatewaySyncService federationGatewaySyncService;
 
-    public FederationGatewaySyncProcessor(FederationGatewaySyncService federationGatewaySyncService) {
+    public FederationGatewaySyncProcessor(
+            FederationGatewaySyncService federationGatewaySyncService,
+            @Value("${covid19.federation-gateway.scheduled-inbound-enabled}") boolean importEnabled
+    ) {
         this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
         this.lastInboundSyncFromEfgs = new AtomicReference<>(LocalDate.now(ZoneOffset.UTC));
+        this.importEnabled = importEnabled;
     }
 
     @Scheduled(initialDelayString = "${covid19.federation-gateway.upload-interval}",
@@ -45,7 +51,7 @@ public class FederationGatewaySyncProcessor {
     private void runImportFromEfgs() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate last = lastInboundSyncFromEfgs.get();
-        if (today.isAfter(last)) {
+        if (importEnabled && today.isAfter(last)) {
             LOG.info("Starting scheduled import from efgs.");
             federationGatewaySyncService.startInbound(last, Optional.empty());
             lastInboundSyncFromEfgs.set(today);

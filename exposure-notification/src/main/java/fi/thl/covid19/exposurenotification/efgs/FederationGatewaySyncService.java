@@ -87,8 +87,7 @@ public class FederationGatewaySyncService {
         AtomicReference<Optional<String>> localBatchTag = new AtomicReference<>(batchTag);
         try {
             Optional<DownloadData> downloadO = client.download(date, localBatchTag.get());
-            return downloadO.flatMap(downloadData -> {
-                DownloadData download = downloadO.get();
+            return downloadO.flatMap(download -> {
                 localBatchTag.set(Optional.of(download.batchTag));
                 List<TemporaryExposureKey> keys = transform(download.batch);
                 diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));

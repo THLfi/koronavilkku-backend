@@ -85,6 +85,7 @@ covid19:
     url: "${EN_PT_URL:}"
   federation-gateway:
     enabled: "${EN_EFGS_SYNC_ENABLED:false}"
+    scheduled-inbound-enabled: "${EN_EFGS_SCHEDULED_INBOUND_ENABLED:false}"
     rest-client:
       client-key-store:
         alias: efgs
