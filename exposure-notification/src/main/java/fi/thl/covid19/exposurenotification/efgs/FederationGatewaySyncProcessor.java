@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -24,8 +23,8 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class FederationGatewaySyncProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySyncProcessor.class);
-    private final AtomicReference<LocalDate> lastInboundSyncFromEfgs;
     private final boolean importEnabled;
+    private volatile LocalDate lastInboundSyncFromEfgs;
 
     private final FederationGatewaySyncService federationGatewaySyncService;
 
@@ -34,12 +33,12 @@ public class FederationGatewaySyncProcessor {
             @Value("${covid19.federation-gateway.scheduled-inbound-enabled}") boolean importEnabled
     ) {
         this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
-        this.lastInboundSyncFromEfgs = new AtomicReference<>(LocalDate.now(ZoneOffset.UTC));
+        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC);
         this.importEnabled = importEnabled;
     }
 
     @Scheduled(initialDelayString = "${covid19.federation-gateway.upload-interval}",
-            fixedRateString = "${covid19.federation-gateway.upload-interval}")
+            fixedDelayString = "${covid19.federation-gateway.upload-interval}")
     private void runExportToEfgs() {
         LOG.info("Starting scheduled export to efgs.");
         Set<Long> operationIds = federationGatewaySyncService.startOutbound(false);
@@ -47,29 +46,24 @@ public class FederationGatewaySyncProcessor {
     }
 
     @Scheduled(initialDelayString = "${covid19.federation-gateway.download-interval}",
-            fixedRateString = "${covid19.federation-gateway.download-interval}")
+            fixedDelayString = "${covid19.federation-gateway.download-interval}")
     private void runImportFromEfgs() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        LocalDate previous = lastInboundSyncFromEfgs.getAndUpdate(c -> today.isAfter(c) ? today : c);
-        if (importEnabled && today.isAfter(previous)) {
-            try {
-                LOG.info("Starting scheduled import from efgs.");
-                federationGatewaySyncService.startInbound(previous, Optional.empty());
-                LOG.info("Scheduled import from efgs finished.");
-            } catch (Exception e) {
-                lastInboundSyncFromEfgs.set(previous);
-                throw e;
-            }
+        if (importEnabled && today.isAfter(lastInboundSyncFromEfgs)) {
+            LOG.info("Starting scheduled import from efgs.");
+            federationGatewaySyncService.startInbound(lastInboundSyncFromEfgs, Optional.empty());
+            lastInboundSyncFromEfgs = today;
+            LOG.info("Scheduled import from efgs finished.");
         }
     }
 
     @Scheduled(initialDelayString = "${covid19.federation-gateway.error-handling-interval}",
-            fixedRateString = "${covid19.federation-gateway.error-handling-interval}")
+            fixedDelayString = "${covid19.federation-gateway.error-handling-interval}")
     private void runErrorHandling() {
         LOG.info("Starting scheduled efgs error handling.");
         federationGatewaySyncService.resolveCrash();
         federationGatewaySyncService.startOutbound(true);
-        federationGatewaySyncService.startInboundRetry(lastInboundSyncFromEfgs.get());
+        federationGatewaySyncService.startInboundRetry(lastInboundSyncFromEfgs);
         LOG.info("Scheduled efgs error handling finished.");
     }
 }
