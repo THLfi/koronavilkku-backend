@@ -58,9 +58,9 @@ public class FederationGatewayClient {
     public Optional<DownloadData> download(String dateVar, Optional<String> batchTag) {
         try {
             ResponseEntity<byte[]> res = doDownload(dateVar, batchTag);
-            byte[] body = requireNonNull(res.getBody());
+            byte[] body = res.getBody();
             return Optional.of(new DownloadData(
-                    deserialize(body),
+                    body == null ? Optional.empty() : Optional.of(deserialize(body)),
                     getHeader(res.getHeaders(), BATCH_TAG_HEADER).orElseThrow(),
                     getHeader(res.getHeaders(), NEXT_BATCH_TAG_HEADER)
             ));

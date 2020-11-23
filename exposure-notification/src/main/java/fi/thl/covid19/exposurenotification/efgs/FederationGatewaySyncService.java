@@ -89,7 +89,7 @@ public class FederationGatewaySyncService {
             Optional<DownloadData> downloadO = client.download(date, localBatchTag.get());
             return downloadO.flatMap(download -> {
                 localBatchTag.set(Optional.of(download.batchTag));
-                List<TemporaryExposureKey> keys = transform(download.batch);
+                List<TemporaryExposureKey> keys = download.batch.isPresent() ? transform(download.batch.get()) : List.of();
                 diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
                 finished.set(operationDao.finishOperation(operationId, keys.size(), localBatchTag.get()));
                 return download.nextBatchTag;
