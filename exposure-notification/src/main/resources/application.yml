@@ -92,7 +92,7 @@ covid19:
     signing-key-store:
       key-alias: efgs-signing
     base-url: "${EN_EFGS_URL:}"
-    upload-interval: PT12H
+    upload-interval: PT4H
     download-interval: PT10M
     error-handling-interval: PT30M
     call-back:
