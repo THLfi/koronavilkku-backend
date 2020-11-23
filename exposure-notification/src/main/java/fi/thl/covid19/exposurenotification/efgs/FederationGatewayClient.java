@@ -100,6 +100,15 @@ public class FederationGatewayClient {
         );
     }
 
+    public List<AuditEntry> fetchAuditEntries(String dateS, String batchTag) {
+        ResponseEntity<AuditEntry[]> response = restTemplate.getForEntity(
+                gatewayBaseUrl + "/audit/download/{date}/{batchTag}",
+                AuditEntry[].class,
+                Map.of("date", dateS, "batchTag", batchTag)
+        );
+        return Arrays.asList(requireNonNull(response.getBody()));
+    }
+
     private UploadResponseEntity transform(ResponseEntity<UploadResponseEntityInner> res) {
         Optional<Map<Integer, List<Integer>>> body =
                 res.getStatusCodeValue() == 207 ?

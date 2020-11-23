@@ -95,7 +95,8 @@ public class FederationGatewaySyncService {
             Optional<DownloadData> downloadO = client.download(date, localBatchTag.get());
             return downloadO.flatMap(download -> {
                 localBatchTag.set(Optional.of(download.batchTag));
-                List<TemporaryExposureKey> keys = download.batch.isPresent() ? transform(download.batch.get()) : List.of();
+                EfgsProto.DiagnosisKeyBatch validBatch = validateSignature(client.fetchAuditEntries(date, download.batchTag), download);
+                List<TemporaryExposureKey> keys = transform(validBatch);
                 diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
                 finished.set(operationDao.finishOperation(operationId, keys.size(), localBatchTag.get()));
                 return download.nextBatchTag;

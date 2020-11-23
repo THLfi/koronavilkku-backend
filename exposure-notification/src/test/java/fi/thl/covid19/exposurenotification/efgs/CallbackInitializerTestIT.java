@@ -25,7 +25,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 @SpringBootTest
 @ActiveProfiles({"dev", "test"})
-public class CallbackInitializerTest {
+public class CallbackInitializerTestIT {
 
     @Autowired
     private FederationGatewayClient federationGatewayClient;
