@@ -33,6 +33,10 @@ import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DEFAULT_DA
 import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DsosInterpretationMapper;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
+/*
+ * Some parts are strictly based on efgs implementation to achieve compability.
+ * See: https://github.com/eu-federation-gateway-service/efgs-federation-gateway/tree/master/src/main/java/eu/interop/federationgateway/batchsigning
+ */
 public class FederationGatewayBatchUtil {
     private static final Logger LOG = LoggerFactory.getLogger(FederationGatewayBatchUtil.class);
 
@@ -100,18 +104,16 @@ public class FederationGatewayBatchUtil {
             AtomicLong skip = new AtomicLong(0);
             List<EfgsProto.DiagnosisKey> validKeys = new ArrayList<>();
             auditEntries.forEach(audit -> {
-                boolean isValid = false;
                 List<EfgsProto.DiagnosisKey> auditKeys = data.getKeysList().stream().skip(skip.get()).limit(audit.amount)
                         .collect(Collectors.toList());
                 try {
-                    isValid = checkBatchSignature(auditKeys, audit);
+                    if (checkBatchSignature(auditKeys, audit)) {
+                        validKeys.addAll(auditKeys);
+                    }
                 } catch (CMSException | IOException | CertificateException | OperatorCreationException e) {
                     LOG.warn("Batch validation failed. {}", keyValue("batchTag", downloadData.batchTag));
                 } finally {
                     skip.addAndGet(audit.amount);
-                }
-                if (isValid) {
-                    validKeys.addAll(auditKeys);
                 }
             });
             return Optional.of(validKeys);
@@ -128,6 +130,7 @@ public class FederationGatewayBatchUtil {
                 base64ToBytes(audit.batchSignature)
         );
         SignerInformation signerInfo = signedData.getSignerInfos().getSigners().iterator().next();
+
         X509CertificateHolder cert = (X509CertificateHolder) new PEMParser(new StringReader(audit.signingCertificate)).readObject();
         String country = cert.getSubject().getRDNs(BCStyle.C)[0].getFirst().getValue().toString();
 
