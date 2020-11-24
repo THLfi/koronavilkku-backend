@@ -283,3 +283,18 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
     ```
 * **Success Response:**
   * Status: 200 OK
+
+### Callback api
+Callback api is used to inform application that new batch is available to fetch. Calls should be secured with mTLS.
+* **URL:** `/efgs/callback?batchTag={batchTag}&date={date}`
+* **Method:** `GET`
+* **URL Params:** None
+* **Query Params:**
+  * batchTag: the batch tag of newly available batch 
+  * date: UTC date of batchTag as string in ISO-8601 format e.g. *2020-11-24* 
+* **Request Body:** None
+* **Success Response:**
+  * Status: 200 OK
+* **Failure Response:**
+  * Such a processing queue is full
+    * Status: 500 Internal server error
