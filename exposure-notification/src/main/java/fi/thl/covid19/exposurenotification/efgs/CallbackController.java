@@ -29,7 +29,6 @@ public class CallbackController {
     @GetMapping("/callback")
     public void triggerCallback(@RequestParam("batchTag") String batchTag, @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         LOG.info("Import from efgs triggered by callback {} {}.", keyValue("batchTag", batchTag), keyValue("date", date.toString()));
-        federationGatewaySyncService.startInbound(date, Optional.of(batchTag));
-        LOG.info("Import from efgs triggered by callback finished.");
+        federationGatewaySyncService.startInboundAsync(date, Optional.of(batchTag));
     }
 }

@@ -4,6 +4,7 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.proto.EfgsProto;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -53,6 +54,11 @@ public class FederationGatewaySyncService {
     public void resolveCrash() {
         operationDao.getAndResolveCrashed(INBOUND);
         diagnosisKeyDao.resolveOutboundCrash();
+    }
+
+    @Async("callbackAsyncExecutor")
+    public void startInboundAsync(LocalDate date, Optional<String> batchTag) {
+        startInbound(date, batchTag);
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {
