@@ -26,6 +26,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
+import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
@@ -237,6 +238,27 @@ public class FederationServiceSyncWithDaoTestIT {
         assertTrue(dbKeys.get(3).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(3).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
         assertTrue(dbKeys.get(4).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(4).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
 
+    }
+
+    @Test
+    public void downloadValidationFailsWithWrongPublicKey() throws Exception {
+        List<TemporaryExposureKey> keys = transform(transform(keyGenerator.someKeys(10)));
+        LocalDate date = LocalDate.now(ZoneOffset.UTC);
+        String dateS = getDateString(date);
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + dateS))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(PROTOBUF_MEDIATYPE)
+                        .headers(getDownloadResponseHeaders(TEST_TAG_NAME, "null"))
+                        .body(serialize(transform(keys)))
+                );
+        generateAuditResponseWithWrongKey(dateS, TEST_TAG_NAME, keys);
+        federationGatewaySyncService.startInbound(date, Optional.of(TEST_TAG_NAME));
+        assertFalse(operationDao.getInboundErrorBatchTags(date).containsKey(TEST_TAG_NAME));
+        Map<String, Object> operation = getLatestOperation();
+        assertEquals(operation.get("validation_failed_count"), 10);
+        assertEquals(operation.get("keys_count_total"), 0);
     }
 
     @Test
@@ -511,6 +533,33 @@ public class FederationServiceSyncWithDaoTestIT {
         keystoreAlias.setAccessible(true);
         String alias = (String) keystoreAlias.get(signer);
         X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
+        AuditEntry auditEntry = new AuditEntry(
+                "FI",
+                ZonedDateTime.now(),
+                "",
+                "",
+                "",
+                keys.size(),
+                signer.sign(transform(keys)),
+                "",
+                "",
+                x509CertificateToPem(certificate)
+        );
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/audit/download/" + date + "/" + batchTag))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(objectMapper.writeValueAsString(List.of(auditEntry)))
+                );
+    }
+
+    private void generateAuditResponseWithWrongKey(String date,
+                                       String batchTag,
+                                       List<TemporaryExposureKey> keys
+    ) throws Exception {
+        KeyPair keyPair = signer.generateKeyPair();
+        X509Certificate certificate = signer.generateDevCertificate(keyPair);
         AuditEntry auditEntry = new AuditEntry(
                 "FI",
                 ZonedDateTime.now(),

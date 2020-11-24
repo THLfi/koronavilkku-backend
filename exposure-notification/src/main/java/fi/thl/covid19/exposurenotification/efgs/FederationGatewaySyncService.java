@@ -98,7 +98,8 @@ public class FederationGatewaySyncService {
                 EfgsProto.DiagnosisKeyBatch validBatch = validateSignature(client.fetchAuditEntries(date, download.batchTag), download);
                 List<TemporaryExposureKey> keys = transform(validBatch);
                 diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
-                finished.set(operationDao.finishOperation(operationId, keys.size(), localBatchTag.get()));
+                int failedCount = download.batch.map(diagnosisKeyBatch -> diagnosisKeyBatch.getKeysList().size()).orElse(0) - keys.size();
+                finished.set(operationDao.finishOperation(operationId, keys.size(), failedCount, localBatchTag.get()));
                 return download.nextBatchTag;
             });
         } finally {

@@ -40,15 +40,16 @@ public class OperationDao {
     }
 
     @Transactional
-    public boolean finishOperation(long operationId, int keysCountTotal, Optional<String> batchTag) {
+    public boolean finishOperation(long operationId, int keysCountTotal, int failedKeysCount, Optional<String> batchTag) {
         String sql = "update en.efgs_operation set state = cast(:new_state as en.state_t), batch_tag = :batch_tag, " +
-                "keys_count_total = :keys_count_total, updated_at = :updated_at " +
-                "where id = :id";
+                "keys_count_total = :keys_count_total, validation_failed_count = :validation_failed_count, " +
+                "updated_at = :updated_at where id = :id";
         Map<String, Object> params = new HashMap<>();
         params.put("new_state", FINISHED.name());
         params.put("id", operationId);
         params.put("batch_tag", batchTag.orElse(null));
         params.put("keys_count_total", keysCountTotal);
+        params.put("validation_failed_count", failedKeysCount);
         params.put("updated_at", new Timestamp(Instant.now().toEpochMilli()));
         return jdbcTemplate.update(sql, params) == 1;
     }

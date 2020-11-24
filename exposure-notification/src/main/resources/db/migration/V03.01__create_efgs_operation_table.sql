@@ -9,6 +9,7 @@ create table en.efgs_operation (
     keys_count_201 int,
     keys_count_409 int,
     keys_count_500 int,
+    validation_failed_count int,
     batch_tag varchar(100),
     updated_at timestamptz not null
 );

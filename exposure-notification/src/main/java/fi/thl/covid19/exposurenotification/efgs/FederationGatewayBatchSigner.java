@@ -126,13 +126,13 @@ public class FederationGatewayBatchSigner {
         return keyStore;
     }
 
-    private KeyPair generateKeyPair() throws NoSuchAlgorithmException {
+    public KeyPair generateKeyPair() throws NoSuchAlgorithmException {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(512);
         return keyGen.generateKeyPair();
     }
 
-    private X509Certificate generateDevCertificate(KeyPair keyPair) throws OperatorCreationException, IOException, CertificateException {
+    public X509Certificate generateDevCertificate(KeyPair keyPair) throws OperatorCreationException, IOException, CertificateException {
         X500Name subject = new X500NameBuilder(BCStyle.INSTANCE)
                 .addRDN(BCStyle.C, "FI")
                 .addRDN(BCStyle.CN, "koronavilkku.dev")
