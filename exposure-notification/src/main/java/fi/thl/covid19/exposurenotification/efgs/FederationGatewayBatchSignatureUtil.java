@@ -68,11 +68,11 @@ public class FederationGatewayBatchSignatureUtil {
                 base64ToBytes(audit.batchSignature)
         );
         SignerInformation signerInfo = signedData.getSignerInfos().getSigners().iterator().next();
-
         X509CertificateHolder cert = (X509CertificateHolder) new PEMParser(new StringReader(audit.signingCertificate)).readObject();
         String country = cert.getSubject().getRDNs(BCStyle.C)[0].getFirst().getValue().toString();
 
         return cert.isValidOn(new Date()) &&
+                verifySignedDataCertificate(signedData, signerInfo, audit) &&
                 verifySignerInfo(signerInfo, cert) &&
                 verifyOperatorSignature(audit, trustAnchor) &&
                 keys.stream().allMatch(key -> key.getOrigin().equals(country));
@@ -80,6 +80,13 @@ public class FederationGatewayBatchSignatureUtil {
 
     private static byte[] base64ToBytes(String batchSignatureBase64) {
         return Base64.getDecoder().decode(batchSignatureBase64.getBytes());
+    }
+
+    private static boolean verifySignedDataCertificate(CMSSignedData signedData, SignerInformation signerInfo, AuditEntry audit)
+    throws IOException, NoSuchAlgorithmException {
+        X509CertificateHolder certFromSignedData = (X509CertificateHolder) signedData.getCertificates().getMatches(signerInfo.getSID()).iterator().next();
+        return certFromSignedData.isValidOn(new Date()) &&
+                getCertThumbprint(certFromSignedData).equals(audit.uploaderSigningThumbprint);
     }
 
     private static boolean verifySignerInfo(SignerInformation signerInfo, X509CertificateHolder signerCert)
