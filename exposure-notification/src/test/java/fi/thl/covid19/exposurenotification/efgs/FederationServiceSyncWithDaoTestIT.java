@@ -6,12 +6,14 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TestKeyGenerator;
+import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -26,22 +28,19 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
-import java.security.KeyPair;
-import java.security.KeyStore;
+import java.security.*;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.MAX_RETRY_COUNT;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
+import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchSignatureUtil.getCertThumbprint;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.NEXT_BATCH_TAG_HEADER;
@@ -60,6 +59,12 @@ public class FederationServiceSyncWithDaoTestIT {
 
     private static final MediaType PROTOBUF_MEDIATYPE = new MediaType("application", "protobuf", 1.0);
     private static final String TEST_TAG_NAME = "test-1";
+
+    @Value("${covid19.federation-gateway.signing-key-store.trust-anchor-alias}")
+    String trustAnchorAlias;
+
+    @Value("${covid19.federation-gateway.signing-key-store.password}")
+    String keystorePassword;
 
     @Autowired
     DiagnosisKeyDao diagnosisKeyDao;
@@ -257,7 +262,7 @@ public class FederationServiceSyncWithDaoTestIT {
         federationGatewaySyncService.startInbound(date, Optional.of(TEST_TAG_NAME));
         assertFalse(operationDao.getInboundErrorBatchTags(date).containsKey(TEST_TAG_NAME));
         Map<String, Object> operation = getLatestOperation();
-        assertEquals(operation.get("validation_failed_count"), 10);
+        assertEquals(operation.get("invalid_signature_count"), 10);
         assertEquals(operation.get("keys_count_total"), 0);
     }
 
@@ -533,16 +538,21 @@ public class FederationServiceSyncWithDaoTestIT {
         keystoreAlias.setAccessible(true);
         String alias = (String) keystoreAlias.get(signer);
         X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
+        PrivateKey key = (PrivateKey) keyStore.getKey(trustAnchorAlias, keystorePassword.toCharArray());
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        Signature signature = Signature.getInstance("SHA256withRSA", "BC");
+        signature.initSign(key);
+        signature.update(x509CertificateToPem(certificate).getBytes());
         AuditEntry auditEntry = new AuditEntry(
                 "FI",
                 ZonedDateTime.now(),
                 "",
                 "",
-                "",
+                getCertThumbprint(new X509CertificateHolder(certificate.getEncoded())),
                 keys.size(),
                 signer.sign(transform(keys)),
                 "",
-                "",
+                new String(Base64.getEncoder().encode(signature.sign())),
                 x509CertificateToPem(certificate)
         );
         mockServer.expect(ExpectedCount.once(),
@@ -558,18 +568,24 @@ public class FederationServiceSyncWithDaoTestIT {
                                        String batchTag,
                                        List<TemporaryExposureKey> keys
     ) throws Exception {
+        KeyPair trustAnchorKeyPair = signer.generateKeyPair();
+        X509Certificate trustAnchorCert = signer.generateDevRootCertificate(trustAnchorKeyPair);
         KeyPair keyPair = signer.generateKeyPair();
-        X509Certificate certificate = signer.generateDevCertificate(keyPair);
+        X509Certificate certificate = signer.generateDevCertificate(keyPair, trustAnchorKeyPair, trustAnchorCert);
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        Signature signature = Signature.getInstance("SHA256withRSA", "BC");
+        signature.initSign(trustAnchorKeyPair.getPrivate());
+        signature.update(x509CertificateToPem(certificate).getBytes());
         AuditEntry auditEntry = new AuditEntry(
                 "FI",
                 ZonedDateTime.now(),
                 "",
                 "",
-                "",
+                getCertThumbprint(new X509CertificateHolder(certificate.getEncoded())),
                 keys.size(),
                 signer.sign(transform(keys)),
                 "",
-                "",
+                new String(Base64.getEncoder().encode(signature.sign())),
                 x509CertificateToPem(certificate)
         );
         mockServer.expect(ExpectedCount.once(),
@@ -582,8 +598,8 @@ public class FederationServiceSyncWithDaoTestIT {
     }
 
     private static String x509CertificateToPem(X509Certificate cert) throws IOException {
-        final StringWriter writer = new StringWriter();
-        final JcaPEMWriter pemWriter = new JcaPEMWriter(writer);
+        StringWriter writer = new StringWriter();
+        JcaPEMWriter pemWriter = new JcaPEMWriter(writer);
         pemWriter.writeObject(cert);
         pemWriter.flush();
         pemWriter.close();

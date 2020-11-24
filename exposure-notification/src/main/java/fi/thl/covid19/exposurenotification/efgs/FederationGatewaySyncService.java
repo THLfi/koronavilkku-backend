@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.MAX_RETRY_COUNT;
+import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchSignatureUtil.validateSignature;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 import static java.util.Objects.requireNonNull;
@@ -95,11 +96,15 @@ public class FederationGatewaySyncService {
             Optional<DownloadData> downloadO = client.download(date, localBatchTag.get());
             return downloadO.flatMap(download -> {
                 localBatchTag.set(Optional.of(download.batchTag));
-                EfgsProto.DiagnosisKeyBatch validBatch = validateSignature(client.fetchAuditEntries(date, download.batchTag), download);
-                List<TemporaryExposureKey> keys = transform(validBatch);
-                diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
-                int failedCount = download.batch.map(diagnosisKeyBatch -> diagnosisKeyBatch.getKeysList().size()).orElse(0) - keys.size();
-                finished.set(operationDao.finishOperation(operationId, keys.size(), failedCount, localBatchTag.get()));
+                EfgsProto.DiagnosisKeyBatch validBatch = validateSignature(
+                        client.fetchAuditEntries(date, download.batchTag),
+                        download,
+                        signer.getTrustAnchor()
+                );
+                List<TemporaryExposureKey> finalKeys = transform(validBatch);
+                diagnosisKeyDao.addInboundKeys(finalKeys, IntervalNumber.to24HourInterval(Instant.now()));
+                int failedCount = download.batch.map(EfgsProto.DiagnosisKeyBatch::getKeysCount).orElse(0) - finalKeys.size();
+                finished.set(operationDao.finishOperation(operationId, finalKeys.size(), failedCount, localBatchTag.get()));
                 return download.nextBatchTag;
             });
         } finally {
