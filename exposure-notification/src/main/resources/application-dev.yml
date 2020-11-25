@@ -31,6 +31,7 @@ covid19:
         password: devdev
         alias: efgs
     signing-key-store:
+      implementation: dev
       path:
       password: devdev
       key-alias: signing

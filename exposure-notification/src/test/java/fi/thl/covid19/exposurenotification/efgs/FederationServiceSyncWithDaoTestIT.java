@@ -6,6 +6,8 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TestKeyGenerator;
+import fi.thl.covid19.exposurenotification.efgs.entity.AuditEntry;
+import fi.thl.covid19.exposurenotification.efgs.signing.FederationGatewaySigningDev;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.junit.jupiter.api.AfterEach;
@@ -13,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -21,13 +22,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.client.SimpleRequestExpectationManager;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.lang.reflect.Field;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
@@ -40,8 +39,8 @@ import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.M
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchSignatureUtil.getCertThumbprint;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
+import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.getCertThumbprint;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.NEXT_BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.*;
@@ -60,12 +59,6 @@ public class FederationServiceSyncWithDaoTestIT {
     private static final MediaType PROTOBUF_MEDIATYPE = new MediaType("application", "protobuf", 1.0);
     private static final String TEST_TAG_NAME = "test-1";
 
-    @Value("${covid19.federation-gateway.signing-key-store.trust-anchor-alias}")
-    String trustAnchorAlias;
-
-    @Value("${covid19.federation-gateway.signing-key-store.password}")
-    String keystorePassword;
-
     @Autowired
     DiagnosisKeyDao diagnosisKeyDao;
 
@@ -79,7 +72,7 @@ public class FederationServiceSyncWithDaoTestIT {
     FederationGatewaySyncService federationGatewaySyncService;
 
     @Autowired
-    FederationGatewayBatchSigner signer;
+    FederationGatewaySigningDev signer;
 
     @Autowired
     ObjectMapper objectMapper;
@@ -531,37 +524,13 @@ public class FederationServiceSyncWithDaoTestIT {
                                        String batchTag,
                                        List<TemporaryExposureKey> keys
     ) throws Exception {
-        Field keystoreF = ReflectionUtils.findField(FederationGatewayBatchSigner.class, "keyStore");
-        keystoreF.setAccessible(true);
-        KeyStore keyStore = (KeyStore) keystoreF.get(signer);
-        Field keystoreAlias = ReflectionUtils.findField(FederationGatewayBatchSigner.class, "keyStoreKeyAlias");
-        keystoreAlias.setAccessible(true);
-        String alias = (String) keystoreAlias.get(signer);
-        X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
-        PrivateKey key = (PrivateKey) keyStore.getKey(trustAnchorAlias, keystorePassword.toCharArray());
+        X509Certificate certificate = (X509Certificate) signer.keyStore.getCertificate(signer.keyStoreKeyAlias);
+        PrivateKey key = (PrivateKey) signer.keyStore.getKey(signer.trustAnchorAlias, signer.keyStorePassword);
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
         Signature signature = Signature.getInstance("SHA256withRSA", "BC");
         signature.initSign(key);
         signature.update(x509CertificateToPem(certificate).getBytes());
-        AuditEntry auditEntry = new AuditEntry(
-                "FI",
-                ZonedDateTime.now(),
-                "",
-                "",
-                getCertThumbprint(new X509CertificateHolder(certificate.getEncoded())),
-                keys.size(),
-                signer.sign(transform(keys)),
-                "",
-                new String(Base64.getEncoder().encode(signature.sign())),
-                x509CertificateToPem(certificate)
-        );
-        mockServer.expect(ExpectedCount.once(),
-                requestTo("http://localhost:8080/diagnosiskeys/audit/download/" + date + "/" + batchTag))
-                .andExpect(method(HttpMethod.GET))
-                .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(objectMapper.writeValueAsString(List.of(auditEntry)))
-                );
+        addAuditMockExpect(certificate, keys, signature, date, batchTag);
     }
 
     private void generateAuditResponseWithWrongKey(String date,
@@ -576,6 +545,16 @@ public class FederationServiceSyncWithDaoTestIT {
         Signature signature = Signature.getInstance("SHA256withRSA", "BC");
         signature.initSign(trustAnchorKeyPair.getPrivate());
         signature.update(x509CertificateToPem(certificate).getBytes());
+        addAuditMockExpect(certificate, keys, signature, date, batchTag);
+    }
+
+    private void addAuditMockExpect(
+            X509Certificate certificate,
+            List<TemporaryExposureKey> keys,
+            Signature signature,
+            String date,
+            String batchTag
+    ) throws Exception {
         AuditEntry auditEntry = new AuditEntry(
                 "FI",
                 ZonedDateTime.now(),

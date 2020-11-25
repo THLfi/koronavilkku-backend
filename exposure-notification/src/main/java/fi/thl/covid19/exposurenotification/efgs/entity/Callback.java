@@ -1,4 +1,4 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.entity;
 
 import static java.util.Objects.requireNonNull;
 

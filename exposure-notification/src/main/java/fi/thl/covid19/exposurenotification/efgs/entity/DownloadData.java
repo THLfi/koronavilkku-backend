@@ -1,4 +1,4 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.entity;
 
 import fi.thl.covid19.proto.EfgsProto;
 

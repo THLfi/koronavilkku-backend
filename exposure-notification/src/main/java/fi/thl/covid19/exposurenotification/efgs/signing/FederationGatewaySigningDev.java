@@ -1,79 +1,70 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.signing;
 
 import fi.thl.covid19.proto.EfgsProto;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
-import org.bouncycastle.asn1.x509.Extension;
-import org.bouncycastle.cms.*;
-import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.DigestCalculatorProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ResourceUtils;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.*;
-import java.security.cert.*;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Date;
 
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchSignatureUtil.generateBytesForSignature;
+import static fi.thl.covid19.exposurenotification.efgs.util.SigningUtil.signBatch;
 
-/* This class encapsulates batch signing functionality.
- *
- * Some parts are strictly based on efgs implementation to achieve compability.
- * See: https://github.com/eu-federation-gateway-service/efgs-federation-gateway/tree/master/src/main/java/eu/interop/federationgateway/batchsigning
- *
- */
 @Component
-public class FederationGatewayBatchSigner {
-
+@ConditionalOnProperty(
+        prefix = "covid19.federation-gateway.signing-key-store", value = "implementation",
+        havingValue = "dev"
+)
+public class FederationGatewaySigningDev implements FederationGatewaySigning {
     private static final String DIGEST_ALGORITHM = "SHA256with";
     private static final String DEV_TRUST_ANCHOR_ISSUER = "koronavilkku-dev-root";
 
-    private final String keyStorePath;
-    private final char[] keyStorePassword;
-    private final String keyStoreKeyAlias;
-    private final String trustAnchorAlias;
-    private final KeyStore keyStore;
+    public final char[] keyStorePassword;
+    public final String keyStoreKeyAlias;
+    public final String trustAnchorAlias;
+    public final KeyStore keyStore;
 
-    public FederationGatewayBatchSigner(
-            @Value("${covid19.federation-gateway.signing-key-store.path}") String keyStorePath,
+    public FederationGatewaySigningDev(
             @Value("${covid19.federation-gateway.signing-key-store.password}") String keyStorePassword,
             @Value("${covid19.federation-gateway.signing-key-store.key-alias}") String keyStoreKeyAlias,
             @Value("${covid19.federation-gateway.signing-key-store.trust-anchor-alias}") String trustAnchorAlias
     ) throws Exception {
-        this.keyStorePath = keyStorePath;
         this.keyStorePassword = keyStorePassword.toCharArray();
         this.keyStoreKeyAlias = keyStoreKeyAlias;
         this.trustAnchorAlias = trustAnchorAlias;
         this.keyStore = initKeystore();
     }
 
-    public String sign(final EfgsProto.DiagnosisKeyBatch data) {
+    public String sign(EfgsProto.DiagnosisKeyBatch data) {
         try {
-            return sign(data, keyStore);
+            PrivateKey key = (PrivateKey) keyStore.getKey(keyStoreKeyAlias, keyStorePassword);
+            X509Certificate cert = (X509Certificate) keyStore.getCertificate(keyStoreKeyAlias);
+            return signBatch(data, key, cert);
         } catch (Exception e) {
             throw new IllegalStateException("EFGS batch signing failed.", e);
         }
@@ -88,51 +79,7 @@ public class FederationGatewayBatchSigner {
     }
 
     private KeyStore initKeystore() throws Exception {
-        if (keyStorePath.isBlank()) {
-            // This can't be used towards any efgs instance, this is just to get things working without setting certificates
-            return initDevKeyStore();
-        } else {
-            return loadKeyStore();
-        }
-    }
-
-    private KeyStore loadKeyStore() {
-        try (FileInputStream fileInputStream = new FileInputStream(ResourceUtils.getFile(keyStorePath))) {
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(fileInputStream, keyStorePassword);
-            return keyStore;
-        } catch (KeyStoreException | NoSuchAlgorithmException | IOException | CertificateException e) {
-            throw new IllegalStateException("EFGS signing certificate load error.", e);
-        }
-    }
-
-    private String sign(EfgsProto.DiagnosisKeyBatch data, KeyStore keyStore)
-            throws Exception {
-        PrivateKey key = (PrivateKey) keyStore.getKey(keyStoreKeyAlias, keyStorePassword);
-        X509Certificate cert = (X509Certificate) keyStore.getCertificate(keyStoreKeyAlias);
-        CMSSignedDataGenerator signedDataGenerator = new CMSSignedDataGenerator();
-        signedDataGenerator.addSignerInfoGenerator(createSignerInfo(cert, key));
-        signedDataGenerator.addCertificate(createCertificateHolder(cert));
-        CMSSignedData singedData = signedDataGenerator.generate(new CMSProcessableByteArray(generateBytesForSignature(data.getKeysList())), false);
-        return Base64.getEncoder().encodeToString(singedData.getEncoded());
-    }
-
-    private SignerInfoGenerator createSignerInfo(X509Certificate cert, PrivateKey key) throws OperatorCreationException,
-            CertificateEncodingException {
-        return new JcaSignerInfoGeneratorBuilder(createDigestBuilder()).build(createContentSigner(key), cert);
-    }
-
-    private X509CertificateHolder createCertificateHolder(X509Certificate cert) throws CertificateEncodingException,
-            IOException {
-        return new X509CertificateHolder(cert.getEncoded());
-    }
-
-    private DigestCalculatorProvider createDigestBuilder() throws OperatorCreationException {
-        return new JcaDigestCalculatorProviderBuilder().build();
-    }
-
-    private ContentSigner createContentSigner(PrivateKey privateKey) throws OperatorCreationException {
-        return new JcaContentSignerBuilder(DIGEST_ALGORITHM + privateKey.getAlgorithm()).build(privateKey);
+        return initDevKeyStore();
     }
 
     private KeyStore initDevKeyStore() throws Exception {
@@ -142,7 +89,7 @@ public class FederationGatewayBatchSigner {
         KeyPair trustAnchorKeyPair = generateKeyPair();
         X509Certificate trustAnchorCert = generateDevRootCertificate(trustAnchorKeyPair);
         keyStore.setCertificateEntry(trustAnchorAlias, trustAnchorCert);
-        keyStore.setKeyEntry(trustAnchorAlias, trustAnchorKeyPair.getPrivate(), keyStorePassword, new Certificate[]{trustAnchorCert});
+        keyStore.setKeyEntry(trustAnchorAlias, trustAnchorKeyPair.getPrivate(), keyStorePassword, new java.security.cert.Certificate[]{trustAnchorCert});
         KeyPair keyPair = generateKeyPair();
         X509Certificate certificate = generateDevCertificate(keyPair, trustAnchorKeyPair, trustAnchorCert);
         keyStore.setCertificateEntry(keyStoreKeyAlias, certificate);

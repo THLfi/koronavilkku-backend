@@ -1,5 +1,6 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;

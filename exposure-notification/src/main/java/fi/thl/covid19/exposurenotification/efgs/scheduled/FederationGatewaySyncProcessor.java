@@ -1,5 +1,6 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.scheduled;
 
+import fi.thl.covid19.exposurenotification.efgs.FederationGatewaySyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

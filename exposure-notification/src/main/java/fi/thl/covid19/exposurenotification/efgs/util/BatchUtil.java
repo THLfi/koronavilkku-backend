@@ -1,4 +1,4 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.util;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -14,11 +14,11 @@ import java.util.stream.Collectors;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
-import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DEFAULT_DAYS_SINCE_SYMPTOMS;
-import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DsosInterpretationMapper;
+import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DEFAULT_DAYS_SINCE_SYMPTOMS;
+import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DsosInterpretationMapper;
 
 
-public class FederationGatewayBatchUtil {
+public class BatchUtil {
 
     public static EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
         List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream()

@@ -1,5 +1,9 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import fi.thl.covid19.exposurenotification.efgs.entity.AuditEntry;
+import fi.thl.covid19.exposurenotification.efgs.entity.Callback;
+import fi.thl.covid19.exposurenotification.efgs.entity.DownloadData;
+import fi.thl.covid19.exposurenotification.efgs.entity.UploadResponseEntity;
 import fi.thl.covid19.proto.EfgsProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +16,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.deserialize;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.serialize;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.deserialize;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.serialize;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 

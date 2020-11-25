@@ -1,6 +1,6 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.efgs.FederationOutboundOperation;
+import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperation;
 import fi.thl.covid19.exposurenotification.efgs.OperationDao;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
