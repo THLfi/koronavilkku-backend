@@ -16,6 +16,10 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 
+/*
+ * Some parts are strictly based on efgs implementation to achieve compability.
+ * See: https://github.com/eu-federation-gateway-service/efgs-federation-gateway/tree/master/src/main/java/eu/interop/federationgateway/batchsigning
+ */
 public class SignatureHelperUtil {
     public static byte[] generateBytesForSignature(List<EfgsProto.DiagnosisKey> keys) {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -36,6 +40,10 @@ public class SignatureHelperUtil {
 
     public static String bytesToBase64(byte[] bytes) {
         return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    public static byte[] base64ToBytes(String batchSignatureBase64) {
+        return Base64.getDecoder().decode(batchSignatureBase64.getBytes());
     }
 
     private static byte[] generateBytesToVerify(EfgsProto.DiagnosisKey diagnosisKey) {

@@ -20,14 +20,10 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.generateBytesForSignature;
-import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.getCertThumbprint;
+import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.*;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
-/*
- * Some parts are strictly based on efgs implementation to achieve compability.
- * See: https://github.com/eu-federation-gateway-service/efgs-federation-gateway/tree/master/src/main/java/eu/interop/federationgateway/batchsigning
- */
+
 public class SignatureValidationUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(SignatureValidationUtil.class);
@@ -74,10 +70,6 @@ public class SignatureValidationUtil {
                 verifySignerInfo(signerInfo, cert) &&
                 verifyOperatorSignature(audit, trustAnchor) &&
                 keys.stream().allMatch(key -> key.getOrigin().equals(country));
-    }
-
-    private static byte[] base64ToBytes(String batchSignatureBase64) {
-        return Base64.getDecoder().decode(batchSignatureBase64.getBytes());
     }
 
     private static boolean verifySignedDataCertificate(CMSSignedData signedData, SignerInformation signerInfo, AuditEntry audit)
