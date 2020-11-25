@@ -15,4 +15,8 @@ public class DownloadData {
         this.batchTag = batchTag;
         this.nextBatchTag = nextBatchTag;
     }
+
+    public int keysCount() {
+        return batch.map(EfgsProto.DiagnosisKeyBatch::getKeysCount).orElse(0);
+    }
 }

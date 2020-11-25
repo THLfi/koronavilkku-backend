@@ -107,7 +107,7 @@ public class FederationGatewaySyncService {
                 );
                 List<TemporaryExposureKey> finalKeys = transform(validBatch);
                 diagnosisKeyDao.addInboundKeys(finalKeys, IntervalNumber.to24HourInterval(Instant.now()));
-                int failedCount = download.batch.map(EfgsProto.DiagnosisKeyBatch::getKeysCount).orElse(0) - finalKeys.size();
+                int failedCount = download.keysCount() - finalKeys.size();
                 finished.set(operationDao.finishOperation(operationId, finalKeys.size(), failedCount, localBatchTag.get()));
                 return download.nextBatchTag;
             });
