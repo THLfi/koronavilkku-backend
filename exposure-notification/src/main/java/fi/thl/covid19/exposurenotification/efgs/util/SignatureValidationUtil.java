@@ -75,8 +75,7 @@ public class SignatureValidationUtil {
     private static boolean verifySignedDataCertificate(CMSSignedData signedData, SignerInformation signerInfo, AuditEntry audit)
             throws IOException, NoSuchAlgorithmException {
         X509CertificateHolder certFromSignedData = (X509CertificateHolder) signedData.getCertificates().getMatches(signerInfo.getSID()).iterator().next();
-        return certFromSignedData.isValidOn(new Date()) &&
-                getCertThumbprint(certFromSignedData).equals(audit.uploaderSigningThumbprint);
+        return getCertThumbprint(certFromSignedData).equals(audit.uploaderSigningThumbprint);
     }
 
     private static boolean verifySignerInfo(SignerInformation signerInfo, X509CertificateHolder signerCert)

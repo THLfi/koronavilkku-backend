@@ -19,7 +19,7 @@ covid19:
     enabled: false
     base-url: http://localhost:8080/diagnosiskeys
     dev-client: true
-    callback-enabled: false
+    callback-initializer-enabled: false
     client-sha256: "${EN_DEV_EFGS_SHA256:}"
     client-dn: C=FI,CN=koronavilkku.dev,O=koronavilkku dev
     rest-client:

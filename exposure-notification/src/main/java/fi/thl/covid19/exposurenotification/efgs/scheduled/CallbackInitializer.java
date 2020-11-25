@@ -19,7 +19,7 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
 @ConditionalOnProperty(
-        prefix = "covid19.federation-gateway", value = "callback-enabled",
+        prefix = "covid19.federation-gateway", value = "callback-initializer-enabled",
         matchIfMissing = true
 )
 public class CallbackInitializer {
