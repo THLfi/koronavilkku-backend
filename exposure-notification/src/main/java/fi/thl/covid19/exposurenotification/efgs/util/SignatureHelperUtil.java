@@ -4,14 +4,17 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.ProtocolStringList;
 import fi.thl.covid19.proto.EfgsProto;
 import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
@@ -44,6 +47,14 @@ public class SignatureHelperUtil {
 
     public static byte[] base64ToBytes(String batchSignatureBase64) {
         return Base64.getDecoder().decode(batchSignatureBase64.getBytes());
+    }
+
+    public static String x509CertificateToPem(X509Certificate cert) throws IOException {
+        StringWriter stringWriter = new StringWriter();
+        try (JcaPEMWriter pemWriter = new JcaPEMWriter(stringWriter)) {
+            pemWriter.writeObject(cert);
+        }
+        return stringWriter.toString();
     }
 
     private static byte[] generateBytesToVerify(EfgsProto.DiagnosisKey diagnosisKey) {

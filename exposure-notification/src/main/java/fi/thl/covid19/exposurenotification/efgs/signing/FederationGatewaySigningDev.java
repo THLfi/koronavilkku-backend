@@ -44,10 +44,10 @@ public class FederationGatewaySigningDev implements FederationGatewaySigning {
     private static final String DIGEST_ALGORITHM = "SHA256with";
     private static final String DEV_TRUST_ANCHOR_ISSUER = "koronavilkku-dev-root";
 
-    public final char[] keyStorePassword;
-    public final String keyStoreKeyAlias;
-    public final String trustAnchorAlias;
-    public final KeyStore keyStore;
+    private final char[] keyStorePassword;
+    private final String keyStoreKeyAlias;
+    private final String trustAnchorAlias;
+    private final KeyStore keyStore;
 
     public FederationGatewaySigningDev(
             @Value("${covid19.federation-gateway.signing-key-store.password}") String keyStorePassword,
@@ -76,6 +76,15 @@ public class FederationGatewaySigningDev implements FederationGatewaySigning {
         } catch (KeyStoreException e) {
             throw new RuntimeException(e.getMessage(), e.getCause());
         }
+    }
+
+    public X509Certificate getSignerCertificate() throws KeyStoreException {
+        return (X509Certificate) keyStore.getCertificate(keyStoreKeyAlias);
+    }
+
+    public PrivateKey getTrustAnchorPrivateKey()
+            throws SecurityException, KeyStoreException, NoSuchAlgorithmException, UnrecoverableKeyException {
+        return (PrivateKey) keyStore.getKey(trustAnchorAlias, keyStorePassword);
     }
 
     private KeyStore initKeystore() throws Exception {

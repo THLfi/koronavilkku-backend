@@ -9,7 +9,6 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.TestKeyGenerator;
 import fi.thl.covid19.exposurenotification.efgs.entity.AuditEntry;
 import fi.thl.covid19.exposurenotification.efgs.signing.FederationGatewaySigningDev;
 import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,8 +24,6 @@ import org.springframework.test.web.client.SimpleRequestExpectationManager;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
-import java.io.StringWriter;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
@@ -46,6 +43,7 @@ import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.N
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationState.*;
+import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.x509CertificateToPem;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -524,8 +522,8 @@ public class FederationServiceSyncWithDaoTestIT {
                                        String batchTag,
                                        List<TemporaryExposureKey> keys
     ) throws Exception {
-        X509Certificate certificate = (X509Certificate) signer.keyStore.getCertificate(signer.keyStoreKeyAlias);
-        PrivateKey key = (PrivateKey) signer.keyStore.getKey(signer.trustAnchorAlias, signer.keyStorePassword);
+        X509Certificate certificate = signer.getSignerCertificate();
+        PrivateKey key = signer.getTrustAnchorPrivateKey();
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
         Signature signature = Signature.getInstance("SHA256withRSA", "BC");
         signature.initSign(key);
@@ -534,8 +532,8 @@ public class FederationServiceSyncWithDaoTestIT {
     }
 
     private void generateAuditResponseWithWrongKey(String date,
-                                       String batchTag,
-                                       List<TemporaryExposureKey> keys
+                                                   String batchTag,
+                                                   List<TemporaryExposureKey> keys
     ) throws Exception {
         KeyPair trustAnchorKeyPair = signer.generateKeyPair();
         X509Certificate trustAnchorCert = signer.generateDevRootCertificate(trustAnchorKeyPair);
@@ -574,14 +572,5 @@ public class FederationServiceSyncWithDaoTestIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(objectMapper.writeValueAsString(List.of(auditEntry)))
                 );
-    }
-
-    private static String x509CertificateToPem(X509Certificate cert) throws IOException {
-        StringWriter writer = new StringWriter();
-        JcaPEMWriter pemWriter = new JcaPEMWriter(writer);
-        pemWriter.writeObject(cert);
-        pemWriter.flush();
-        pemWriter.close();
-        return writer.toString();
     }
 }
