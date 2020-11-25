@@ -35,6 +35,7 @@ covid19:
       path:
       password: devdev
       key-alias: signing
+      trust-anchor-alias: efgs-trust-anchor
     call-back:
       enabled: false
       local-url:
