@@ -120,11 +120,16 @@ Same database table will be used for keys from other national backends than whic
 user willingness to share keys with other national backends will be stored on each indiviudal key. Same applies to
 user provided data of visited countries.  
 
+![efgs_inbound.png](../documentation/generated_images/efgs_inbound.png)
+
 * Inbound keys will be verified and validated on receive and then mixed with local keys in the database
   * Inbound will be made based on callback request when it arrives or once in a day after UTC midnight
   * Keys can be separated on database level by origin field. Origin will not be send to the mobile app, which sees
   all keys coming with region FI, which in this context refers to region of national server region, not the actual keys.
   * More information about verification can be found e.g from [EFGS documentation of certificate governance](https://ec.europa.eu/health/sites/health/files/ehealth/docs/mobileapps_interop_certificate_governance_en.pdf)
+
+![efgs_outbound.png](../documentation/generated_images/efgs_outbound.png)
+
 * Outbound keys received from local mobile app which are not yet send to EFGS will be send on next scheduled outbound run
   * Outbound interval is specified in application.yml with `upload-interval` parameter
 * Both outbound and inbound operations will be retried in a case of error at maximum three times

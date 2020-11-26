@@ -1,0 +1,18 @@
+@startuml
+
+state OUTBOUND {
+    [*] --> RECEIVED
+    RECEIVED : Stored in db
+    RECEIVED : No operation created yet
+    RECEIVED --> STARTED
+    STARTED --> FINISHED
+    STARTED --> ERROR
+    STARTED : Efgs sync timestamp updated in db
+    ERROR --> FINISHED
+    ERROR --> ERROR
+    ERROR : Until max retries reached
+    FINISHED : Number of keys send stored to db
+    FINISHED --> [*]
+    ERROR --> [*]
+}
+@enduml
