@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.Date;
 
 import static fi.thl.covid19.exposurenotification.efgs.util.SigningUtil.signBatch;
+import static java.util.Objects.requireNonNull;
 
 @Component
 @ConditionalOnProperty(
@@ -54,9 +55,9 @@ public class FederationGatewaySigningDev implements FederationGatewaySigning {
             @Value("${covid19.federation-gateway.signing-key-store.key-alias}") String keyStoreKeyAlias,
             @Value("${covid19.federation-gateway.signing-key-store.trust-anchor-alias}") String trustAnchorAlias
     ) throws Exception {
-        this.keyStorePassword = keyStorePassword.toCharArray();
-        this.keyStoreKeyAlias = keyStoreKeyAlias;
-        this.trustAnchorAlias = trustAnchorAlias;
+        this.keyStorePassword = requireNonNull(keyStorePassword.toCharArray());
+        this.keyStoreKeyAlias = requireNonNull(keyStoreKeyAlias);
+        this.trustAnchorAlias = requireNonNull(trustAnchorAlias);
         this.keyStore = initKeystore();
     }
 

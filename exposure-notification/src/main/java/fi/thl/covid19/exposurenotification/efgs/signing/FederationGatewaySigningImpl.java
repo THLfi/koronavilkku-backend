@@ -12,6 +12,7 @@ import java.security.*;
 import java.security.cert.*;
 
 import static fi.thl.covid19.exposurenotification.efgs.util.SigningUtil.signBatch;
+import static java.util.Objects.requireNonNull;
 
 
 @Component
@@ -33,10 +34,10 @@ public class FederationGatewaySigningImpl implements FederationGatewaySigning {
             @Value("${covid19.federation-gateway.signing-key-store.key-alias}") String keyStoreKeyAlias,
             @Value("${covid19.federation-gateway.signing-key-store.trust-anchor-alias}") String trustAnchorAlias
     ) {
-        this.keyStorePath = keyStorePath;
-        this.keyStorePassword = keyStorePassword.toCharArray();
-        this.keyStoreKeyAlias = keyStoreKeyAlias;
-        this.trustAnchorAlias = trustAnchorAlias;
+        this.keyStorePath = requireNonNull(keyStorePath);
+        this.keyStorePassword = requireNonNull(keyStorePassword.toCharArray());
+        this.keyStoreKeyAlias = requireNonNull(keyStoreKeyAlias);
+        this.trustAnchorAlias = requireNonNull(trustAnchorAlias);
         this.keyStore = initKeystore();
     }
 
