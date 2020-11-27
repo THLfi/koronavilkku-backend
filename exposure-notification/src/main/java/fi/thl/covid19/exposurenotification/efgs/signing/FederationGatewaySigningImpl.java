@@ -73,7 +73,7 @@ public class FederationGatewaySigningImpl implements FederationGatewaySigning {
             Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
             KeyStore keyStore = KeyStore.getInstance("PKCS12", "BC");
             keyStore.load(fileInputStream, keyStorePassword);
-            keyStore.aliases().asIterator().forEachRemaining(alias -> LOG.info("key: {}", keyValue("alias", alias)));
+            keyStore.aliases().asIterator().forEachRemaining(alias -> LOG.debug("signing-keystore: {}", keyValue("alias", alias)));
             return keyStore;
         } catch (KeyStoreException | NoSuchAlgorithmException | IOException | CertificateException | NoSuchProviderException e) {
             throw new IllegalStateException("EFGS signing certificate load error.", e);
