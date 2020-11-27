@@ -91,6 +91,7 @@ covid19:
         alias: efgs
     signing-key-store:
       key-alias: efgs-signing
+      trust-anchor-alias: efgs-trust-anchor
     base-url: "${EN_EFGS_URL:}"
     upload-interval: PT4H
     download-interval: PT10M

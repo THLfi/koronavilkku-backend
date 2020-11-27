@@ -1,5 +1,6 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.scheduled;
 
+import fi.thl.covid19.exposurenotification.efgs.FederationGatewaySyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,7 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
 
+import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -33,7 +35,7 @@ public class FederationGatewaySyncProcessor {
             @Value("${covid19.federation-gateway.scheduled-inbound-enabled}") boolean importEnabled
     ) {
         this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
-        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC);
+        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC).minus(1, DAYS);
         this.importEnabled = importEnabled;
     }
 

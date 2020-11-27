@@ -1,5 +1,7 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.scheduled;
 
+import fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient;
+import fi.thl.covid19.exposurenotification.efgs.entity.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +19,7 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Component
 @ConditionalOnProperty(
-        prefix = "covid19.federation-gateway", value = "callback-enabled",
+        prefix = "covid19.federation-gateway", value = "callback-initializer-enabled",
         matchIfMissing = true
 )
 public class CallbackInitializer {

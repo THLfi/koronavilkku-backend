@@ -6,6 +6,9 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TestKeyGenerator;
+import fi.thl.covid19.exposurenotification.efgs.entity.AuditEntry;
+import fi.thl.covid19.exposurenotification.efgs.signing.FederationGatewaySigningDev;
+import org.bouncycastle.cert.X509CertificateHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,28 +24,26 @@ import org.springframework.test.web.client.SimpleRequestExpectationManager;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.security.*;
+import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.MAX_RETRY_COUNT;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
+import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.getCertThumbprint;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayClient.NEXT_BATCH_TAG_HEADER;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationState.*;
+import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.x509CertificateToPem;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -69,7 +70,7 @@ public class FederationServiceSyncWithDaoTestIT {
     FederationGatewaySyncService federationGatewaySyncService;
 
     @Autowired
-    FederationGatewayBatchSigner signer;
+    FederationGatewaySigningDev signer;
 
     @Autowired
     ObjectMapper objectMapper;
@@ -97,25 +98,37 @@ public class FederationServiceSyncWithDaoTestIT {
     }
 
     @Test
-    public void downloadKeys() {
+    public void downloadKeys() throws Exception {
         List<TemporaryExposureKey> keys1 = transform(transform(keyGenerator.someKeys(10)));
         List<TemporaryExposureKey> keys2 = transform(transform(keyGenerator.someKeys(10)));
+        String date = getDateString(LocalDate.now(ZoneOffset.UTC));
         mockServer.expect(ExpectedCount.once(),
-                requestTo("http://localhost:8080/diagnosiskeys/download/" + getDateString(LocalDate.now(ZoneOffset.UTC))))
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK)
                         .contentType(PROTOBUF_MEDIATYPE)
                         .headers(getDownloadResponseHeaders(TEST_TAG_NAME, "test-2"))
                         .body(serialize(transform(keys1)))
                 );
-        mockServer.expect(ExpectedCount.twice(),
-                requestTo("http://localhost:8080/diagnosiskeys/download/" + getDateString(LocalDate.now(ZoneOffset.UTC))))
+        generateAuditResponse(date, TEST_TAG_NAME, keys1);
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK)
                         .contentType(PROTOBUF_MEDIATYPE)
                         .headers(getDownloadResponseHeaders("test-2", "null"))
                         .body(serialize(transform(keys2)))
                 );
+        generateAuditResponse(date, "test-2", keys2);
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(PROTOBUF_MEDIATYPE)
+                        .headers(getDownloadResponseHeaders("test-2", "null"))
+                        .body(serialize(transform(keys2)))
+                );
+        generateAuditResponse(date, "test-2", keys2);
         federationGatewaySyncService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
         federationGatewaySyncService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
         federationGatewaySyncService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.of("test-2"));
@@ -128,24 +141,27 @@ public class FederationServiceSyncWithDaoTestIT {
     }
 
     @Test
-    public void downloadRetry() {
+    public void downloadRetry() throws Exception {
         List<TemporaryExposureKey> keys = transform(transform(keyGenerator.someKeys(10)));
+        LocalDate date = LocalDate.now(ZoneOffset.UTC);
+        String dateS = getDateString(date);
         mockServer.expect(ExpectedCount.once(),
-                requestTo("http://localhost:8080/diagnosiskeys/download/" + getDateString(LocalDate.now(ZoneOffset.UTC))))
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + dateS))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
         mockServer.expect(ExpectedCount.once(),
-                requestTo("http://localhost:8080/diagnosiskeys/download/" + getDateString(LocalDate.now(ZoneOffset.UTC))))
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + dateS))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK)
                         .contentType(PROTOBUF_MEDIATYPE)
                         .headers(getDownloadResponseHeaders(TEST_TAG_NAME, "null"))
                         .body(serialize(transform(keys)))
                 );
-        LocalDate date = LocalDate.now(ZoneOffset.UTC);
+        generateAuditResponse(dateS, TEST_TAG_NAME, keys);
+
         try {
             federationGatewaySyncService.startInbound(date, Optional.of(TEST_TAG_NAME));
         } catch (HttpServerErrorException e) {
@@ -187,7 +203,8 @@ public class FederationServiceSyncWithDaoTestIT {
     }
 
     @Test
-    public void downloadKeysTransmissionRiskLevel() {
+    public void downloadKeysTransmissionRiskLevel() throws Exception {
+        String date = getDateString(LocalDate.now(ZoneOffset.UTC));
         List<TemporaryExposureKey> keys = transform(transform(
                 List.of(
                         keyGenerator.someKey(1, 0x7FFFFFFF, true, 1),
@@ -198,13 +215,14 @@ public class FederationServiceSyncWithDaoTestIT {
                 )
         ));
         mockServer.expect(ExpectedCount.once(),
-                requestTo("http://localhost:8080/diagnosiskeys/download/" + getDateString(LocalDate.now(ZoneOffset.UTC))))
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK)
                         .contentType(PROTOBUF_MEDIATYPE)
                         .headers(getDownloadResponseHeaders(TEST_TAG_NAME, "null"))
                         .body(serialize(transform(keys)))
                 );
+        generateAuditResponse(date, TEST_TAG_NAME, keys);
         federationGatewaySyncService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
@@ -216,6 +234,27 @@ public class FederationServiceSyncWithDaoTestIT {
         assertTrue(dbKeys.get(3).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(3).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
         assertTrue(dbKeys.get(4).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(4).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
 
+    }
+
+    @Test
+    public void downloadValidationFailsWithWrongPublicKey() throws Exception {
+        List<TemporaryExposureKey> keys = transform(transform(keyGenerator.someKeys(10)));
+        LocalDate date = LocalDate.now(ZoneOffset.UTC);
+        String dateS = getDateString(date);
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/download/" + dateS))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(PROTOBUF_MEDIATYPE)
+                        .headers(getDownloadResponseHeaders(TEST_TAG_NAME, "null"))
+                        .body(serialize(transform(keys)))
+                );
+        generateAuditResponseWithWrongKey(dateS, TEST_TAG_NAME, keys);
+        federationGatewaySyncService.startInbound(date, Optional.of(TEST_TAG_NAME));
+        assertFalse(operationDao.getInboundErrorBatchTags(date).containsKey(TEST_TAG_NAME));
+        Map<String, Object> operation = getLatestOperation();
+        assertEquals(operation.get("invalid_signature_count"), 10);
+        assertEquals(operation.get("keys_count_total"), 0);
     }
 
     @Test
@@ -477,5 +516,61 @@ public class FederationServiceSyncWithDaoTestIT {
         jdbcTemplate.update(sql1, Map.of("updated_at", timestamp));
         String sql2 = "update en.diagnosis_key set efgs_sync = :efgs_sync";
         jdbcTemplate.update(sql2, Map.of("efgs_sync", timestamp));
+    }
+
+    private void generateAuditResponse(String date,
+                                       String batchTag,
+                                       List<TemporaryExposureKey> keys
+    ) throws Exception {
+        X509Certificate certificate = signer.getSignerCertificate();
+        PrivateKey key = signer.getTrustAnchorPrivateKey();
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        Signature signature = Signature.getInstance("SHA256withRSA", "BC");
+        signature.initSign(key);
+        signature.update(x509CertificateToPem(certificate).getBytes());
+        addAuditMockExpect(certificate, keys, signature, date, batchTag);
+    }
+
+    private void generateAuditResponseWithWrongKey(String date,
+                                                   String batchTag,
+                                                   List<TemporaryExposureKey> keys
+    ) throws Exception {
+        KeyPair trustAnchorKeyPair = signer.generateKeyPair();
+        X509Certificate trustAnchorCert = signer.generateDevRootCertificate(trustAnchorKeyPair);
+        KeyPair keyPair = signer.generateKeyPair();
+        X509Certificate certificate = signer.generateDevCertificate(keyPair, trustAnchorKeyPair, trustAnchorCert);
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        Signature signature = Signature.getInstance("SHA256withRSA", "BC");
+        signature.initSign(trustAnchorKeyPair.getPrivate());
+        signature.update(x509CertificateToPem(certificate).getBytes());
+        addAuditMockExpect(certificate, keys, signature, date, batchTag);
+    }
+
+    private void addAuditMockExpect(
+            X509Certificate certificate,
+            List<TemporaryExposureKey> keys,
+            Signature signature,
+            String date,
+            String batchTag
+    ) throws Exception {
+        AuditEntry auditEntry = new AuditEntry(
+                "FI",
+                ZonedDateTime.now(),
+                "",
+                "",
+                getCertThumbprint(new X509CertificateHolder(certificate.getEncoded())),
+                keys.size(),
+                signer.sign(transform(keys)),
+                "",
+                new String(Base64.getEncoder().encode(signature.sign())),
+                x509CertificateToPem(certificate)
+        );
+        mockServer.expect(ExpectedCount.once(),
+                requestTo("http://localhost:8080/diagnosiskeys/audit/download/" + date + "/" + batchTag))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(objectMapper.writeValueAsString(List.of(auditEntry)))
+                );
     }
 }

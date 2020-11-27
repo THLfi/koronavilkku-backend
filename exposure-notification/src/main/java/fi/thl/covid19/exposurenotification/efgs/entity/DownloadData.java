@@ -1,4 +1,4 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.entity;
 
 import fi.thl.covid19.proto.EfgsProto;
 
@@ -14,5 +14,9 @@ public class DownloadData {
         this.batch = batch;
         this.batchTag = batchTag;
         this.nextBatchTag = nextBatchTag;
+    }
+
+    public int keysCount() {
+        return batch.map(EfgsProto.DiagnosisKeyBatch::getKeysCount).orElse(0);
     }
 }

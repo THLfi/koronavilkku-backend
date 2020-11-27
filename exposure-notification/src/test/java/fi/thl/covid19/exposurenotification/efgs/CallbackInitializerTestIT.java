@@ -2,6 +2,8 @@ package fi.thl.covid19.exposurenotification.efgs;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fi.thl.covid19.exposurenotification.efgs.entity.Callback;
+import fi.thl.covid19.exposurenotification.efgs.scheduled.CallbackInitializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +27,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 @SpringBootTest
 @ActiveProfiles({"dev", "test"})
-public class CallbackInitializerTest {
+public class CallbackInitializerTestIT {
 
     @Autowired
     private FederationGatewayClient federationGatewayClient;

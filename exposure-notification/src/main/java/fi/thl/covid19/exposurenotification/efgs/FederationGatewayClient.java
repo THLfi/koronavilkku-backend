@@ -1,5 +1,9 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import fi.thl.covid19.exposurenotification.efgs.entity.AuditEntry;
+import fi.thl.covid19.exposurenotification.efgs.entity.Callback;
+import fi.thl.covid19.exposurenotification.efgs.entity.DownloadData;
+import fi.thl.covid19.exposurenotification.efgs.entity.UploadResponseEntity;
 import fi.thl.covid19.proto.EfgsProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +16,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.deserialize;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.serialize;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.deserialize;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.serialize;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -98,6 +102,15 @@ public class FederationGatewayClient {
                         "url", callback.url
                 )
         );
+    }
+
+    public List<AuditEntry> fetchAuditEntries(String dateS, String batchTag) {
+        ResponseEntity<AuditEntry[]> response = restTemplate.getForEntity(
+                gatewayBaseUrl + "/audit/download/{date}/{batchTag}",
+                AuditEntry[].class,
+                Map.of("date", dateS, "batchTag", batchTag)
+        );
+        return Arrays.asList(requireNonNull(response.getBody()));
     }
 
     private UploadResponseEntity transform(ResponseEntity<UploadResponseEntityInner> res) {

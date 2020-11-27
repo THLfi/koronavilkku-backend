@@ -1,4 +1,4 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.util;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -8,34 +8,32 @@ import fi.thl.covid19.proto.EfgsProto;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
-import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DEFAULT_DAYS_SINCE_SYMPTOMS;
-import static fi.thl.covid19.exposurenotification.efgs.DsosMapperUtil.DsosInterpretationMapper;
+import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DEFAULT_DAYS_SINCE_SYMPTOMS;
+import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DsosInterpretationMapper;
 
-public class FederationGatewayBatchUtil {
+
+public class BatchUtil {
 
     public static EfgsProto.DiagnosisKeyBatch transform(List<TemporaryExposureKey> localKeys) {
         List<EfgsProto.DiagnosisKey> efgsKeys = localKeys.stream()
                 .filter(localKey -> localKey.consentToShareWithEfgs)
                 .map(localKey ->
-                EfgsProto.DiagnosisKey.newBuilder()
-                        .setKeyData(ByteString.copyFrom(Base64.getDecoder().decode(localKey.keyData.getBytes())))
-                        .setRollingStartIntervalNumber(localKey.rollingStartIntervalNumber)
-                        .setRollingPeriod(localKey.rollingPeriod)
-                        .setTransmissionRiskLevel(0x7FFFFFFF)
-                        .addAllVisitedCountries(localKey.visitedCountries)
-                        .setOrigin(localKey.origin)
-                        .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
-                        .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms.orElse(DEFAULT_DAYS_SINCE_SYMPTOMS))
-                        .build())
+                        EfgsProto.DiagnosisKey.newBuilder()
+                                .setKeyData(ByteString.copyFrom(Base64.getDecoder().decode(localKey.keyData.getBytes())))
+                                .setRollingStartIntervalNumber(localKey.rollingStartIntervalNumber)
+                                .setRollingPeriod(localKey.rollingPeriod)
+                                .setTransmissionRiskLevel(0x7FFFFFFF)
+                                .addAllVisitedCountries(localKey.visitedCountries)
+                                .setOrigin(localKey.origin)
+                                .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
+                                .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms.orElse(DEFAULT_DAYS_SINCE_SYMPTOMS))
+                                .build())
                 .collect(Collectors.toList());
 
         return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(efgsKeys).build();

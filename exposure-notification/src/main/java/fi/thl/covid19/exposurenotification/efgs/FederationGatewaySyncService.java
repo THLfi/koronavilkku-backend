@@ -3,6 +3,10 @@ package fi.thl.covid19.exposurenotification.efgs;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
+import fi.thl.covid19.exposurenotification.efgs.entity.DownloadData;
+import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperation;
+import fi.thl.covid19.exposurenotification.efgs.entity.UploadResponseEntity;
+import fi.thl.covid19.exposurenotification.efgs.signing.FederationGatewaySigning;
 import fi.thl.covid19.proto.EfgsProto;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -16,7 +20,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao.MAX_RETRY_COUNT;
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.*;
+import static fi.thl.covid19.exposurenotification.efgs.util.SignatureValidationUtil.validateSignature;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 import static java.util.Objects.requireNonNull;
 
@@ -25,13 +30,13 @@ public class FederationGatewaySyncService {
     private final FederationGatewayClient client;
     private final DiagnosisKeyDao diagnosisKeyDao;
     private final OperationDao operationDao;
-    private final FederationGatewayBatchSigner signer;
+    private final FederationGatewaySigning signer;
 
     public FederationGatewaySyncService(
             FederationGatewayClient client,
             DiagnosisKeyDao diagnosisKeyDao,
             OperationDao operationDao,
-            FederationGatewayBatchSigner signer
+            FederationGatewaySigning signer
     ) {
         this.client = requireNonNull(client);
         this.diagnosisKeyDao = requireNonNull(diagnosisKeyDao);
@@ -95,9 +100,15 @@ public class FederationGatewaySyncService {
             Optional<DownloadData> downloadO = client.download(date, localBatchTag.get());
             return downloadO.flatMap(download -> {
                 localBatchTag.set(Optional.of(download.batchTag));
-                List<TemporaryExposureKey> keys = download.batch.isPresent() ? transform(download.batch.get()) : List.of();
-                diagnosisKeyDao.addInboundKeys(keys, IntervalNumber.to24HourInterval(Instant.now()));
-                finished.set(operationDao.finishOperation(operationId, keys.size(), localBatchTag.get()));
+                EfgsProto.DiagnosisKeyBatch validBatch = validateSignature(
+                        client.fetchAuditEntries(date, download.batchTag),
+                        download,
+                        signer.getTrustAnchor()
+                );
+                List<TemporaryExposureKey> finalKeys = transform(validBatch);
+                diagnosisKeyDao.addInboundKeys(finalKeys, IntervalNumber.to24HourInterval(Instant.now()));
+                int failedCount = download.keysCount() - finalKeys.size();
+                finished.set(operationDao.finishOperation(operationId, finalKeys.size(), failedCount, localBatchTag.get()));
                 return download.nextBatchTag;
             });
         } finally {

@@ -1,4 +1,4 @@
-package fi.thl.covid19.exposurenotification.efgs;
+package fi.thl.covid19.exposurenotification.efgs.entity;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 
@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 
-import static fi.thl.covid19.exposurenotification.efgs.FederationGatewayBatchUtil.getBatchTag;
+import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.getBatchTag;
 
 public class FederationOutboundOperation {
     public final List<TemporaryExposureKey> keys;
