@@ -1,6 +1,8 @@
 package fi.thl.covid19.exposurenotification.efgs.signing;
 
 import fi.thl.covid19.proto.EfgsProto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -13,6 +15,7 @@ import java.security.cert.*;
 
 import static fi.thl.covid19.exposurenotification.efgs.util.SigningUtil.signBatch;
 import static java.util.Objects.requireNonNull;
+import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 
 @Component
@@ -21,6 +24,8 @@ import static java.util.Objects.requireNonNull;
         havingValue = "default", matchIfMissing = true
 )
 public class FederationGatewaySigningImpl implements FederationGatewaySigning {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FederationGatewaySigningImpl.class);
 
     private final String keyStorePath;
     private final char[] keyStorePassword;
@@ -67,6 +72,7 @@ public class FederationGatewaySigningImpl implements FederationGatewaySigning {
         try (FileInputStream fileInputStream = new FileInputStream(ResourceUtils.getFile(keyStorePath))) {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(fileInputStream, keyStorePassword);
+            keyStore.aliases().asIterator().forEachRemaining(alias -> LOG.info("key: {}", keyValue("alias", alias)));
             return keyStore;
         } catch (KeyStoreException | NoSuchAlgorithmException | IOException | CertificateException e) {
             throw new IllegalStateException("EFGS signing certificate load error.", e);
