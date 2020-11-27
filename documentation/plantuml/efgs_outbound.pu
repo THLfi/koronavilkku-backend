@@ -10,8 +10,8 @@ state OUTBOUND {
     STARTED : Efgs sync timestamp updated in db
     ERROR --> FINISHED
     ERROR --> ERROR
-    ERROR : Until max retries reached
-    FINISHED : Number of keys send stored to db
+    ERROR : Retry until max retries reached
+    FINISHED : Number of keys sent stored to db
     FINISHED --> [*]
     ERROR --> [*]
 }

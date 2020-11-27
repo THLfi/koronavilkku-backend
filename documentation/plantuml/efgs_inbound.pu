@@ -15,8 +15,8 @@ state INBOUND {
     VALIDATE --> FAIL
     ERROR --> FINISHED
     ERROR --> ERROR
-    ERROR : Until max retries reached
-    FINISHED : Keys counts stored in db
+    ERROR : Retry until max retries reached
+    FINISHED : Key counts stored in db
     FAIL : Keys not stored, no retries
     FINISHED --> [*]
     ERROR --> [*]

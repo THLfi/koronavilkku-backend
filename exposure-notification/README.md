@@ -95,7 +95,7 @@ Configurable values use [Duration parsing rules](https://docs.oracle.com/javase/
 ## European Federation Gateway Service (EFGS) integration
 
 EFGS is an official European solution for interoperability between European national COVID19 application backend servers.
-EFGS allows national backends change keys, which effectively means that national COVID-19 mobile tracing apps are compatible with each other.
+EFGS allows national backends to change keys, which effectively means that national COVID-19 mobile tracing apps are compatible with each other.
 More information, source code and api definition of EFGS can be found from GitHub: https://github.com/eu-federation-gateway-service/efgs-federation-gateway.
 
 ### EFGS related properties
@@ -122,9 +122,9 @@ user provided data of visited countries.
 
 ![efgs_inbound.png](../documentation/generated_images/efgs_inbound.png)
 
-* Inbound keys will be verified and validated on receive and then mixed with local keys in the database
-  * Inbound will be made based on callback request when it arrives or once in a day after UTC midnight
-  * Keys can be separated on database level by origin field. Origin will not be send to the mobile app, which sees
+* Inbound keys will be verified and validated on reception and then mixed with local keys in the database
+  * Inbound operation will be made based on callback request when it arrives or once in a day after UTC midnight
+  * Keys can be separated on the database level by origin field. Origin will not be sent to the mobile app. The mobile app sees
   all keys coming with region FI, which in this context refers to region of national server region, not the actual keys.
   * More information about verification can be found e.g from [EFGS documentation of certificate governance](https://ec.europa.eu/health/sites/health/files/ehealth/docs/mobileapps_interop_certificate_governance_en.pdf)
 
