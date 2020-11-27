@@ -92,6 +92,50 @@ Configurable values use [Duration parsing rules](https://docs.oracle.com/javase/
 1. Data access cache in RAM: Some status requests will always get through the proxy caches, so the most common database queries are cached in service RAM to ensure rapid responses.
     * covid19.diagnosis.data-cache.status-duration: database fetches needed for configuration or status information
 
+## European Federation Gateway Service (EFGS) integration
+
+EFGS is an official European solution for interoperability between European national COVID19 application backend servers.
+EFGS allows national backends to change keys, which effectively means that national COVID-19 mobile tracing apps are compatible with each other.
+More information, source code and api definition of EFGS can be found from GitHub: https://github.com/eu-federation-gateway-service/efgs-federation-gateway.
+
+### EFGS related properties
+
+Full list of application properties can be found from application.yml and application-dev.yml under federation-gateway subtopic.
+Latter is optimized for local development and automated tests.
+
+For easier maintenance and security there are some environment variables which are read by application on startup.
+
+* Enable/disable scheduled synchronization of keys (true/false) `EN_EFGS_SYNC_ENABLED`
+* Enable/disable scheduled inbound for keys (true/false) `EN_EFGS_SCHEDULED_INBOUND_ENABLED`
+  * if `EN_EFGS_SYNC_ENABLED` is set to false, then this option will be ignored
+* Enable/disable EFGS callback based inbound for keys (true/false) `EN_EFGS_CALLBACK_ENABLED`
+  * usually if this is set to true, then `EN_EFGS_SCHEDULED_INBOUND_ENABLED` should be value, but for flexibility this is not forced.
+* EFGS endpoint for diagnosiskey-api e.g. https://efgs-test.eu/diagnosiskey (string) `EN_EFGS_URL`
+* Local endpoint for callback requests made from EFGS server e.g. https://local-test.fi (string) `EN_EFGS_CALLBACK_URL`
+
+
+### Interchange of keys
+
+Same database table will be used for keys from other national backends than which is used for local keys. Consent of
+user willingness to share keys with other national backends will be stored on each indiviudal key. Same applies to
+user provided data of visited countries.  
+
+![efgs_inbound.png](../documentation/generated_images/efgs_inbound.png)
+
+* Inbound keys will be verified and validated on reception and then mixed with local keys in the database
+  * Inbound operation will be made based on callback request when it arrives or once in a day after UTC midnight
+  * Keys can be separated on the database level by origin field. Origin will not be sent to the mobile app. The mobile app sees
+  all keys coming with region FI, which in this context refers to region of national server region, not the actual keys.
+  * More information about verification can be found e.g from [EFGS documentation of certificate governance](https://ec.europa.eu/health/sites/health/files/ehealth/docs/mobileapps_interop_certificate_governance_en.pdf)
+
+![efgs_outbound.png](../documentation/generated_images/efgs_outbound.png)
+
+* Outbound keys received from local mobile app which are not yet send to EFGS will be send on next scheduled outbound run
+  * Outbound interval is specified in application.yml with `upload-interval` parameter
+* Both outbound and inbound operations will be retried in a case of error at maximum three times
+  * Retry interval is specified in application.yml with `error-handling-interval` parameter  
+* Metadata of all operations will be stored into the database including number of received or sent keys
+
 ## Configuration API
 API for retrieving exposure configuration parameters as defined in:
 * [Google documentation](https://developers.google.com/android/exposure-notifications/exposure-notifications-api#data-structures)
