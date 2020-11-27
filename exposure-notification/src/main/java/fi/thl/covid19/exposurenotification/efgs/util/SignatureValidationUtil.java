@@ -91,7 +91,7 @@ public class SignatureValidationUtil {
     private static boolean verifyOperatorSignature(AuditEntry audit, X509Certificate trustAnchor)
             throws InvalidKeyException, NoSuchAlgorithmException, SignatureException, NoSuchProviderException {
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-        Signature signature = Signature.getInstance("SHA256withRSA", "BC");
+        Signature signature = Signature.getInstance(trustAnchor.getSigAlgName(), "BC");
         signature.initVerify(trustAnchor.getPublicKey());
         signature.update(audit.signingCertificate.getBytes());
         return signature.verify(base64ToBytes(audit.signingCertificateOperatorSignature));

@@ -53,7 +53,7 @@ public class FederationGatewaySigningImpl implements FederationGatewaySigning {
 
     public X509Certificate getTrustAnchor() {
         try {
-            return (X509Certificate) keyStore.getCertificate(trustAnchorAlias);
+            return requireNonNull((X509Certificate) keyStore.getCertificate(trustAnchorAlias));
         } catch (KeyStoreException e) {
             throw new RuntimeException(e.getMessage(), e.getCause());
         }
