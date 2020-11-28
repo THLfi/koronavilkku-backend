@@ -109,7 +109,7 @@ For easier maintenance and security there are some environment variables which a
 * Enable/disable scheduled inbound for keys (true/false) `EN_EFGS_SCHEDULED_INBOUND_ENABLED`
   * if `EN_EFGS_SYNC_ENABLED` is set to false, then this option will be ignored
 * Enable/disable EFGS callback based inbound for keys (true/false) `EN_EFGS_CALLBACK_ENABLED`
-  * usually if this is set to true, then `EN_EFGS_SCHEDULED_INBOUND_ENABLED` should be value, but for flexibility this is not forced.
+  * usually if this is set to true, then `EN_EFGS_SCHEDULED_INBOUND_ENABLED` should be set as false, but for flexibility this is not forced.
 * EFGS endpoint for diagnosiskey-api e.g. https://efgs-test.eu/diagnosiskey (string) `EN_EFGS_URL`
 * Local endpoint for callback requests made from EFGS server e.g. https://local-test.fi (string) `EN_EFGS_CALLBACK_URL`
 
@@ -329,7 +329,7 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
   * Status: 200 OK
 
 ### Callback api
-Callback api is used to inform application that new batch is available to fetch. Calls should be secured with mTLS.
+Callback api is used to inform application that new batch is available to fetch. Requests should be secured with mTLS.
 * **URL:** `/efgs/callback?batchTag={batchTag}&date={date}`
 * **Method:** `GET`
 * **URL Params:** None
@@ -338,7 +338,10 @@ Callback api is used to inform application that new batch is available to fetch.
   * date: UTC date of batchTag as string in ISO-8601 format e.g. *2020-11-24* 
 * **Request Body:** None
 * **Success Response:**
-  * Status: 200 OK
+  * Status: 202 Accepted
+  * Body: Current status of request as string
 * **Failure Response:**
+  * Callback service is disabled in application
+    * Status: 503 Service unavailable
   * Such a processing queue is full
     * Status: 500 Internal server error

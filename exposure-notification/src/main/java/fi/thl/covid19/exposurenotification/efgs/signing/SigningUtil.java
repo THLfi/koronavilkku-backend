@@ -1,4 +1,4 @@
-package fi.thl.covid19.exposurenotification.efgs.util;
+package fi.thl.covid19.exposurenotification.efgs.signing;
 
 import fi.thl.covid19.proto.EfgsProto;
 import org.bouncycastle.cert.X509CertificateHolder;

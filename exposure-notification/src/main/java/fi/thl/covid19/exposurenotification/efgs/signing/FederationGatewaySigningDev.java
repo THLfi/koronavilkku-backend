@@ -33,7 +33,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
-import static fi.thl.covid19.exposurenotification.efgs.util.SigningUtil.signBatch;
+import static fi.thl.covid19.exposurenotification.efgs.signing.SigningUtil.signBatch;
 import static java.util.Objects.requireNonNull;
 
 @Component

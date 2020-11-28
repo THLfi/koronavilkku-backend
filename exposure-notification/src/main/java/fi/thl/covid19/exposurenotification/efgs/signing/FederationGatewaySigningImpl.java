@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.security.*;
 import java.security.cert.*;
 
-import static fi.thl.covid19.exposurenotification.efgs.util.SigningUtil.signBatch;
+import static fi.thl.covid19.exposurenotification.efgs.signing.SigningUtil.signBatch;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
