@@ -11,7 +11,7 @@ select * from (
        '{ 50, 70 }'::int array[2],
        '{ 1.0, 0.5, 0.0 }'::decimal(3,2) array[3],
        15::int,
-       '{ DK, DE, IE, IT, LV, ES }'::varchar(2)[])
+       '{ BE, BG, CZ, DK, DE, EE, IE, EL, ES, FR, HR, IT, CY, LV, LT, LU, HU, MT, NL, AT, PL, PT, RO, SI, SK, SE, IS, NO, LI, CH }'::varchar(2)[])
 ) as default_values
 -- Don't insert a new version if the latest one is identical
 except (
