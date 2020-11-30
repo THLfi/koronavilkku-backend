@@ -9,11 +9,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -28,23 +30,25 @@ public class CallbackInitializer {
     private static final String CALLBACK_ID = "1";
 
     private final FederationGatewayClient client;
-    private final AtomicBoolean initialized;
     private final boolean enabled;
     private final String localUrl;
+
+    private volatile LocalDate callBackInitialized;
 
     public CallbackInitializer(
             FederationGatewayClient client,
             @Value("${covid19.federation-gateway.call-back.enabled}") boolean enabled,
             @Value("${covid19.federation-gateway.call-back.local-url}") String localUrl) {
         this.client = requireNonNull(client);
-        this.initialized = new AtomicBoolean(false);
+        this.callBackInitialized = LocalDate.now(ZoneOffset.UTC).minus(1, DAYS);
         this.enabled = enabled;
         this.localUrl = requireNonNull(localUrl);
     }
 
     @Scheduled(initialDelay = 1000, fixedDelay = 60000)
     public void initializeCallback() {
-        if (!this.initialized.get()) {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        if (this.callBackInitialized.isBefore(today)) {
             try {
                 List<Callback> callbacks = client.fetchCallbacks();
                 deleteUnknown(callbacks);
@@ -56,9 +60,9 @@ public class CallbackInitializer {
                 }
 
                 LOG.info("Callback initialized. {}", keyValue("local-url", localUrl));
-                this.initialized.set(true);
+                this.callBackInitialized = today;
             } finally {
-                if (!this.initialized.get()) {
+                if (!this.callBackInitialized.isEqual(today)) {
                     LOG.info("Callback initialization failed. Retry in 60 seconds. {}", keyValue("local-url", localUrl));
                 }
             }

@@ -13,7 +13,6 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
 
-import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -35,7 +34,7 @@ public class FederationGatewaySyncProcessor {
             @Value("${covid19.federation-gateway.scheduled-inbound-enabled}") boolean importEnabled
     ) {
         this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
-        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC).minus(1, DAYS);
+        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC);
         this.importEnabled = importEnabled;
     }
 
