@@ -93,7 +93,7 @@ covid19:
       key-alias: efgs-signing
       trust-anchor-alias: efgs-trust-anchor
     base-url: "${EN_EFGS_URL:}"
-    upload-interval: PT4H
+    upload-interval: PT15M
     download-interval: PT10M
     error-handling-interval: PT30M
     call-back:
