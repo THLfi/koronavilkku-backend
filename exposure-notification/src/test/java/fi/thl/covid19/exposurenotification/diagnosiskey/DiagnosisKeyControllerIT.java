@@ -28,8 +28,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.dayFirst10MinInterval;
@@ -347,7 +345,7 @@ public class DiagnosisKeyControllerIT {
 
     private void processPost(Optional<Map<String, Boolean>> visitedCountries,
                              Optional<Boolean> consentToShareWithEfgs,
-                             boolean expectVisitedCountriesToSuccee) throws Exception {
+                             boolean expectVisitedCountriesToSucceeding) throws Exception {
         List<TemporaryExposureKeyRequest> keys = keyGenerator.someRequestKeys(14, 7);
         // Generator produces appropriate risk levels. Set them all to zero to verify that service calculates them OK.
         DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys, 0), visitedCountries, consentToShareWithEfgs);
@@ -363,7 +361,7 @@ public class DiagnosisKeyControllerIT {
         List<TemporaryExposureKeyRequest> expectedOutput = keys.stream()
                 // 0-risk keys (transmission risk level in extremes) are not distributed
                 .filter(k -> k.transmissionRiskLevel > 0 && k.transmissionRiskLevel < 7)
-                // Todays keys are not distributed without demo-mode
+                // Today's keys are not distributed without demo-mode
                 .filter(k -> k.rollingPeriod < dayFirst10MinInterval(Instant.now()))
                 .collect(Collectors.toList());
         // Filtered should be base 14 -4 due to risk levels -1 since it's current day
@@ -372,8 +370,8 @@ public class DiagnosisKeyControllerIT {
         List<TemporaryExposureKey> intervalKeys = dao.getIntervalKeys(available.get(0));
         assertEquals(sortByIntervalRequest(expectedOutput), sortByInterval(intervalKeys));
         visitedCountries.ifPresentOrElse(
-                vc -> verifyVisitedCountries(intervalKeys, vc, expectVisitedCountriesToSuccee),
-                () -> verifyVisitedCountries(intervalKeys, Map.of(), expectVisitedCountriesToSuccee)
+                vc -> verifyVisitedCountries(intervalKeys, vc, expectVisitedCountriesToSucceeding),
+                () -> verifyVisitedCountries(intervalKeys, Map.of(), expectVisitedCountriesToSucceeding)
         );
         consentToShareWithEfgs.ifPresentOrElse(
                 c -> verifyConsentToShare(intervalKeys, c),
@@ -381,8 +379,8 @@ public class DiagnosisKeyControllerIT {
         );
     }
 
-    private void verifyVisitedCountries(List<TemporaryExposureKey> keys, Map<String, Boolean> visitedCountries, boolean expectVisitedCountriesToSuccee) {
-        assertEquals(expectVisitedCountriesToSuccee, keys.stream().allMatch(key ->
+    private void verifyVisitedCountries(List<TemporaryExposureKey> keys, Map<String, Boolean> visitedCountries, boolean expectVisitedCountriesToSucceeding) {
+        assertEquals(expectVisitedCountriesToSucceeding, keys.stream().allMatch(key ->
                 key.visitedCountries.equals(
                         visitedCountries.entrySet().stream()
                                 .filter(Map.Entry::getValue)
