@@ -117,7 +117,7 @@ For easier maintenance and security there are some environment variables which a
 ### Interchange of keys
 
 Same database table will be used for keys from other national backends than which is used for local keys. Consent of
-user willingness to share keys with other national backends will be stored on each indiviudal key. Same applies to
+user willingness to share keys with other national backends will be stored on each individual key. Same applies to
 user provided data of visited countries.  
 
 ![efgs_inbound.png](../documentation/generated_images/efgs_inbound.png)
@@ -125,7 +125,7 @@ user provided data of visited countries.
 * Inbound keys will be verified and validated on reception and then mixed with local keys in the database
   * Inbound operation will be made based on callback request when it arrives or once in a day after UTC midnight
   * Keys can be separated on the database level by origin field. Origin will not be sent to the mobile app. The mobile app sees
-  all keys coming with region FI, which in this context refers to region of national server region, not the actual keys.
+  all keys coming with region FI, which in this context refers to region of national server, not the actual keys.
   * More information about verification can be found e.g from [EFGS documentation of certificate governance](https://ec.europa.eu/health/sites/health/files/ehealth/docs/mobileapps_interop_certificate_governance_en.pdf)
 
 ![efgs_outbound.png](../documentation/generated_images/efgs_outbound.png)
