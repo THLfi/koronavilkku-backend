@@ -28,6 +28,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.dayFirst10MinInterval;
@@ -173,29 +175,28 @@ public class DiagnosisKeyControllerIT {
     }
 
     @Test
-    public void postSucceeds() throws Exception {
-        List<TemporaryExposureKeyRequest> keys = keyGenerator.someRequestKeys(14, 7);
-        // Generator produces appropriate risk levels. Set them all to zero to verify that service calculates them OK.
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys, 0), Optional.empty(), Optional.empty());
+    public void postSucceedsWithDefaultEfgsData() throws Exception {
+        processPost(Optional.empty(), Optional.empty(), true);
+    }
 
-        assertTrue(dao.getAvailableIntervals().isEmpty());
-        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
-        given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        verifiedPost("123654032165", request);
-        verify(tokenVerificationService).getVerification("123654032165");
+    @Test
+    public void postWithEfgsDataSucceedsAndVerifyConsentFalse() throws Exception {
+        processPost(Optional.of(Map.of("DE", true, "IT", false)), Optional.of(false), true);
+    }
 
-        List<Integer> available = dao.getAvailableIntervals();
-        assertEquals(1, available.size());
-        List<TemporaryExposureKeyRequest> expectedOutput = keys.stream()
-                // 0-risk keys (transmission risk level in extremes) are not distributed
-                .filter(k -> k.transmissionRiskLevel > 0 && k.transmissionRiskLevel < 7)
-                // Todays keys are not distributed without demo-mode
-                .filter(k -> k.rollingPeriod < dayFirst10MinInterval(Instant.now()))
-                .collect(Collectors.toList());
-        // Filtered should be base 14 -4 due to risk levels -1 since it's current day
-        assertEquals(9, expectedOutput.size());
-        // Also, the order of exported keys is random -> sort here for clearer comparison
-        assertEquals(sortByIntervalRequest(expectedOutput), sortByInterval(dao.getIntervalKeys(available.get(0))));
+    @Test
+    public void postWithEfgsDataSucceedsAndVerifyConsentTrue() throws Exception {
+        processPost(Optional.of(Map.of("DE", true, "IT", false)), Optional.of(true), true);
+    }
+
+    @Test
+    public void postWithEfgsDataFailsWithInvalidCountryCode() throws Exception {
+        processPost(Optional.of(Map.of("XX", true, "IT", false)), Optional.of(false), false);
+    }
+
+    @Test
+    public void postWithEfgsDataFailsWithFinnishCountryCode() throws Exception {
+        processPost(Optional.of(Map.of("FI", true, "IT", false)), Optional.of(false), false);
     }
 
     @Test
@@ -342,6 +343,55 @@ public class DiagnosisKeyControllerIT {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("Invalid request parameter")));
+    }
+
+    private void processPost(Optional<Map<String, Boolean>> visitedCountries,
+                             Optional<Boolean> consentToShareWithEfgs,
+                             boolean expectVisitedCountriesToSuccee) throws Exception {
+        List<TemporaryExposureKeyRequest> keys = keyGenerator.someRequestKeys(14, 7);
+        // Generator produces appropriate risk levels. Set them all to zero to verify that service calculates them OK.
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys, 0), visitedCountries, consentToShareWithEfgs);
+
+        assertTrue(dao.getAvailableIntervals().isEmpty());
+        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
+        given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
+        verifiedPost("123654032165", request);
+        verify(tokenVerificationService).getVerification("123654032165");
+
+        List<Integer> available = dao.getAvailableIntervals();
+        assertEquals(1, available.size());
+        List<TemporaryExposureKeyRequest> expectedOutput = keys.stream()
+                // 0-risk keys (transmission risk level in extremes) are not distributed
+                .filter(k -> k.transmissionRiskLevel > 0 && k.transmissionRiskLevel < 7)
+                // Todays keys are not distributed without demo-mode
+                .filter(k -> k.rollingPeriod < dayFirst10MinInterval(Instant.now()))
+                .collect(Collectors.toList());
+        // Filtered should be base 14 -4 due to risk levels -1 since it's current day
+        assertEquals(9, expectedOutput.size());
+        // Also, the order of exported keys is random -> sort here for clearer comparison
+        List<TemporaryExposureKey> intervalKeys = dao.getIntervalKeys(available.get(0));
+        assertEquals(sortByIntervalRequest(expectedOutput), sortByInterval(intervalKeys));
+        visitedCountries.ifPresentOrElse(
+                vc -> verifyVisitedCountries(intervalKeys, vc, expectVisitedCountriesToSuccee),
+                () -> verifyVisitedCountries(intervalKeys, Map.of(), expectVisitedCountriesToSuccee)
+        );
+        consentToShareWithEfgs.ifPresentOrElse(
+                c -> verifyConsentToShare(intervalKeys, c),
+                () -> verifyConsentToShare(intervalKeys, false)
+        );
+    }
+
+    private void verifyVisitedCountries(List<TemporaryExposureKey> keys, Map<String, Boolean> visitedCountries, boolean expectVisitedCountriesToSuccee) {
+        assertEquals(expectVisitedCountriesToSuccee, keys.stream().allMatch(key ->
+                key.visitedCountries.equals(
+                        visitedCountries.entrySet().stream()
+                                .filter(Map.Entry::getValue)
+                                .map(Map.Entry::getKey).collect(Collectors.toSet())))
+        );
+    }
+
+    private void verifyConsentToShare(List<TemporaryExposureKey> keys, boolean consentToShareWithEfgs) {
+        assertTrue(keys.stream().allMatch(key -> key.consentToShareWithEfgs == consentToShareWithEfgs));
     }
 
     private void verifiedPost(String publishToken, DiagnosisPublishRequest request) throws Exception {

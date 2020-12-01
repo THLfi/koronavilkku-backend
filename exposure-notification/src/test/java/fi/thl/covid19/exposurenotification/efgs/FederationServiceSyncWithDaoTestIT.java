@@ -7,6 +7,7 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TestKeyGenerator;
 import fi.thl.covid19.exposurenotification.efgs.entity.AuditEntry;
+import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperation;
 import fi.thl.covid19.exposurenotification.efgs.signing.FederationGatewaySigningDev;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.junit.jupiter.api.AfterEach;
@@ -404,6 +405,26 @@ public class FederationServiceSyncWithDaoTestIT {
         createCrashed();
         diagnosisKeyDao.resolveOutboundCrash();
         assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
+    }
+
+    @Test
+    public void keysWithoutConsentWillNotBeFetched() {
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test1".getBytes()),
+                to24HourInterval(Instant.now()), keyGenerator.someKeys(5, 5, false), 5);
+        diagnosisKeyDao.addKeys(2, md5DigestAsHex("test2".getBytes()),
+                to24HourInterval(Instant.now()), keyGenerator.someKeys(5, 5, true), 5);
+
+        assertEquals(10, getAllDiagnosisKeys().size());
+        FederationOutboundOperation operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get();
+        List<TemporaryExposureKey> toEfgs1 = operation.keys;
+        assertEquals(5, toEfgs1.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        diagnosisKeyDao.setNotSent(operation);
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        List<TemporaryExposureKey> toEfgs2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(true).get().keys;
+        assertEquals(5, toEfgs2.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
     }
 
     private void assertCrashDoNotReturnKeys() {
