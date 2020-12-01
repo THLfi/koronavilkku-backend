@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @ActiveProfiles({"dev", "test"})
 @WebMvcTest(CallbackController.class)
 @ContextConfiguration(classes= ExposureNotificationApplication.class)
-public class CallbackControllerTest {
+public class CallbackControllerDisabledTest {
 
     @Autowired
     private MockMvc mvc;
