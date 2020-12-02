@@ -112,6 +112,7 @@ For easier maintenance and security there are some environment variables which a
   * usually if this is set to true, then `EN_EFGS_SCHEDULED_INBOUND_ENABLED` should be set as false, but for flexibility this is not forced.
 * EFGS endpoint for diagnosiskey-api e.g. https://efgs-test.eu/diagnosiskey (string) `EN_EFGS_URL`
 * Local endpoint for callback requests made from EFGS server e.g. https://local-test.fi (string) `EN_EFGS_CALLBACK_URL`
+* Interval to send keys to efgs `EN_EFGS_UPLOAD_INTERVAL`
 
 
 ### Interchange of keys
