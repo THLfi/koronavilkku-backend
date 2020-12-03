@@ -34,7 +34,7 @@ public class SignatureValidationUtil {
             AtomicInteger cursor = new AtomicInteger(0);
             List<EfgsProto.DiagnosisKey> validKeys = new ArrayList<>();
             auditEntries.forEach(audit -> {
-                List<EfgsProto.DiagnosisKey> auditKeys = data.getKeysList().subList(cursor.get(), Math.toIntExact(audit.amount));
+                List<EfgsProto.DiagnosisKey> auditKeys = data.getKeysList().subList(cursor.get(), cursor.get() + Math.toIntExact(audit.amount));
                 try {
                     if (checkBatchSignature(auditKeys, audit, trustAnchor)) {
                         validKeys.addAll(auditKeys);
