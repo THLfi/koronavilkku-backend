@@ -49,9 +49,11 @@ public class SignatureValidationUtil {
                         NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
                     logValidationFailed(downloadData.batchTag, audit, Optional.of(e));
                 } finally {
-                    LOG.info("Sub-batch processed. {} {}",
+                    LOG.info("Sub-batch processed. {} {} {} {}",
                             keyValue("batchTag", downloadData.batchTag),
-                            keyValue("cursor", cursor.addAndGet(Math.toIntExact(audit.amount))));
+                            keyValue("cursor", cursor.addAndGet(Math.toIntExact(audit.amount))),
+                            keyValue("country", audit.country),
+                            keyValue("amount", audit.amount));
                 }
             });
             return Optional.of(validKeys);

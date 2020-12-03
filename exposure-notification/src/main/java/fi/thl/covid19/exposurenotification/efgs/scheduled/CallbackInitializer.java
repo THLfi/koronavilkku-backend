@@ -33,14 +33,14 @@ public class CallbackInitializer {
     private final boolean enabled;
     private final String localUrl;
 
-    private volatile LocalDate callBackInitialized;
+    private volatile Optional<LocalDate> callBackInitialized;
 
     public CallbackInitializer(
             FederationGatewayClient client,
             @Value("${covid19.federation-gateway.call-back.enabled}") boolean enabled,
             @Value("${covid19.federation-gateway.call-back.local-url}") String localUrl) {
         this.client = requireNonNull(client);
-        this.callBackInitialized = LocalDate.now(ZoneOffset.UTC).minus(1, DAYS);
+        this.callBackInitialized = Optional.empty();
         this.enabled = enabled;
         this.localUrl = requireNonNull(localUrl);
     }
@@ -48,36 +48,53 @@ public class CallbackInitializer {
     @Scheduled(initialDelay = 1000, fixedDelay = 60000)
     public void initializeCallback() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        if (this.callBackInitialized.isBefore(today)) {
+        callBackInitialized.ifPresentOrElse(i -> doInit(today, i), () -> doInit(today, today.minus(1, DAYS)));
+    }
+
+    private void doInit(LocalDate today, LocalDate initialized) {
+        if (initialized.isBefore(today)) {
             try {
                 List<Callback> callbacks = client.fetchCallbacks();
                 deleteUnknown(callbacks);
                 Optional<Callback> current = callbacks.stream().filter(cb -> cb.callbackId.equals(CALLBACK_ID)).findFirst();
                 if (this.enabled && !localUrl.isEmpty()) {
                     updateOrCreateCallback(current);
+                    LOG.info("Callback initialized. {}", keyValue("local-url", localUrl));
                 } else {
                     deleteCallback(current);
+                    LOG.info("Callback disabled.");
                 }
-
-                LOG.info("Callback initialized. {}", keyValue("local-url", localUrl));
-                this.callBackInitialized = today;
+                this.callBackInitialized = Optional.of(today);
             } finally {
-                if (!this.callBackInitialized.isEqual(today)) {
-                    LOG.info("Callback initialization failed. Retry in 60 seconds. {}", keyValue("local-url", localUrl));
-                }
+                callBackInitialized.ifPresentOrElse(
+                        d -> {
+                            if (!d.isEqual(today)) {
+                                logInitFailed();
+                            }
+                        },
+                        this::logInitFailed);
             }
         }
+    }
+
+    private void logInitFailed() {
+        LOG.info("Callback initialization failed. Retry in 60 seconds. {}", keyValue("local-url", localUrl));
     }
 
     private void updateOrCreateCallback(Optional<Callback> callback) {
         callback.ifPresentOrElse(
                 cb -> {
                     if (!localUrl.equals(cb.url)) {
-                        client.putCallback(new Callback(CALLBACK_ID, localUrl));
+                        putCallBack();
                     }
                 },
-                () -> client.putCallback(new Callback(CALLBACK_ID, localUrl))
+                this::putCallBack
         );
+    }
+
+    private void putCallBack() {
+        this.callBackInitialized.ifPresent(d -> LOG.warn("Re-initializing callback. This should not happen."));
+        client.putCallback(new Callback(CALLBACK_ID, localUrl));
     }
 
     private void deleteCallback(Optional<Callback> callback) {
