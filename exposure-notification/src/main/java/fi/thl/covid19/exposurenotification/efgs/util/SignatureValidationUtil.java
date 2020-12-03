@@ -33,23 +33,35 @@ public class SignatureValidationUtil {
         Optional<List<EfgsProto.DiagnosisKey>> keys = downloadData.batch.flatMap(data -> {
             AtomicInteger cursor = new AtomicInteger(0);
             List<EfgsProto.DiagnosisKey> validKeys = new ArrayList<>();
+            LOG.info("Validating batch. {} {} {}",
+                    keyValue("batchTag", downloadData.batchTag),
+                    keyValue("auditCount", auditEntries.size()),
+                    keyValue("totalKeysCount", data.getKeysCount()));
             auditEntries.forEach(audit -> {
                 List<EfgsProto.DiagnosisKey> auditKeys = data.getKeysList().subList(cursor.get(), cursor.get() + Math.toIntExact(audit.amount));
                 try {
                     if (checkBatchSignature(auditKeys, audit, trustAnchor)) {
                         validKeys.addAll(auditKeys);
+                    } else {
+                        logValidationFailed(downloadData.batchTag, audit, Optional.empty());
                     }
                 } catch (CMSException | IOException | CertificateException | OperatorCreationException |
                         NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
-                    LOG.warn("Batch validation failed. {}", keyValue("batchTag", downloadData.batchTag));
-                    LOG.warn("Batch validation failed. {} {} {}", keyValue("exception", e.toString()), keyValue("audit", audit.toString()), keyValue("exceptionMessage", e.getMessage()));
+                        logValidationFailed(downloadData.batchTag, audit, Optional.of(e));
                 } finally {
-                    cursor.addAndGet(Math.toIntExact(audit.amount));
+                    LOG.info("Sub-batch processed. {}", keyValue("cursor", cursor.addAndGet(Math.toIntExact(audit.amount))));
                 }
             });
             return Optional.of(validKeys);
         });
         return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(keys.orElse(List.of())).build();
+    }
+
+    private static void logValidationFailed(String batchTag, AuditEntry auditEntry, Optional<Exception> e) {
+        LOG.warn("Batch validation failed. {}", keyValue("batchTag", batchTag));
+        LOG.warn("Batch validation failed. {} {}",
+                keyValue("exception", e.toString()),
+                keyValue("audit", auditEntry.toString()));
     }
 
     private static boolean checkBatchSignature(
