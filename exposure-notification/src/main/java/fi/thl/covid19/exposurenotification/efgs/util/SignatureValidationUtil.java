@@ -42,6 +42,7 @@ public class SignatureValidationUtil {
                 } catch (CMSException | IOException | CertificateException | OperatorCreationException |
                         NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
                     LOG.warn("Batch validation failed. {}", keyValue("batchTag", downloadData.batchTag));
+                    LOG.warn("Batch validation failed. {} {} {}", keyValue("exception", e.toString()), keyValue("audit", audit.toString()), keyValue("exceptionMessage", e.getMessage()));
                 } finally {
                     cursor.addAndGet(Math.toIntExact(audit.amount));
                 }

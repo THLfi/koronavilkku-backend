@@ -32,4 +32,20 @@ public class AuditEntry {
         this.signingCertificateOperatorSignature = requireNonNull(signingCertificateOperatorSignature);
         this.signingCertificate = requireNonNull(signingCertificate);
     }
+
+    @Override
+    public String toString() {
+        return "AuditEntry{" +
+                "country='" + country + '\'' +
+                ", uploadedTime=" + uploadedTime +
+                ", uploaderThumbprint='" + uploaderThumbprint + '\'' +
+                ", uploaderSigningThumbprint='" + uploaderSigningThumbprint + '\'' +
+                ", uploaderCertificate='" + uploaderCertificate + '\'' +
+                ", amount=" + amount +
+                ", batchSignature='" + batchSignature + '\'' +
+                ", uploaderOperatorSignature='" + uploaderOperatorSignature + '\'' +
+                ", signingCertificateOperatorSignature='" + signingCertificateOperatorSignature + '\'' +
+                ", signingCertificate='" + signingCertificate + '\'' +
+                '}';
+    }
 }
