@@ -43,11 +43,11 @@ public class SignatureValidationUtil {
                     if (checkBatchSignature(auditKeys, audit, trustAnchor)) {
                         validKeys.addAll(auditKeys);
                     } else {
-                        logValidationFailed(downloadData.batchTag, audit, Optional.empty());
+                        logValidationFailed(downloadData.batchTag, audit, new IllegalStateException("Batch signature check failed."));
                     }
                 } catch (CMSException | IOException | CertificateException | OperatorCreationException |
                         NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
-                    logValidationFailed(downloadData.batchTag, audit, Optional.of(e));
+                    logValidationFailed(downloadData.batchTag, audit, e);
                 } finally {
                     LOG.info("Sub-batch processed. {} {} {} {}",
                             keyValue("batchTag", downloadData.batchTag),
@@ -61,10 +61,11 @@ public class SignatureValidationUtil {
         return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(keys.orElse(List.of())).build();
     }
 
-    private static void logValidationFailed(String batchTag, AuditEntry auditEntry, Optional<Exception> e) {
-        LOG.warn("Batch validation failed. {} {} {} {}",
+    private static void logValidationFailed(String batchTag, AuditEntry auditEntry, Exception e) {
+        LOG.warn("Batch validation failed. {} {} {} {} {}",
                 keyValue("batchTag", batchTag),
-                keyValue("exception", e.toString()),
+                keyValue("exception", e),
+                keyValue("stackTrace", stackTraceToString(e)),
                 keyValue("country", auditEntry.country),
                 keyValue("amount", auditEntry.amount));
     }
