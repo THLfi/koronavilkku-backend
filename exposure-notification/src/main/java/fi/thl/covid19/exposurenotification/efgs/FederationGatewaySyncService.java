@@ -89,7 +89,7 @@ public class FederationGatewaySyncService {
     }
 
     private Optional<String> addInboundKeys(String date, Optional<String> batchTag) {
-        Optional<Long> operationId = operationDao.startOperation(INBOUND, batchTag);
+        Optional<Long> operationId = operationDao.startInboundOperation(batchTag);
         return operationId.flatMap(id -> downloadAndStore(id, batchTag, date));
     }
 
