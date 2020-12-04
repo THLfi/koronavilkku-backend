@@ -117,16 +117,7 @@ public class OperationDao {
     }
 
     @Transactional
-    public Optional<Long> startInboundOperation(Optional<String> batchTag) {
-        if (batchTag.isPresent()) {
-            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()), batchTag.get());
-        } else {
-            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()));
-        }
-    }
-
-    @Transactional
-    public long startOperation(EfgsOperationDirection direction, Timestamp timestamp) {
+    public long startOutboundOperation(EfgsOperationDirection direction, Timestamp timestamp) {
         String createOperation = "insert into en.efgs_operation (state, direction, updated_at) " +
                 "values (cast(:state as en.state_t), cast(:direction as en.direction_t), :updated_at) returning id";
         return jdbcTemplate.query(createOperation,
@@ -140,12 +131,20 @@ public class OperationDao {
     }
 
     @Transactional
+    public Optional<Long> startInboundOperation(Optional<String> batchTag) {
+        if (batchTag.isPresent()) {
+            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()), batchTag.get());
+        } else {
+            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()));
+        }
+    }
+
+    @Transactional
     public Optional<Long> startInboundOperation(Timestamp timestamp) {
         String createOperation = "insert into en.efgs_operation (state, direction, updated_at) " +
                 "select cast(:state as en.state_t), cast(:direction as en.direction_t), :updated_at " +
                 "where not exists ( " +
                 "select 1 from en.efgs_operation where " +
-                "batch_tag is null and " +
                 "direction = cast(:direction as en.direction_t) and " +
                 "updated_at >= current_date::timestamp " +
                 "and state <> cast(:error_state as en.state_t) " +

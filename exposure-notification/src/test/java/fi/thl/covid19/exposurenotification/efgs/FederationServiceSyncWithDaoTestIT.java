@@ -121,15 +121,7 @@ public class FederationServiceSyncWithDaoTestIT {
                         .body(serialize(transform(keys2)))
                 );
         generateAuditResponse(date, "test-2", keys2);
-        mockServer.expect(ExpectedCount.once(),
-                requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
-                .andExpect(method(HttpMethod.GET))
-                .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(PROTOBUF_MEDIATYPE)
-                        .headers(getDownloadResponseHeaders("test-2", "null"))
-                        .body(serialize(transform(keys2)))
-                );
-        generateAuditResponse(date, "test-2", keys2);
+
         federationGatewaySyncService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
         federationGatewaySyncService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
         federationGatewaySyncService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.of("test-2"));

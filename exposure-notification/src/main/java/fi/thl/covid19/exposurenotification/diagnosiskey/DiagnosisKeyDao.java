@@ -153,7 +153,7 @@ public class DiagnosisKeyDao {
             return Optional.of(
                     new FederationOutboundOperation(
                             keys,
-                            operationDao.startOperation(OUTBOUND, timestamp)));
+                            operationDao.startOutboundOperation(OUTBOUND, timestamp)));
         }
     }
 
