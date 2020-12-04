@@ -62,12 +62,13 @@ public class SignatureValidationUtil {
     }
 
     private static void logValidationFailed(String batchTag, AuditEntry auditEntry, Exception e) {
-        LOG.warn("Batch validation failed. {} {} {} {} {}",
+        LOG.warn("Batch validation failed. {} {} {} {} {} {}",
                 keyValue("batchTag", batchTag),
                 keyValue("exception", e),
                 keyValue("stackTrace", stackTraceToString(e)),
                 keyValue("country", auditEntry.country),
-                keyValue("amount", auditEntry.amount));
+                keyValue("amount", auditEntry.amount),
+                keyValue("amount", auditEntry.toString()));
     }
 
     private static boolean checkBatchSignature(
