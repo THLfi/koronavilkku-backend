@@ -49,11 +49,12 @@ public class SignatureValidationUtil {
                         NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
                     logValidationFailed(downloadData.batchTag, audit, e);
                 } finally {
-                    LOG.info("Sub-batch processed. {} {} {} {}",
+                    LOG.info("Sub-batch processed. {} {} {} {} {}",
                             keyValue("batchTag", downloadData.batchTag),
                             keyValue("cursor", cursor.addAndGet(Math.toIntExact(audit.amount))),
                             keyValue("country", audit.country),
-                            keyValue("amount", audit.amount));
+                            keyValue("amount", audit.amount),
+                            keyValue("amount", audit.toString()));
                 }
             });
             return Optional.of(validKeys);
@@ -62,13 +63,12 @@ public class SignatureValidationUtil {
     }
 
     private static void logValidationFailed(String batchTag, AuditEntry auditEntry, Exception e) {
-        LOG.warn("Batch validation failed. {} {} {} {} {} {}",
+        LOG.warn("Batch validation failed. {} {} {} {} {}",
                 keyValue("batchTag", batchTag),
                 keyValue("exception", e),
                 keyValue("stackTrace", stackTraceToString(e)),
                 keyValue("country", auditEntry.country),
-                keyValue("amount", auditEntry.amount),
-                keyValue("amount", auditEntry.toString()));
+                keyValue("amount", auditEntry.amount));
     }
 
     private static boolean checkBatchSignature(
