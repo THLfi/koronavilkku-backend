@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
-import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -36,12 +35,12 @@ public class CallbackController {
 
     @GetMapping("/callback")
     public String triggerCallback(@RequestParam("batchTag") String batchTag,
-                                                    @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                                    HttpServletResponse response
+                                  @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                  HttpServletResponse response
     ) {
         if (callbackEnabled) {
             LOG.info("Import from efgs triggered by callback {} {}.", keyValue("batchTag", batchTag), keyValue("date", date.toString()));
-            federationGatewaySyncService.startInboundAsync(date, Optional.of(batchTag));
+            federationGatewaySyncService.startInboundAsync(date, batchTag);
             response.setStatus(HttpStatus.ACCEPTED.value());
             return "Request added to queue.";
         } else {

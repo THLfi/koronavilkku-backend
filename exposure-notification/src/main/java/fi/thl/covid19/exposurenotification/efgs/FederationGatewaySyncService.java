@@ -8,6 +8,7 @@ import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperati
 import fi.thl.covid19.exposurenotification.efgs.entity.UploadResponseEntity;
 import fi.thl.covid19.exposurenotification.efgs.signing.FederationGatewaySigning;
 import fi.thl.covid19.proto.EfgsProto;
+import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -49,8 +50,11 @@ public class FederationGatewaySyncService {
         Set<Long> operationsProcessed = new HashSet<>();
 
         while ((operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).isPresent()) {
-            operationsProcessed.add(operation.get().operationId);
+            long operationId = operation.get().operationId;
+            MDC.put("outboundOperationId", Long.toString(operationId));
+            operationsProcessed.add(operationId);
             doOutbound(operation.get());
+            MDC.remove("outboundOperationId");
         }
 
         return operationsProcessed;
@@ -62,20 +66,23 @@ public class FederationGatewaySyncService {
     }
 
     @Async("callbackAsyncExecutor")
-    public void startInboundAsync(LocalDate date, Optional<String> batchTag) {
-        startInbound(date, batchTag);
+    public void startInboundAsync(LocalDate date, String batchTag) {
+        MDC.put("callbackBatchTag", batchTag);
+        addInboundKeys(getDateString(date), Optional.of(batchTag));
+        MDC.remove("callbackBatchTag");
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {
-        String dateS = getDateString(date);
-        doInbound(dateS, batchTag);
+        doInbound(getDateString(date), batchTag);
     }
 
     public void startInboundRetry(LocalDate date) {
         operationDao.getInboundErrorBatchTags(date).forEach(
                 (tag, count) -> {
                     if (count < MAX_RETRY_COUNT) {
+                        MDC.put("inboundRetryBatchTag", tag);
                         addInboundKeys(getDateString(date), Optional.of(tag));
+                        MDC.remove("inboundRetryBatchTag");
                     }
                 }
         );
@@ -84,7 +91,9 @@ public class FederationGatewaySyncService {
     private void doInbound(String date, Optional<String> batchTag) {
         Optional<String> next = batchTag;
         do {
+            MDC.put("scheduledInboundBatchTag", next.orElse("date"));
             next = addInboundKeys(date, next);
+            MDC.remove("scheduledInboundBatchTag");
         } while (next.isPresent());
     }
 

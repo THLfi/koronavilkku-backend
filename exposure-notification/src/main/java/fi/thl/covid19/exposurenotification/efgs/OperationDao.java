@@ -147,7 +147,7 @@ public class OperationDao {
                 "select 1 from en.efgs_operation where " +
                 "direction = cast(:direction as en.direction_t) and " +
                 "updated_at >= current_date::timestamp " +
-                "and state <> cast(:error_state as en.state_t) " +
+                "and state <> cast(:error_state as en.state_t) for update skip locked " +
                 ") " +
                 "returning id";
         return jdbcTemplate.query(createOperation,
@@ -170,7 +170,7 @@ public class OperationDao {
                 "batch_tag = :batch_tag and " +
                 "direction = cast(:direction as en.direction_t) and " +
                 "updated_at >= current_date::timestamp " +
-                "and state <> cast(:error_state as en.state_t) " +
+                "and state <> cast(:error_state as en.state_t) for update skip locked " +
                 ") " +
                 "returning id";
         return jdbcTemplate.query(createOperation,
@@ -193,7 +193,8 @@ public class OperationDao {
                 "and updated_at > :start ) " +
                 "select batch_tag from en.efgs_operation " +
                 "where state = cast(:error_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
-                "and updated_at > :start and updated_at < :end and batch_tag not in (select batch_tag from finished)";
+                "and updated_at > :start and updated_at < :end and batch_tag not in (select batch_tag from finished) " +
+                "for update skip locked";
         List<String> inboundErrors = jdbcTemplate.queryForList(sql,
                 Map.of(
                         "finished_state", FINISHED.name(),
