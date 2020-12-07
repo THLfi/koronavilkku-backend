@@ -114,6 +114,45 @@ For easier maintenance and security there are some environment variables which a
 * Local endpoint for callback requests made from EFGS server e.g. https://local-test.fi (string) `EN_EFGS_CALLBACK_URL`
 * Interval to send keys to efgs `EN_EFGS_UPLOAD_INTERVAL`
 
+### Logging 
+
+Same principles, stated in the monitoring section, applies also with efgs-integration. However, there is some details,
+which are worth to mention separately.
+
+With efgs-integration there is a concept of operation. Database table *efgs_operation* represents it. Operation has
+always two main states: direction and operation state. 
+
+Direction have two possible states: INBOUND and OUTBOUND.
+
+* INBOUND: downloading keys
+* OUTBOUND: uploading keys
+
+Operation state have three possible values: STARTED, FINISHED and ERROR.
+
+* STARTED: operation is running (or hanged in a case of application crash, this will be resolved automatically)
+* FINISHED: operation is finished
+* ERROR: operation has resulted an error. In a case of INBOUND operation, operation will be retried at maximum three times.
+For OUTBOUND, new operation will be created on next cycle.
+  
+There is also a couple of counters for results of processing:
+
+* keys_count_total: total number of keys bound to this operation
+* keys_count_201: total number of successfully processed keys bound to this operation
+* keys_count_409: total number of keys with http-status 409 bound to this operation (used only with outbound operations)
+* keys_count_500: total number of keys with http-status 500 bound to this operation (used only with outbound operations)
+* invalid_signature_count: total number of keys which are failing when verifying signature and are bound to this operation 
+  (used only with inbound operations)
+
+Also, operation has a field for batch tag, which is used as an identifier between efgs and koronavilkku backend. Outbound and
+inbound batch tags do not have any relation between each other i.e. batches from efgs could contain multiple national batches.
+
+Batch tag or operation id is used for MDC logging, so there are three log properties which are added to every log row resulted from
+individual operation. So, these can be used for further investigations to get all the log rows for a some specific operation.
+
+* outboundOperationId: operation id of upload operation
+* callbackBatchTag: batch tag of inbound operation which are triggered by callback
+* scheduledInboundBatchTag: batch tag of inbound operation which are triggered by scheduler
+* inboundRetryBatchTag: batch tag of inbound operation which are triggered by error handler
 
 ### Interchange of keys
 
