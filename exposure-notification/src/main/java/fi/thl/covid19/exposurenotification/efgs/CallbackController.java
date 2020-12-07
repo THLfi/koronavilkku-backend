@@ -38,7 +38,11 @@ public class CallbackController {
                                   @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                   HttpServletResponse response
     ) {
-        if (callbackEnabled) {
+        if (!validBatchTag(batchTag)) {
+            LOG.error("Callback with invalid batchTag received {} {}.", keyValue("batchTag", batchTag), keyValue("date", date.toString()));
+            response.setStatus(HttpStatus.BAD_REQUEST.value());
+            return "Batch tag is not valid.";
+        } else if (callbackEnabled) {
             LOG.info("Import from efgs triggered by callback {} {}.", keyValue("batchTag", batchTag), keyValue("date", date.toString()));
             federationGatewaySyncService.startInboundAsync(date, batchTag);
             response.setStatus(HttpStatus.ACCEPTED.value());
@@ -49,4 +53,9 @@ public class CallbackController {
             return "Service is currently disabled.";
         }
     }
+
+    private boolean validBatchTag(String batchTag) {
+        return !requireNonNull(batchTag).isEmpty() && batchTag.length() <= 500;
+    }
 }
+
