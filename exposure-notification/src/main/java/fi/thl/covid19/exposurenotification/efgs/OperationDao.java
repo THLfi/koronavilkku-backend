@@ -193,7 +193,8 @@ public class OperationDao {
                 "and updated_at > :start ) " +
                 "select batch_tag from en.efgs_operation " +
                 "where state = cast(:error_state as en.state_t) and direction = cast(:direction as en.direction_t) " +
-                "and updated_at > :start and updated_at < :end and batch_tag not in (select batch_tag from finished)";
+                "and updated_at > :start and updated_at < :end and batch_tag is not null " +
+                "and batch_tag not in (select batch_tag from finished) for update skip locked";
         List<String> inboundErrors = jdbcTemplate.queryForList(sql,
                 Map.of(
                         "finished_state", FINISHED.name(),
