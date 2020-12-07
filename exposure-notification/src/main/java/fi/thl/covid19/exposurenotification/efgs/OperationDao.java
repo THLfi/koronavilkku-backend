@@ -147,7 +147,7 @@ public class OperationDao {
                 "select 1 from en.efgs_operation where " +
                 "direction = cast(:direction as en.direction_t) and " +
                 "updated_at >= current_date::timestamp " +
-                "and state <> cast(:error_state as en.state_t) for update skip locked " +
+                "and state <> cast(:error_state as en.state_t) " +
                 ") " +
                 "returning id";
         return jdbcTemplate.query(createOperation,
@@ -170,7 +170,7 @@ public class OperationDao {
                 "batch_tag = :batch_tag and " +
                 "direction = cast(:direction as en.direction_t) and " +
                 "updated_at >= current_date::timestamp " +
-                "and state <> cast(:error_state as en.state_t) for update skip locked " +
+                "and state <> cast(:error_state as en.state_t) " +
                 ") " +
                 "returning id";
         return jdbcTemplate.query(createOperation,
