@@ -79,7 +79,7 @@ public class FederationGatewaySyncService {
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {
-        doInbound(getDateString(date), batchTag);
+        doInbound(date, batchTag);
     }
 
     public void startInboundRetry(LocalDate date) {
@@ -97,12 +97,13 @@ public class FederationGatewaySyncService {
         );
     }
 
-    private void doInbound(String date, Optional<String> batchTag) {
+    private void doInbound(LocalDate date, Optional<String> batchTag) {
         Optional<String> next = batchTag;
+        String dateS = getDateString(date);
         do {
             try {
-                MDC.put("scheduledInboundBatchTag", next.orElse("date"));
-                next = addInboundKeys(date, next);
+                MDC.put("scheduledInboundBatchTag", next.orElse(getBatchTag(date, "1")));
+                next = addInboundKeys(dateS, next);
             } finally {
                 MDC.remove("scheduledInboundBatchTag");
             }

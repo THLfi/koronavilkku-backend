@@ -72,7 +72,7 @@ public class BatchUtil {
     }
 
     public static String getBatchTag(LocalDate date, String postfix) {
-        return getDateString(date) + "-" + postfix;
+        return getDateString(date).replace("-", "") + "-" + postfix;
     }
 
     public static String getDateString(LocalDate date) {
