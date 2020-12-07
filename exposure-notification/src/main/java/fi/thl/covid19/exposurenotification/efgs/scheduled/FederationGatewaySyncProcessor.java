@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
 
+import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -64,7 +65,7 @@ public class FederationGatewaySyncProcessor {
         LOG.info("Starting scheduled efgs error handling.");
         federationGatewaySyncService.resolveCrash();
         federationGatewaySyncService.startOutbound(true);
-        federationGatewaySyncService.startInboundRetry(lastInboundSyncFromEfgs);
+        federationGatewaySyncService.startInboundRetry(LocalDate.now(ZoneOffset.UTC).minus(1, DAYS));
         LOG.info("Scheduled efgs error handling finished.");
     }
 }
