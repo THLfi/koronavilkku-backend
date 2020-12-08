@@ -43,7 +43,7 @@ public class FederationGatewaySyncProcessor {
     @Scheduled(initialDelayString = "${covid19.federation-gateway.upload-interval}",
             fixedDelayString = "${covid19.federation-gateway.upload-interval}")
     private void runExportToEfgs() {
-        MDC.remove("outboundOperationId");
+        MDC.clear();
         LOG.info("Starting scheduled export to efgs.");
         Set<Long> operationIds = federationGatewaySyncService.startOutbound(false);
         LOG.info("Scheduled export to efgs finished. {}", keyValue("operationId", operationIds));
@@ -52,7 +52,7 @@ public class FederationGatewaySyncProcessor {
     @Scheduled(initialDelayString = "${covid19.federation-gateway.download-interval}",
             fixedDelayString = "${covid19.federation-gateway.download-interval}")
     private void runImportFromEfgs() {
-        MDC.remove("scheduledInboundBatchTag");
+        MDC.clear();
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         if (importEnabled && today.isAfter(lastInboundSyncFromEfgs)) {
             LOG.info("Starting scheduled import from efgs.");
@@ -65,8 +65,7 @@ public class FederationGatewaySyncProcessor {
     @Scheduled(initialDelayString = "${covid19.federation-gateway.error-handling-interval}",
             fixedDelayString = "${covid19.federation-gateway.error-handling-interval}")
     private void runErrorHandling() {
-        MDC.remove("inboundRetryBatchTag");
-        MDC.remove("outboundOperationId");
+        MDC.clear();
         LOG.info("Starting scheduled efgs error handling.");
         federationGatewaySyncService.resolveCrash();
         federationGatewaySyncService.startOutbound(true);
