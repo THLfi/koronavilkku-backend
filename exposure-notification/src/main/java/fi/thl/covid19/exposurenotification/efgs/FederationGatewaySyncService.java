@@ -66,6 +66,7 @@ public class FederationGatewaySyncService {
 
     @Async("callbackAsyncExecutor")
     public void startInboundAsync(LocalDate date, String batchTag) {
+        MDC.clear();
         MDC.put("callbackBatchTag", batchTag);
         addInboundKeys(getDateString(date), Optional.of(batchTag));
     }
