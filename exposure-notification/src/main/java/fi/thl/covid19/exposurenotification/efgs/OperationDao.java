@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.*;
 import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationState.*;
+import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -205,5 +207,28 @@ public class OperationDao {
                 ), String.class);
 
         return inboundErrors.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    }
+
+    @Transactional
+    public int getNumberOfErrorsForDay(EfgsOperationDirection direction) {
+        String sql = "select count(*) from en.efgs_operation where direction = cast(:direction as en.direction_t) " +
+                "and updated_at >= :datetime and state = cast(:error_state as en.state_t)";
+        return jdbcTemplate.query(
+                sql,
+                Map.of("direction", direction.name(),
+                        "error_state", ERROR.name(),
+                        "datetime", Timestamp.valueOf(LocalDateTime.now().minus(1, DAYS))
+                ),
+                (rs, i) -> rs.getInt(1)).stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing."));
+    }
+
+    @Transactional
+    public int getInvalidSignatureCountForDay() {
+        String sql = "select sum(invalid_signature_count) from en.efgs_operation where invalid_signature_count is not null " +
+                "and updated_at >= :datetime";
+        return jdbcTemplate.query(
+                sql,
+                Map.of("datetime", Timestamp.valueOf(LocalDateTime.now().minus(1, DAYS))),
+                (rs, i) -> rs.getInt(1)).stream().findFirst().orElseThrow(() -> new IllegalStateException("Invalid signature count returned nothing."));
     }
 }

@@ -13,7 +13,7 @@ management:
         include: health,prometheus
   metrics:
     tags:
-      application: Publish-Token-API
+      application: Exposure-Notification-API
   endpoint:
     health:
       group:

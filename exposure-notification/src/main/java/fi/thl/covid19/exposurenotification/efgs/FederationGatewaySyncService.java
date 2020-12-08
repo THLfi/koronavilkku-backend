@@ -8,6 +8,7 @@ import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperati
 import fi.thl.covid19.exposurenotification.efgs.entity.UploadResponseEntity;
 import fi.thl.covid19.exposurenotification.efgs.signing.FederationGatewaySigning;
 import fi.thl.covid19.proto.EfgsProto;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -32,17 +33,20 @@ public class FederationGatewaySyncService {
     private final DiagnosisKeyDao diagnosisKeyDao;
     private final OperationDao operationDao;
     private final FederationGatewaySigning signer;
+    private final MeterRegistry meterRegistry;
 
     public FederationGatewaySyncService(
             FederationGatewayClient client,
             DiagnosisKeyDao diagnosisKeyDao,
             OperationDao operationDao,
-            FederationGatewaySigning signer
+            FederationGatewaySigning signer,
+            MeterRegistry meterRegistry
     ) {
         this.client = requireNonNull(client);
         this.diagnosisKeyDao = requireNonNull(diagnosisKeyDao);
         this.operationDao = requireNonNull(operationDao);
         this.signer = requireNonNull(signer);
+        this.meterRegistry = requireNonNull(meterRegistry);
     }
 
     public Set<Long> startOutbound(boolean retry) {
@@ -52,6 +56,7 @@ public class FederationGatewaySyncService {
         while ((operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).isPresent()) {
             long operationId = operation.get().operationId;
             MDC.put("outboundOperationId", Long.toString(operationId));
+            meterRegistry.counter("efgs_total_operations_outbound").increment(1.0);
             operationsProcessed.add(operationId);
             doOutbound(operation.get());
         }
@@ -68,6 +73,7 @@ public class FederationGatewaySyncService {
     public void startInboundAsync(LocalDate date, String batchTag) {
         MDC.clear();
         MDC.put("callbackBatchTag", batchTag);
+        meterRegistry.counter("efgs_total_operations_inbound").increment(1.0);
         addInboundKeys(getDateString(date), Optional.of(batchTag));
     }
 
@@ -80,6 +86,7 @@ public class FederationGatewaySyncService {
                 (tag, count) -> {
                     if (count < MAX_RETRY_COUNT) {
                         MDC.put("inboundRetryBatchTag", tag);
+                        meterRegistry.counter("efgs_total_operations_inbound").increment(1.0);
                         addInboundKeys(getDateString(date), Optional.of(tag));
                     }
                 }
@@ -91,6 +98,7 @@ public class FederationGatewaySyncService {
         String dateS = getDateString(date);
         do {
             MDC.put("scheduledInboundBatchTag", next.orElse(getBatchTag(date, "1")));
+            meterRegistry.counter("efgs_total_operations_inbound").increment(1.0);
             next = addInboundKeys(dateS, next);
         } while (next.isPresent());
     }
@@ -115,11 +123,14 @@ public class FederationGatewaySyncService {
                 List<TemporaryExposureKey> finalKeys = transform(validBatch);
                 diagnosisKeyDao.addInboundKeys(finalKeys, IntervalNumber.to24HourInterval(Instant.now()));
                 int failedCount = download.keysCount() - finalKeys.size();
+                meterRegistry.counter("efgs_verification_total").increment(finalKeys.size());
+                meterRegistry.counter("efgs_verification_failed").increment(failedCount);
                 finished.set(operationDao.finishOperation(operationId, finalKeys.size(), failedCount, localBatchTag.get()));
                 return download.nextBatchTag;
             });
         } finally {
             if (!finished.get()) {
+                meterRegistry.counter("efgs_error_operations_inbound").increment(1.0);
                 operationDao.markErrorOperation(operationId, localBatchTag.get());
             }
         }
@@ -141,6 +152,7 @@ public class FederationGatewaySyncService {
             }
         } finally {
             if (!finished) {
+                meterRegistry.counter("efgs_error_operations_outbound").increment(1.0);
                 diagnosisKeyDao.setNotSent(operation);
             }
         }
