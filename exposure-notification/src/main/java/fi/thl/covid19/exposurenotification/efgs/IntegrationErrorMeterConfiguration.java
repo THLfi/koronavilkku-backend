@@ -13,16 +13,16 @@ public class IntegrationErrorMeterConfiguration {
 
     @Bean
     MeterBinder inboundErrorsLastDay(OperationDao operationDao) {
-        return (registry) -> Gauge.builder("inbound_errors_last_24h", () -> operationDao.getNumberOfErrorsForDay(INBOUND)).register(registry);
+        return (registry) -> Gauge.builder("efgs_inbound_errors_last_24h", () -> operationDao.getNumberOfErrorsForDay(INBOUND)).register(registry);
     }
 
     @Bean
     MeterBinder outboundErrorsLastDay(OperationDao operationDao) {
-        return (registry) -> Gauge.builder("outbound_errors_last_24h", () -> operationDao.getNumberOfErrorsForDay(OUTBOUND)).register(registry);
+        return (registry) -> Gauge.builder("efgs_outbound_errors_last_24h", () -> operationDao.getNumberOfErrorsForDay(OUTBOUND)).register(registry);
     }
 
     @Bean
     MeterBinder invalidSignatureCountForDay(OperationDao operationDao) {
-        return (registry) -> Gauge.builder("invalid_signature_count_last_24h", operationDao::getInvalidSignatureCountForDay).register(registry);
+        return (registry) -> Gauge.builder("efgs_invalid_signature_count_last_24h", operationDao::getInvalidSignatureCountForDay).register(registry);
     }
 }
