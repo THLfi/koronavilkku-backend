@@ -131,7 +131,7 @@ Operation state have three possible values: STARTED, FINISHED and ERROR.
 
 * STARTED: operation is running (or hanged in a case of application crash, this will be resolved automatically)
 * FINISHED: operation is finished
-* ERROR: operation has resulted an error. In a case of INBOUND operation, operation will be retried at maximum three times.
+* ERROR: operation has resulted an error. In a case of INBOUND operation, operation will be retried at maximum five times.
 For OUTBOUND, new operation will be created on next cycle.
   
 There is also a couple of counters for results of processing:
@@ -172,7 +172,7 @@ user provided data of visited countries.
 
 * Outbound keys received from local mobile app which are not yet send to EFGS will be send on next scheduled outbound run
   * Outbound interval is specified in application.yml with `upload-interval` parameter
-* Both outbound and inbound operations will be retried in a case of error at maximum three times
+* Both outbound and inbound operations will be retried in a case of error at maximum five times
   * Retry interval is specified in application.yml with `error-handling-interval` parameter  
 * Metadata of all operations will be stored into the database including number of received or sent keys
 

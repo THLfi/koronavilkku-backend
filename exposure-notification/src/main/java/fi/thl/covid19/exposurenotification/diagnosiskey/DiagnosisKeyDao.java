@@ -28,7 +28,7 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class DiagnosisKeyDao {
 
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyDao.class);
-    public static final int MAX_RETRY_COUNT = 3;
+    public static final int MAX_RETRY_COUNT = 5;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final OperationDao operationDao;
