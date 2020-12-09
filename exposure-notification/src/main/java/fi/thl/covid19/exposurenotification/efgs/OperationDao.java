@@ -3,6 +3,7 @@ package fi.thl.covid19.exposurenotification.efgs;
 import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -230,5 +231,16 @@ public class OperationDao {
                 sql,
                 Map.of("datetime", Timestamp.valueOf(LocalDateTime.now().minus(1, DAYS))),
                 (rs, i) -> rs.getInt(1)).stream().findFirst().orElseThrow(() -> new IllegalStateException("Invalid signature count returned nothing."));
+    }
+
+    @Transactional
+    public boolean checkEnSchemaExists() {
+        String sql = "select count(*) from information_schema.schemata where schema_name = :schema_name";
+        try {
+            return jdbcTemplate.query(sql, Map.of("schema_name", "en"),
+                    (rs, i) -> rs.getInt(1)).stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing.")) > 0;
+        } catch (DataAccessException | IllegalStateException e) {
+            return false;
+        }
     }
 }
