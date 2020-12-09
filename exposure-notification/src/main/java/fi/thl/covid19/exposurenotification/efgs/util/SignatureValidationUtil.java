@@ -19,6 +19,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.efgs.util.SignatureHelperUtil.*;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -38,7 +39,7 @@ public class SignatureValidationUtil {
                     keyValue("auditCount", auditEntries.size()),
                     keyValue("totalKeysCount", data.getKeysCount()));
             auditEntries.forEach(audit -> {
-                List<EfgsProto.DiagnosisKey> auditKeys = data.getKeysList().subList(cursor.get(), cursor.get() + Math.toIntExact(audit.amount));
+                List<EfgsProto.DiagnosisKey> auditKeys = data.getKeysList().stream().skip(cursor.get()).limit(audit.amount).collect(Collectors.toList());
                 try {
                     if (checkBatchSignature(auditKeys, audit, trustAnchor)) {
                         validKeys.addAll(auditKeys);

@@ -15,14 +15,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @ActiveProfiles({"dev", "test"})
 @WebMvcTest(CallbackController.class)
-@ContextConfiguration(classes= ExposureNotificationApplication.class)
+@ContextConfiguration(classes = ExposureNotificationApplication.class)
 public class CallbackControllerDisabledTest {
 
     @Autowired
     private MockMvc mvc;
 
     @MockBean
-    private FederationGatewaySyncService federationGatewaySyncService;
+    private InboundService inboundService;
 
     @Test
     public void callBackReturns503() throws Exception {

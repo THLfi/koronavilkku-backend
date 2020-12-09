@@ -22,14 +22,14 @@ public class CallbackController {
 
     private static final Logger LOG = LoggerFactory.getLogger(CallbackController.class);
 
-    private final FederationGatewaySyncService federationGatewaySyncService;
+    private final InboundService inboundService;
     private final boolean callbackEnabled;
 
     public CallbackController(
-            FederationGatewaySyncService federationGatewaySyncService,
+            InboundService inboundService,
             @Value("${covid19.federation-gateway.call-back.enabled}") boolean callbackEnabled
     ) {
-        this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
+        this.inboundService = requireNonNull(inboundService);
         this.callbackEnabled = callbackEnabled;
     }
 
@@ -44,7 +44,7 @@ public class CallbackController {
             return "Batch tag is not valid.";
         } else if (callbackEnabled) {
             LOG.info("Import from efgs triggered by callback {} {}.", keyValue("batchTag", batchTag), keyValue("date", date.toString()));
-            federationGatewaySyncService.startInboundAsync(date, batchTag);
+            inboundService.startInboundAsync(date, batchTag);
             response.setStatus(HttpStatus.ACCEPTED.value());
             return "Request added to queue.";
         } else {
@@ -55,7 +55,7 @@ public class CallbackController {
     }
 
     private boolean validBatchTag(String batchTag) {
-        return !requireNonNull(batchTag).isEmpty() && batchTag.length() <= 500;
+        return !requireNonNull(batchTag).isEmpty() && batchTag.length() <= 100;
     }
 }
 

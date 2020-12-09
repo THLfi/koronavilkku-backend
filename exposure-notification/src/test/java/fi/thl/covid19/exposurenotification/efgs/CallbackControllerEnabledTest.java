@@ -14,15 +14,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ActiveProfiles({"dev", "test"})
-@WebMvcTest(value = CallbackController.class, properties = { "covid19.federation-gateway.call-back.enabled=true" })
-@ContextConfiguration(classes= ExposureNotificationApplication.class)
+@WebMvcTest(value = CallbackController.class, properties = {"covid19.federation-gateway.call-back.enabled=true"})
+@ContextConfiguration(classes = ExposureNotificationApplication.class)
 public class CallbackControllerEnabledTest {
 
     @Autowired
     private MockMvc mvc;
 
     @MockBean
-    private FederationGatewaySyncService federationGatewaySyncService;
+    private InboundService inboundService;
 
     @Test
     public void callBackReturns202() throws Exception {

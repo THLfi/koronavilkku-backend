@@ -119,25 +119,20 @@ For easier maintenance and security there are some environment variables which a
 Same principles, stated in the monitoring section, applies also with efgs-integration. However, there is some details,
 which are worth to mention separately.
 
-With efgs-integration there is a concept of operation. Database table *efgs_operation* represents it. Operation has
-always two main states: direction and operation state. 
-
-Direction have two possible states: INBOUND and OUTBOUND.
-
-* INBOUND: downloading keys
-* OUTBOUND: uploading keys
+With efgs-integration there are two operation tables: *efgs_outbound_operation* an *efgs_inbound_operation*. Both of these
+*always* have some state. 
 
 Operation state have three possible values: STARTED, FINISHED and ERROR.
 
 * STARTED: operation is running (or hanged in a case of application crash, this will be resolved automatically)
 * FINISHED: operation is finished
-* ERROR: operation has resulted an error. In a case of INBOUND operation, operation will be retried at maximum five times.
-For OUTBOUND, new operation will be created on next cycle.
+* ERROR: operation has resulted an error. In a case of INBOUND operation, operation retry times have fixed maximum.
+For OUTBOUND, new operation will be created on next cycle and retry counter is stored for each key separately.
   
 There is also a couple of counters for results of processing:
 
 * keys_count_total: total number of keys bound to this operation
-* keys_count_201: total number of successfully processed keys bound to this operation
+* keys_count_201: total number of successfully processed keys bound to this operation (used only with outbound operations)
 * keys_count_409: total number of keys with http-status 409 bound to this operation (used only with outbound operations)
 * keys_count_500: total number of keys with http-status 500 bound to this operation (used only with outbound operations)
 * invalid_signature_count: total number of keys which are failing when verifying signature and are bound to this operation 
@@ -172,7 +167,7 @@ user provided data of visited countries.
 
 * Outbound keys received from local mobile app which are not yet send to EFGS will be send on next scheduled outbound run
   * Outbound interval is specified in application.yml with `upload-interval` parameter
-* Both outbound and inbound operations will be retried in a case of error at maximum five times
+* Both outbound and inbound operations will be retried in a case of error. Max retries is defined by fixed value.
   * Retry interval is specified in application.yml with `error-handling-interval` parameter  
 * Metadata of all operations will be stored into the database including number of received or sent keys
 

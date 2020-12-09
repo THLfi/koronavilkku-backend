@@ -8,12 +8,12 @@ import java.util.List;
 
 import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.getBatchTag;
 
-public class FederationOutboundOperation {
+public class OutboundOperation {
     public final List<TemporaryExposureKey> keys;
     public final long operationId;
     public final String batchTag;
 
-    public FederationOutboundOperation(List<TemporaryExposureKey> keys, long operationId) {
+    public OutboundOperation(List<TemporaryExposureKey> keys, long operationId) {
         this.keys = keys;
         this.operationId = operationId;
         this.batchTag = getBatchTag(LocalDate.now(ZoneOffset.UTC), Long.toString(operationId));

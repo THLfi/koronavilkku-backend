@@ -1,7 +1,7 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.efgs.entity.FederationOutboundOperation;
-import fi.thl.covid19.exposurenotification.efgs.OperationDao;
+import fi.thl.covid19.exposurenotification.efgs.entity.OutboundOperation;
+import fi.thl.covid19.exposurenotification.efgs.dao.OutboundOperationDao;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import fi.thl.covid19.exposurenotification.error.TokenValidationException;
 import org.slf4j.Logger;
@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
-import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.OUTBOUND;
+import static fi.thl.covid19.exposurenotification.efgs.util.CommonConst.MAX_RETRY_COUNT;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -28,14 +28,13 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class DiagnosisKeyDao {
 
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyDao.class);
-    public static final int MAX_RETRY_COUNT = 5;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final OperationDao operationDao;
+    private final OutboundOperationDao outboundOperationDao;
 
-    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate, OperationDao operationDao) {
+    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate, OutboundOperationDao outboundOperationDao) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
-        this.operationDao = requireNonNull(operationDao);
+        this.outboundOperationDao = requireNonNull(outboundOperationDao);
 
         LOG.info("Initialized");
     }
@@ -126,7 +125,7 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public Optional<FederationOutboundOperation> fetchAvailableKeysForEfgs(boolean retry) {
+    public Optional<OutboundOperation> fetchAvailableKeysForEfgs(boolean retry) {
         LOG.info("Fetching queued keys not sent to efgs.");
         Timestamp timestamp = new Timestamp(Instant.now().toEpochMilli());
         String sql = "with batch as ( " +
@@ -151,25 +150,25 @@ public class DiagnosisKeyDao {
             return Optional.empty();
         } else {
             return Optional.of(
-                    new FederationOutboundOperation(
+                    new OutboundOperation(
                             keys,
-                            operationDao.startOutboundOperation(OUTBOUND, timestamp)));
+                            outboundOperationDao.startOutboundOperation(timestamp)));
         }
     }
 
     @Transactional
-    public void setNotSent(FederationOutboundOperation operation) {
+    public void setNotSent(OutboundOperation operation) {
         String sql = "update en.diagnosis_key set efgs_sync = null where key_data = :key_data";
         jdbcTemplate.batchUpdate(sql, operation.keys.stream().map(key -> Map.of("key_data", key.keyData))
                 .toArray((IntFunction<Map<String, String>[]>) Map[]::new)
         );
 
-        operationDao.markErrorOperation(operation.operationId, Optional.of(operation.batchTag));
+        outboundOperationDao.markErrorOperation(operation.operationId, Optional.of(operation.batchTag));
     }
 
     @Transactional
     public void resolveOutboundCrash() {
-        List<Timestamp> crashed = operationDao.getAndResolveCrashed(OUTBOUND);
+        List<Timestamp> crashed = outboundOperationDao.getAndResolveStarted();
 
         if (!crashed.isEmpty()) {
             String sql = "update en.diagnosis_key set efgs_sync = null, retry_count = 0 where efgs_sync in (:timestamp)";

@@ -1,28 +1,28 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
+import fi.thl.covid19.exposurenotification.efgs.dao.InboundOperationDao;
+import fi.thl.covid19.exposurenotification.efgs.dao.OutboundOperationDao;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.INBOUND;
-import static fi.thl.covid19.exposurenotification.efgs.OperationDao.EfgsOperationDirection.OUTBOUND;
 
 @Configuration
 public class IntegrationErrorMeterConfiguration {
 
     @Bean
-    MeterBinder inboundErrorsLastDay(OperationDao operationDao) {
-        return (registry) -> Gauge.builder("efgs_inbound_errors_last_24h", () -> operationDao.getNumberOfErrorsForDay(INBOUND)).register(registry);
+    MeterBinder inboundErrorsLastDay(InboundOperationDao inboundOperationDao) {
+        return (registry) -> Gauge.builder("efgs_inbound_errors_last_24h", inboundOperationDao::getNumberOfErrorsForDay).register(registry);
     }
 
     @Bean
-    MeterBinder outboundErrorsLastDay(OperationDao operationDao) {
-        return (registry) -> Gauge.builder("efgs_outbound_errors_last_24h", () -> operationDao.getNumberOfErrorsForDay(OUTBOUND)).register(registry);
+    MeterBinder outboundErrorsLastDay(OutboundOperationDao outboundOperationDao) {
+        return (registry) -> Gauge.builder("efgs_outbound_errors_last_24h", outboundOperationDao::getNumberOfErrorsForDay).register(registry);
     }
 
     @Bean
-    MeterBinder invalidSignatureCountForDay(OperationDao operationDao) {
-        return (registry) -> Gauge.builder("efgs_invalid_signature_count_last_24h", operationDao::getInvalidSignatureCountForDay).register(registry);
+    MeterBinder invalidSignatureCountForDay(InboundOperationDao inboundOperationDao) {
+        return (registry) -> Gauge.builder("efgs_invalid_signature_count_last_24h", inboundOperationDao::getInvalidSignatureCountForDay).register(registry);
     }
 }

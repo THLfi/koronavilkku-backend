@@ -107,5 +107,4 @@ public class CallbackInitializer {
                 .collect(Collectors.toList())
                 .forEach(cb -> client.deleteCallback(cb.callbackId));
     }
-
 }

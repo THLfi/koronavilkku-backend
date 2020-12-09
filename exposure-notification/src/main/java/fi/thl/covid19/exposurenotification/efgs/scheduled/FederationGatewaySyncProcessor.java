@@ -1,6 +1,7 @@
 package fi.thl.covid19.exposurenotification.efgs.scheduled;
 
-import fi.thl.covid19.exposurenotification.efgs.FederationGatewaySyncService;
+import fi.thl.covid19.exposurenotification.efgs.InboundService;
+import fi.thl.covid19.exposurenotification.efgs.OutboundService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -29,13 +30,16 @@ public class FederationGatewaySyncProcessor {
     private final boolean importEnabled;
     private volatile LocalDate lastInboundSyncFromEfgs;
 
-    private final FederationGatewaySyncService federationGatewaySyncService;
+    private final OutboundService outboundService;
+    private final InboundService inboundService;
 
     public FederationGatewaySyncProcessor(
-            FederationGatewaySyncService federationGatewaySyncService,
+            OutboundService outboundService,
+            InboundService inboundService,
             @Value("${covid19.federation-gateway.scheduled-inbound-enabled}") boolean importEnabled
     ) {
-        this.federationGatewaySyncService = requireNonNull(federationGatewaySyncService);
+        this.outboundService = requireNonNull(outboundService);
+        this.inboundService = requireNonNull(inboundService);
         this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC);
         this.importEnabled = importEnabled;
     }
@@ -45,7 +49,7 @@ public class FederationGatewaySyncProcessor {
     private void runExportToEfgs() {
         MDC.clear();
         LOG.info("Starting scheduled export to efgs.");
-        Set<Long> operationIds = federationGatewaySyncService.startOutbound(false);
+        Set<Long> operationIds = outboundService.startOutbound(false);
         LOG.info("Scheduled export to efgs finished. {}", keyValue("operationId", operationIds));
     }
 
@@ -56,7 +60,7 @@ public class FederationGatewaySyncProcessor {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         if (importEnabled && today.isAfter(lastInboundSyncFromEfgs)) {
             LOG.info("Starting scheduled import from efgs.");
-            federationGatewaySyncService.startInbound(lastInboundSyncFromEfgs, Optional.empty());
+            inboundService.startInbound(lastInboundSyncFromEfgs, Optional.empty());
             lastInboundSyncFromEfgs = today;
             LOG.info("Scheduled import from efgs finished.");
         }
@@ -67,9 +71,10 @@ public class FederationGatewaySyncProcessor {
     private void runErrorHandling() {
         MDC.clear();
         LOG.info("Starting scheduled efgs error handling.");
-        federationGatewaySyncService.resolveCrash();
-        federationGatewaySyncService.startOutbound(true);
-        federationGatewaySyncService.startInboundRetry(LocalDate.now(ZoneOffset.UTC).minus(1, DAYS));
+        outboundService.resolveCrash();
+        outboundService.startOutbound(true);
+        inboundService.resolveCrash();
+        inboundService.startInboundRetry(LocalDate.now(ZoneOffset.UTC).minus(1, DAYS));
         LOG.info("Scheduled efgs error handling finished.");
     }
 }
