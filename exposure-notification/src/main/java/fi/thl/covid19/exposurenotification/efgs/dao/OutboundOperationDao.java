@@ -110,7 +110,7 @@ public class OutboundOperationDao {
     @Transactional
     public int getNumberOfErrorsForDay() {
         String sql = "select count(*) from en.efgs_outbound_operation where " +
-                "and updated_at >= :datetime and state = cast(:error_state as en.state_t)";
+                "updated_at >= :datetime and state = cast(:error_state as en.state_t)";
         return jdbcTemplate.query(
                 sql,
                 Map.of("error_state", ERROR.name(),
