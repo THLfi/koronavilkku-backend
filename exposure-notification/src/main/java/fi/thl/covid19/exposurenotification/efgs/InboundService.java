@@ -11,10 +11,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,7 +24,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.util.SignatureValidationUtil.validateSignature;
 import static java.util.Objects.requireNonNull;
-import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
 public class InboundService {
@@ -123,9 +120,6 @@ public class InboundService {
                 finished.set(inboundOperationDao.finishOperation(operationId, finalKeys.size(), failedCount, localBatchTag.get()));
                 return download.nextBatchTag;
             });
-        } catch (HttpClientErrorException | DataAccessException e) {
-            LOG.warn("DownloadAndStore failed {}", keyValue("exception", e));
-            return Optional.empty();
         } finally {
             if (!finished.get()) {
                 meterRegistry.counter(efgsErrorOperationsInbound).increment(1.0);
