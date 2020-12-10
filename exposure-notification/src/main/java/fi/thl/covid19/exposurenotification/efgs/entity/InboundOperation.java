@@ -3,6 +3,7 @@ package fi.thl.covid19.exposurenotification.efgs.entity;
 import fi.thl.covid19.exposurenotification.efgs.util.CommonConst;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 public class InboundOperation {
     public final long id;
@@ -12,6 +13,7 @@ public class InboundOperation {
     public final String batchTag;
     public final int retryCount;
     public final Instant updatedAt;
+    public final LocalDate batchDate;
 
     public InboundOperation(long id,
                             CommonConst.EfgsOperationState state,
@@ -19,7 +21,8 @@ public class InboundOperation {
                             int invalidSignatureCount,
                             String batchTag,
                             int retryCount,
-                            Instant updatedAt
+                            Instant updatedAt,
+                            LocalDate batchDate
     ) {
         this.id = id;
         this.state = state;
@@ -28,6 +31,7 @@ public class InboundOperation {
         this.batchTag = batchTag;
         this.retryCount = retryCount;
         this.updatedAt = updatedAt;
+        this.batchDate = batchDate;
     }
 
     @Override
@@ -39,6 +43,7 @@ public class InboundOperation {
                 ", invalidSignatureCount=" + invalidSignatureCount +
                 ", batchTag='" + batchTag + '\'' +
                 ", updatedAt=" + updatedAt +
+                ", batchDate=" + batchDate +
                 '}';
     }
 }

@@ -38,18 +38,18 @@ public class InboundOperationDao {
     }
 
     @Transactional
-    public Optional<Long> startInboundOperation(Optional<String> batchTag) {
+    public Optional<Long> startInboundOperation(Optional<String> batchTag, LocalDate batchDate) {
         if (batchTag.isPresent()) {
-            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()), batchTag.get());
+            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()), batchTag.get(), batchDate);
         } else {
-            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()));
+            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()), batchDate);
         }
     }
 
     @Transactional
-    public Optional<Long> startInboundOperation(Timestamp timestamp) {
-        String createOperation = "insert into en.efgs_inbound_operation (state, updated_at) " +
-                "select cast(:state as en.state_t), :updated_at " +
+    public Optional<Long> startInboundOperation(Timestamp timestamp, LocalDate batchDate) {
+        String createOperation = "insert into en.efgs_inbound_operation (state, updated_at, batch_date) " +
+                "select cast(:state as en.state_t), :updated_at, :batch_date " +
                 "where not exists ( " +
                 "select 1 from en.efgs_inbound_operation where " +
                 "updated_at >= current_date::timestamp " +
@@ -60,19 +60,21 @@ public class InboundOperationDao {
                 Map.of(
                         "state", STARTED.name(),
                         "error_state", ERROR.name(),
-                        "updated_at", timestamp
+                        "updated_at", timestamp,
+                        "batch_date", Timestamp.valueOf(batchDate.atStartOfDay(ZoneOffset.UTC).toLocalDateTime())
                 ),
                 (rs, i) -> rs.getLong(1))
                 .stream().findFirst();
     }
 
     @Transactional
-    public Optional<Long> startInboundOperation(Timestamp timestamp, String batchTag) {
-        String createOperation = "insert into en.efgs_inbound_operation (state, updated_at, batch_tag) " +
-                "select cast(:state as en.state_t), :updated_at, :batch_tag " +
+    public Optional<Long> startInboundOperation(Timestamp timestamp, String batchTag, LocalDate batchDate) {
+        String createOperation = "insert into en.efgs_inbound_operation (state, updated_at, batch_tag, batch_date) " +
+                "select cast(:state as en.state_t), :updated_at, :batch_tag, :batch_date " +
                 "where not exists ( " +
                 "select 1 from en.efgs_inbound_operation where " +
                 "batch_tag = :batch_tag and " +
+                "batch_date = :batch_date and " +
                 "updated_at >= current_date::timestamp " +
                 "and state = cast(:finished_state as en.state_t) " +
                 ") " +
@@ -83,7 +85,8 @@ public class InboundOperationDao {
                         "finished_state", FINISHED.name(),
                         "error_state", ERROR.name(),
                         "updated_at", timestamp,
-                        "batch_tag", batchTag
+                        "batch_tag", batchTag,
+                        "batch_date", Timestamp.valueOf(batchDate.atStartOfDay(ZoneOffset.UTC).toLocalDateTime())
                 ),
                 (rs, i) -> rs.getLong(1))
                 .stream().findFirst();
@@ -188,7 +191,8 @@ public class InboundOperationDao {
                 rs.getInt("invalid_signature_count"),
                 rs.getString("batch_tag"),
                 rs.getInt("retry_count"),
-                rs.getTimestamp("updated_at").toInstant()
+                rs.getTimestamp("updated_at").toInstant(),
+                LocalDate.ofInstant(rs.getTimestamp("batch_date").toInstant(), ZoneOffset.UTC)
         );
     }
 }

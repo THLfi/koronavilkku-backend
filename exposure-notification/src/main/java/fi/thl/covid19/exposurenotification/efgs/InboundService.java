@@ -68,7 +68,7 @@ public class InboundService {
         MDC.clear();
         MDC.put("callbackBatchTag", batchTag);
         meterRegistry.counter(efgsTotalOperationsInbound).increment(1.0);
-        addInboundKeys(getDateString(date), Optional.of(batchTag));
+        addInboundKeys(date, Optional.of(batchTag));
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {
@@ -80,24 +80,27 @@ public class InboundService {
                 operation -> {
                     MDC.put("inboundRetryBatchTag", operation.batchTag);
                     meterRegistry.counter(efgsTotalOperationsInbound).increment(1.0);
-                    downloadAndStore(operation.id, Optional.of(operation.batchTag), getDateString(date));
+                    downloadAndStore(
+                            operation.id,
+                            Optional.of(operation.batchTag),
+                            getDateString(operation.batchDate)
+                    );
                 }
         );
     }
 
     private void doInbound(LocalDate date, Optional<String> batchTag) {
         Optional<String> next = batchTag;
-        String dateS = getDateString(date);
         do {
             MDC.put("scheduledInboundBatchTag", next.orElse(getBatchTag(date, "1")));
             meterRegistry.counter(efgsTotalOperationsInbound).increment(1.0);
-            next = addInboundKeys(dateS, next);
+            next = addInboundKeys(date, next);
         } while (next.isPresent());
     }
 
-    private Optional<String> addInboundKeys(String date, Optional<String> batchTag) {
-        Optional<Long> operationId = inboundOperationDao.startInboundOperation(batchTag);
-        return operationId.flatMap(id -> downloadAndStore(id, batchTag, date));
+    private Optional<String> addInboundKeys(LocalDate date, Optional<String> batchTag) {
+        Optional<Long> operationId = inboundOperationDao.startInboundOperation(batchTag, date);
+        return operationId.flatMap(id -> downloadAndStore(id, batchTag, getDateString(date)));
     }
 
     private Optional<String> downloadAndStore(long operationId, Optional<String> batchTag, String date) {
