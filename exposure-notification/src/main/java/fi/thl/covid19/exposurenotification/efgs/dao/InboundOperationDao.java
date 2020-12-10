@@ -40,9 +40,9 @@ public class InboundOperationDao {
     @Transactional
     public Optional<Long> startInboundOperation(Optional<String> batchTag, LocalDate batchDate) {
         if (batchTag.isPresent()) {
-            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()), batchTag.get(), batchDate);
+            return startInboundOperation(Timestamp.from(Instant.now()), batchTag.get(), batchDate);
         } else {
-            return startInboundOperation(new Timestamp(Instant.now().toEpochMilli()), batchDate);
+            return startInboundOperation(Timestamp.from(Instant.now()), batchDate);
         }
     }
 
@@ -61,7 +61,7 @@ public class InboundOperationDao {
                         "state", STARTED.name(),
                         "error_state", ERROR.name(),
                         "updated_at", timestamp,
-                        "batch_date", Timestamp.valueOf(batchDate.atStartOfDay(ZoneOffset.UTC).toLocalDateTime())
+                        "batch_date", Timestamp.from(batchDate.atStartOfDay(ZoneOffset.UTC).toInstant())
                 ),
                 (rs, i) -> rs.getLong(1))
                 .stream().findFirst();
@@ -86,7 +86,7 @@ public class InboundOperationDao {
                         "error_state", ERROR.name(),
                         "updated_at", timestamp,
                         "batch_tag", batchTag,
-                        "batch_date", Timestamp.valueOf(batchDate.atStartOfDay(ZoneOffset.UTC).toLocalDateTime())
+                        "batch_date", Timestamp.from(batchDate.atStartOfDay(ZoneOffset.UTC).toInstant())
                 ),
                 (rs, i) -> rs.getLong(1))
                 .stream().findFirst();
@@ -103,13 +103,13 @@ public class InboundOperationDao {
         params.put("batch_tag", batchTag.orElse(null));
         params.put("keys_count_total", keysCountTotal);
         params.put("invalid_signature_count", failedKeysCount);
-        params.put("updated_at", new Timestamp(Instant.now().toEpochMilli()));
+        params.put("updated_at", Timestamp.from(Instant.now()));
         return jdbcTemplate.update(sql, params) == 1;
     }
 
     @Transactional
     public void markErrorOperation(long operationId, Optional<String> batchTag) {
-        markErrorOperation(operationId, batchTag, new Timestamp(Instant.now().toEpochMilli()));
+        markErrorOperation(operationId, batchTag, Timestamp.from(Instant.now()));
     }
 
     @Transactional
@@ -155,7 +155,7 @@ public class InboundOperationDao {
                         "error_state", ERROR.name(),
                         "started_state", STARTED.name(),
                         "max_retries", MAX_RETRY_COUNT,
-                        "start", Timestamp.valueOf(date.atStartOfDay(ZoneOffset.UTC).toLocalDateTime()),
+                        "start", Timestamp.valueOf(date.atStartOfDay()),
                         "end", Timestamp.valueOf(LocalDateTime.now(ZoneOffset.UTC).minus(STALLED_MIN_AGE_IN_MINUTES, MINUTES))
                 ),
                 this::transform);
@@ -192,7 +192,7 @@ public class InboundOperationDao {
                 rs.getString("batch_tag"),
                 rs.getInt("retry_count"),
                 rs.getTimestamp("updated_at").toInstant(),
-                LocalDate.ofInstant(rs.getTimestamp("batch_date").toInstant(), ZoneOffset.UTC)
+                rs.getTimestamp("batch_date").toInstant().atZone(ZoneOffset.UTC).toLocalDate()
         );
     }
 }

@@ -61,7 +61,7 @@ public class OutboundOperationDao {
                 "keys_count_201", keysCount201,
                 "keys_count_409", keysCount409,
                 "keys_count_500", keysCount500,
-                "updated_at", new Timestamp(Instant.now().toEpochMilli())
+                "updated_at", Timestamp.from(Instant.now())
         )) == 1;
         LOG.info("Efgs sync finished. {} {} {} {}",
                 keyValue("success", success),
@@ -73,7 +73,7 @@ public class OutboundOperationDao {
 
     @Transactional
     public void markErrorOperation(long operationId, Optional<String> batchTag) {
-        markErrorOperation(operationId, batchTag, new Timestamp(Instant.now().toEpochMilli()));
+        markErrorOperation(operationId, batchTag, Timestamp.from(Instant.now()));
     }
 
     @Transactional

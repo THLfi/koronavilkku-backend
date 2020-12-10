@@ -127,7 +127,7 @@ public class DiagnosisKeyDao {
     @Transactional
     public Optional<OutboundOperation> fetchAvailableKeysForEfgs(boolean retry) {
         LOG.info("Fetching queued keys not sent to efgs.");
-        Timestamp timestamp = new Timestamp(Instant.now().toEpochMilli());
+        Timestamp timestamp = Timestamp.from(Instant.now());
         String sql = "with batch as ( " +
                 "select key_data " +
                 "from en.diagnosis_key " +
