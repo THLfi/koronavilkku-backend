@@ -64,19 +64,28 @@ public class InboundService {
     public void startInboundAsync(LocalDate date, String batchTag) {
         MDC.clear();
         MDC.put("callbackBatchTag", batchTag);
-        meterRegistry.counter(efgsTotalOperationsInbound).increment(1.0);
-        addInboundKeys(date, Optional.of(batchTag));
+        Optional<String> batchTagO = Optional.of(batchTag);
+        Optional<Long> operationId = inboundOperationDao.startInboundOperation(batchTagO, date);
+        operationId.flatMap(id -> downloadAndStore(id, batchTagO, getDateString(date)));
     }
 
     public void startInbound(LocalDate date, Optional<String> batchTag) {
-        doInbound(date, batchTag);
+        AtomicReference<Optional<String>> next = new AtomicReference<>(batchTag);
+        String dateS = getDateString(date);
+        do {
+            MDC.put("scheduledInboundBatchTag", next.get().orElse(getBatchTag(date, "1")));
+            Optional<Long> operationId = inboundOperationDao.startInboundOperation(next.get(), date);
+            operationId.ifPresentOrElse(
+                    id -> next.set(downloadAndStore(id, next.get(), dateS)),
+                    () -> next.set(client.download(dateS, next.get()).flatMap(d -> d.nextBatchTag))
+            );
+        } while (next.get().isPresent());
     }
 
     public void startInboundRetry(LocalDate date) {
         inboundOperationDao.getInboundErrors(date).forEach(
                 operation -> {
                     MDC.put("inboundRetryBatchTag", operation.batchTag);
-                    meterRegistry.counter(efgsTotalOperationsInbound).increment(1.0);
                     downloadAndStore(
                             operation.id,
                             Optional.of(operation.batchTag),
@@ -86,21 +95,8 @@ public class InboundService {
         );
     }
 
-    private void doInbound(LocalDate date, Optional<String> batchTag) {
-        Optional<String> next = batchTag;
-        do {
-            MDC.put("scheduledInboundBatchTag", next.orElse(getBatchTag(date, "1")));
-            meterRegistry.counter(efgsTotalOperationsInbound).increment(1.0);
-            next = addInboundKeys(date, next);
-        } while (next.isPresent());
-    }
-
-    private Optional<String> addInboundKeys(LocalDate date, Optional<String> batchTag) {
-        Optional<Long> operationId = inboundOperationDao.startInboundOperation(batchTag, date);
-        return operationId.flatMap(id -> downloadAndStore(id, batchTag, getDateString(date)));
-    }
-
     private Optional<String> downloadAndStore(long operationId, Optional<String> batchTag, String date) {
+        meterRegistry.counter(efgsTotalOperationsInbound).increment(1.0);
         AtomicBoolean finished = new AtomicBoolean(false);
         AtomicReference<Optional<String>> localBatchTag = new AtomicReference<>(batchTag);
         try {

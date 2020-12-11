@@ -132,13 +132,9 @@ public class FederationServiceSyncWithDaoTestIT {
         generateAuditResponse(date, "test-2", keys2);
 
         inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
-        inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
-        inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.of("test-2"));
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
         assertTrue(keys1.size() + keys2.size() == dbKeys.size() && dbKeys.containsAll(keys1) && dbKeys.containsAll(keys2));
-        inboundOperationDao.resolveStarted();
-        inboundService.startInboundRetry(LocalDate.now(ZoneOffset.UTC));
         assertDownloadOperationStateIsCorrect(10);
     }
 

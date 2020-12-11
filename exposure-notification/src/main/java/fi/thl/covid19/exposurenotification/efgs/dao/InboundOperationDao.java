@@ -40,14 +40,14 @@ public class InboundOperationDao {
     @Transactional
     public Optional<Long> startInboundOperation(Optional<String> batchTag, LocalDate batchDate) {
         if (batchTag.isPresent()) {
-            return startInboundOperation(Timestamp.from(Instant.now()), batchTag.get(), batchDate);
+            return startInboundOperation(Instant.now(), batchTag.get(), batchDate);
         } else {
-            return startInboundOperation(Timestamp.from(Instant.now()), batchDate);
+            return startInboundOperation(Instant.now(), batchDate);
         }
     }
 
     @Transactional
-    public Optional<Long> startInboundOperation(Timestamp timestamp, LocalDate batchDate) {
+    public Optional<Long> startInboundOperation(Instant updatedAt, LocalDate batchDate) {
         String createOperation = "insert into en.efgs_inbound_operation (state, updated_at, batch_date) " +
                 "select cast(:state as en.state_t), :updated_at, :batch_date " +
                 "where not exists ( " +
@@ -60,7 +60,7 @@ public class InboundOperationDao {
                 Map.of(
                         "state", STARTED.name(),
                         "error_state", ERROR.name(),
-                        "updated_at", timestamp,
+                        "updated_at", Timestamp.from(updatedAt),
                         "batch_date", Timestamp.from(batchDate.atStartOfDay(ZoneOffset.UTC).toInstant())
                 ),
                 (rs, i) -> rs.getLong(1))
@@ -68,7 +68,7 @@ public class InboundOperationDao {
     }
 
     @Transactional
-    public Optional<Long> startInboundOperation(Timestamp timestamp, String batchTag, LocalDate batchDate) {
+    public Optional<Long> startInboundOperation(Instant updatedAt, String batchTag, LocalDate batchDate) {
         String createOperation = "insert into en.efgs_inbound_operation (state, updated_at, batch_tag, batch_date) " +
                 "select cast(:state as en.state_t), :updated_at, :batch_tag, :batch_date " +
                 "where not exists ( " +
@@ -76,15 +76,14 @@ public class InboundOperationDao {
                 "batch_tag = :batch_tag and " +
                 "batch_date = :batch_date and " +
                 "updated_at >= current_date::timestamp " +
-                "and state = cast(:finished_state as en.state_t) " +
+                "and state <> cast(:error_state as en.state_t) " +
                 ") " +
                 "returning id";
         return jdbcTemplate.query(createOperation,
                 Map.of(
                         "state", STARTED.name(),
-                        "finished_state", FINISHED.name(),
                         "error_state", ERROR.name(),
-                        "updated_at", timestamp,
+                        "updated_at", Timestamp.from(updatedAt),
                         "batch_tag", batchTag,
                         "batch_date", Timestamp.from(batchDate.atStartOfDay(ZoneOffset.UTC).toInstant())
                 ),

@@ -40,7 +40,7 @@ public class FederationGatewaySyncProcessor {
     ) {
         this.outboundService = requireNonNull(outboundService);
         this.inboundService = requireNonNull(inboundService);
-        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC);
+        this.lastInboundSyncFromEfgs = LocalDate.now(ZoneOffset.UTC).minus(1, DAYS);
         this.importEnabled = importEnabled;
     }
 
