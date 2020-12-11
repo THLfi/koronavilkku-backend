@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -50,7 +51,7 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
  * NOTE: These tests require the DB to be available and configured through ENV.
  */
 @SpringBootTest
-@ActiveProfiles({"dev","test"})
+@ActiveProfiles({"dev", "test"})
 @AutoConfigureMockMvc
 public class DiagnosisKeyControllerIT {
 
@@ -109,7 +110,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void listWithKeysReturnsBatchIds() throws Exception {
-        BatchId batchId1 = new BatchId(INTERVALS.last -1);
+        BatchId batchId1 = new BatchId(INTERVALS.last - 1);
         BatchId batchId2 = new BatchId(INTERVALS.last);
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
@@ -130,7 +131,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void statusWithKeysReturnsBatchIds() throws Exception {
-        BatchId batchId1 = new BatchId(INTERVALS.last -1);
+        BatchId batchId1 = new BatchId(INTERVALS.last - 1);
         BatchId batchId2 = new BatchId(INTERVALS.last);
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
@@ -172,34 +173,33 @@ public class DiagnosisKeyControllerIT {
     }
 
     @Test
-    public void postSucceeds() throws Exception {
-        List<TemporaryExposureKey> keys = keyGenerator.someKeys(14, 7);
-        // Generator produces appropriate risk levels. Set them all to zero to verify that service calculates them OK.
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevels(keys,0));
+    public void postSucceedsWithDefaultEfgsData() throws Exception {
+        processPost(Optional.empty(), Optional.empty(), true);
+    }
 
-        assertTrue(dao.getAvailableIntervals().isEmpty());
-        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
-        given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        verifiedPost("123654032165", request);
-        verify(tokenVerificationService).getVerification("123654032165");
+    @Test
+    public void postWithEfgsDataSucceedsAndVerifyConsentFalse() throws Exception {
+        processPost(Optional.of(Map.of("DE", true, "IT", false)), Optional.of(false), true);
+    }
 
-        List<Integer> available = dao.getAvailableIntervals();
-        assertEquals(1, available.size());
-        List<TemporaryExposureKey> expectedOutput = keys.stream()
-                // 0-risk keys (transmission risk level in extremes) are not distributed
-                .filter(k -> k.transmissionRiskLevel > 0 && k.transmissionRiskLevel < 7)
-                // Todays keys are not distributed without demo-mode
-                .filter(k -> k.rollingPeriod < dayFirst10MinInterval(Instant.now()))
-                .collect(Collectors.toList());
-        // Filtered should be base 14 -4 due to risk levels -1 since it's current day
-        assertEquals(9, expectedOutput.size());
-        // Also, the order of exported keys is random -> sort here for clearer comparison
-        assertEquals(sortByInterval(expectedOutput), sortByInterval(dao.getIntervalKeys(available.get(0))));
+    @Test
+    public void postWithEfgsDataSucceedsAndVerifyConsentTrue() throws Exception {
+        processPost(Optional.of(Map.of("DE", true, "IT", false)), Optional.of(true), true);
+    }
+
+    @Test
+    public void postWithEfgsDataFailsWithInvalidCountryCode() throws Exception {
+        processPost(Optional.of(Map.of("XX", true, "IT", false)), Optional.of(false), false);
+    }
+
+    @Test
+    public void postWithEfgsDataFailsWithFinnishCountryCode() throws Exception {
+        processPost(Optional.of(Map.of("FI", true, "IT", false)), Optional.of(false), false);
     }
 
     @Test
     public void batchFetchingSucceeds() throws Exception {
-        int interval = to24HourInterval(Instant.now())-1;
+        int interval = to24HourInterval(Instant.now()) - 1;
         dao.addKeys(123, "TEST", interval, keyGenerator.someKeys(14), 14);
         mockMvc.perform(get("/diagnosis/v1/batch/" + interval))
                 .andExpect(status().isOk())
@@ -210,7 +210,10 @@ public class DiagnosisKeyControllerIT {
     public void validRetryIsNotAnError() throws Exception {
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.of(
+                Map.of("DE", false, "IT", true)
+        ),
+                Optional.of(true));
         verifiedPost("123654032165", request);
         verifiedPost("123654032165", request);
         verify(tokenVerificationService, times(2)).getVerification("123654032165");
@@ -220,8 +223,8 @@ public class DiagnosisKeyControllerIT {
     public void reusingTokenForDifferentRequestIs403() throws Exception {
         PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
-        DiagnosisPublishRequest request1 = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
-        DiagnosisPublishRequest request2 = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request1 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
+        DiagnosisPublishRequest request2 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         verifiedPost("123654032165", request1);
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -252,7 +255,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void invalidPublishTokenIs400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "123")
@@ -266,22 +269,22 @@ public class DiagnosisKeyControllerIT {
     @Test
     public void tooFewOrTooManyKeysIsInvalidInput() {
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(keyGenerator.someKeys(13)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(13), Optional.empty(), Optional.empty()));
         Assertions.assertDoesNotThrow(
-                () -> new DiagnosisPublishRequest(keyGenerator.someKeys(14)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty()));
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(keyGenerator.someKeys(15)));
+                () -> new DiagnosisPublishRequest(keyGenerator.someRequestKeys(15), Optional.empty(), Optional.empty()));
     }
 
     @Test
     public void noKeysIsInvalidInput() {
         Assertions.assertThrows(InputValidationException.class,
-                () -> new DiagnosisPublishRequest(List.of()));
+                () -> new DiagnosisPublishRequest(List.of(), Optional.empty(), Optional.empty()));
     }
 
     @Test
     public void fakeRequestIsValidRegardlessOfToken() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -293,7 +296,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void missingFakeRequestHeaderIsError400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -313,7 +316,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void invalidFakeRequestHeaderIsError400() throws Exception {
-        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someKeys(14));
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         mockMvc.perform(post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(PUBLISH_TOKEN_HEADER, "098765432109")
@@ -338,6 +341,55 @@ public class DiagnosisKeyControllerIT {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("Invalid request parameter")));
+    }
+
+    private void processPost(Optional<Map<String, Boolean>> visitedCountries,
+                             Optional<Boolean> consentToShareWithEfgs,
+                             boolean expectVisitedCountriesToSucceeding) throws Exception {
+        List<TemporaryExposureKeyRequest> keys = keyGenerator.someRequestKeys(14, 7);
+        // Generator produces appropriate risk levels. Set them all to zero to verify that service calculates them OK.
+        DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys, 0), visitedCountries, consentToShareWithEfgs);
+
+        assertTrue(dao.getAvailableIntervals().isEmpty());
+        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
+        given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
+        verifiedPost("123654032165", request);
+        verify(tokenVerificationService).getVerification("123654032165");
+
+        List<Integer> available = dao.getAvailableIntervals();
+        assertEquals(1, available.size());
+        List<TemporaryExposureKeyRequest> expectedOutput = keys.stream()
+                // 0-risk keys (transmission risk level in extremes) are not distributed
+                .filter(k -> k.transmissionRiskLevel > 0 && k.transmissionRiskLevel < 7)
+                // Today's keys are not distributed without demo-mode
+                .filter(k -> k.rollingPeriod < dayFirst10MinInterval(Instant.now()))
+                .collect(Collectors.toList());
+        // Filtered should be base 14 -4 due to risk levels -1 since it's current day
+        assertEquals(9, expectedOutput.size());
+        // Also, the order of exported keys is random -> sort here for clearer comparison
+        List<TemporaryExposureKey> intervalKeys = dao.getIntervalKeys(available.get(0));
+        assertEquals(sortByIntervalRequest(expectedOutput), sortByInterval(intervalKeys));
+        visitedCountries.ifPresentOrElse(
+                vc -> verifyVisitedCountries(intervalKeys, vc, expectVisitedCountriesToSucceeding),
+                () -> verifyVisitedCountries(intervalKeys, Map.of(), expectVisitedCountriesToSucceeding)
+        );
+        consentToShareWithEfgs.ifPresentOrElse(
+                c -> verifyConsentToShare(intervalKeys, c),
+                () -> verifyConsentToShare(intervalKeys, false)
+        );
+    }
+
+    private void verifyVisitedCountries(List<TemporaryExposureKey> keys, Map<String, Boolean> visitedCountries, boolean expectVisitedCountriesToSucceeding) {
+        assertEquals(expectVisitedCountriesToSucceeding, keys.stream().allMatch(key ->
+                key.visitedCountries.equals(
+                        visitedCountries.entrySet().stream()
+                                .filter(Map.Entry::getValue)
+                                .map(Map.Entry::getKey).collect(Collectors.toSet())))
+        );
+    }
+
+    private void verifyConsentToShare(List<TemporaryExposureKey> keys, boolean consentToShareWithEfgs) {
+        assertTrue(keys.stream().allMatch(key -> key.consentToShareWithEfgs == consentToShareWithEfgs));
     }
 
     private void verifiedPost(String publishToken, DiagnosisPublishRequest request) throws Exception {
@@ -402,15 +454,25 @@ public class DiagnosisKeyControllerIT {
                         "attachment; filename=\"" + BatchFile.batchFileName(id) + "\""));
     }
 
-    private List<TemporaryExposureKey> sortByInterval(List<TemporaryExposureKey> originals) {
+    private List<TemporaryExposureKeyRequest> sortByIntervalRequest(List<TemporaryExposureKeyRequest> originals) {
         return originals.stream()
                 .sorted((k1, k2) -> Integer.compare(k2.rollingStartIntervalNumber, k1.rollingStartIntervalNumber))
                 .collect(Collectors.toList());
     }
 
-    private List<TemporaryExposureKey> resetRiskLevels(List<TemporaryExposureKey> originals, int level) {
+    private List<TemporaryExposureKeyRequest> resetRiskLevelsRequest(List<TemporaryExposureKeyRequest> originals, int level) {
         return originals.stream()
-                .map(k -> new TemporaryExposureKey(k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod))
+                .map(k -> new TemporaryExposureKeyRequest(
+                        k.keyData, level, k.rollingStartIntervalNumber, k.rollingPeriod))
+                .collect(Collectors.toList());
+    }
+
+    private List<TemporaryExposureKeyRequest> sortByInterval(List<TemporaryExposureKey> originals) {
+        return originals.stream()
+                .sorted((k1, k2) -> Integer.compare(k2.rollingStartIntervalNumber, k1.rollingStartIntervalNumber))
+                .map(key -> new TemporaryExposureKeyRequest(
+                        key.keyData, key.transmissionRiskLevel, key.rollingStartIntervalNumber,
+                        key.rollingPeriod))
                 .collect(Collectors.toList());
     }
 }

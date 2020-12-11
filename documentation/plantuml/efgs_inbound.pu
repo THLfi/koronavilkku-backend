@@ -1,0 +1,25 @@
+@startuml
+
+state INBOUND {
+    [*] --> STARTED
+    STARTED : Inbound triggered
+    STARTED --> VERIFY
+    VERIFY : Verify batch signature
+    VERIFY --> VALIDATE
+    VALIDATE : Validate batch data
+    VALIDATE --> STORE
+    STORE : Store keys to db
+    STORE --> FINISHED
+    STARTED --> ERROR
+    VERIFY --> FAIL
+    VALIDATE --> ERROR
+    STORE --> ERROR
+    ERROR --> STARTED
+    ERROR : Retry until max retries reached
+    FINISHED : Key counts stored in db
+    FAIL : Keys not stored, no retries
+    FINISHED --> [*]
+    ERROR --> [*]
+    FAIL --> [*]
+}
+@enduml

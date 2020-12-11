@@ -13,7 +13,7 @@ management:
         include: health,prometheus
   metrics:
     tags:
-      application: Publish-Token-API
+      application: Exposure-Notification-API
   endpoint:
     health:
       group:
@@ -46,7 +46,6 @@ spring:
       connection-timeout: 20000
       leak-detection-threshold: 60000
       validation-timeout: 5000
-      connection-test-query: SELECT 1
   servlet:
     multipart:
       max-file-size: 10MB
@@ -84,3 +83,19 @@ covid19:
     token-verification-lifetime: P14D
   publish-token:
     url: "${EN_PT_URL:}"
+  federation-gateway:
+    enabled: "${EN_EFGS_SYNC_ENABLED:false}"
+    scheduled-inbound-enabled: "${EN_EFGS_SCHEDULED_INBOUND_ENABLED:false}"
+    rest-client:
+      client-key-store:
+        alias: efgs
+    signing-key-store:
+      key-alias: efgs-signing
+      trust-anchor-alias: efgs-trust-anchor
+    base-url: "${EN_EFGS_URL:}"
+    upload-interval: "${EN_EFGS_UPLOAD_INTERVAL:PT4H}"
+    download-interval: PT10M
+    error-handling-interval: PT30M
+    call-back:
+      enabled: "${EN_EFGS_CALLBACK_ENABLED:false}"
+      local-url: "${EN_EFGS_CALLBACK_URL:}"

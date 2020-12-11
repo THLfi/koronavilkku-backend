@@ -125,7 +125,7 @@ public class DiagnosisKeyController {
                                  @RequestBody DiagnosisPublishRequest request) {
         String validToken = validatePublishToken(requireNonNull(publishToken));
         LOG.info("Publishing new diagnosis: {} {}", keyValue("fake", fakeRequest), keyValue("keys", request.keys.size()));
-        if (!fakeRequest) diagnosisService.handlePublishRequest(validToken, request.keys);
+        if (!fakeRequest) diagnosisService.handlePublishRequest(validToken, request);
     }
 
     private <T> Optional<T> toLatest(T item, int version, Optional<Integer> previousVersion) {

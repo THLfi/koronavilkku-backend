@@ -46,7 +46,6 @@ spring:
       connection-timeout: 20000
       leak-detection-threshold: 60000
       validation-timeout: 5000
-      connection-test-query: SELECT 1
   flyway:
     url: "${spring.datasource.url}"
     user: "${spring.datasource.username}"

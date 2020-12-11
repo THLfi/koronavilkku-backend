@@ -3,11 +3,16 @@ package fi.thl.covid19.exposurenotification.diagnosiskey;
 import fi.thl.covid19.exposurenotification.error.InputValidationException;
 
 import java.util.Base64;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class Validation {
-    private Validation() {}
+    private Validation() {
+    }
 
     private static final String TOKEN_REGEX = "[0-9]{12}";
 
@@ -17,6 +22,9 @@ public final class Validation {
 
     private static final int MIN_TRANSMISSION_RISK = 0;
     private static final int MAX_TRANSMISSION_RISK = 8;
+
+    private static final int MIN_DAYS_SINCE_ONSET_OF_SYMPTOMS = -14;
+    private static final int MAX_DAYS_SINCE_ONSET_OF_SYMPTOMS = 14;
 
     private static final int MIN_ROLLING_START_INTEVAL_NUMBER = 0;
     private static final int MAX_ROLLING_START_INTEVAL_NUMBER = Integer.MAX_VALUE;
@@ -64,6 +72,41 @@ public final class Validation {
     public static int validateRollingPeriod(int rollingPeriod) {
         return verifyValueBetween(
                 "rolling period", rollingPeriod, MIN_ROLLING_PERIOD, MAX_ROLLING_PERIOD);
+    }
+
+    public static Set<String> validateISOCountryCodes(Set<String> codes) {
+        return codes.stream().filter(Validation::validateISOCountryCode).collect(Collectors.toSet());
+    }
+
+    public static Set<String> validateISOCountryCodesWithoutFI(Set<String> codes) {
+        return codes.stream().filter(code -> !code.equals("FI")).filter(Validation::validateISOCountryCode).collect(Collectors.toSet());
+    }
+
+    public static Set<String> validateISOCountryCodesWithoutFI(Map<String, Boolean> codes) {
+        return validateISOCountryCodesWithoutFI(
+                codes.entrySet().stream().filter(Map.Entry::getValue)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet())
+        );
+
+    }
+
+    public static String getValidatedISOCountryCode(String code) {
+        if (validateISOCountryCode(code)) {
+            return code;
+        } else {
+            throw new IllegalStateException("Unknown country code.");
+        }
+    }
+
+    public static boolean validateISOCountryCode(String code) {
+        return Locale.getISOCountries(Locale.IsoCountryCode.PART1_ALPHA2).contains(code);
+    }
+
+    public static int validateDaysSinceOnsetOfSymptoms(int daysSinceOnsetOfSymptoms) {
+        return verifyValueBetween(
+                "days since onset of symptoms", daysSinceOnsetOfSymptoms,
+                MIN_DAYS_SINCE_ONSET_OF_SYMPTOMS, MAX_DAYS_SINCE_ONSET_OF_SYMPTOMS);
     }
 
     private static int verifyValueBetween(String name, int value, int min, int max) {

@@ -92,16 +92,97 @@ Configurable values use [Duration parsing rules](https://docs.oracle.com/javase/
 1. Data access cache in RAM: Some status requests will always get through the proxy caches, so the most common database queries are cached in service RAM to ensure rapid responses.
     * covid19.diagnosis.data-cache.status-duration: database fetches needed for configuration or status information
 
+## European Federation Gateway Service (EFGS) integration
+
+EFGS is an official European solution for interoperability between European national COVID19 application backend servers.
+EFGS allows national backends to change keys, which effectively means that national COVID-19 mobile tracing apps are compatible with each other.
+More information, source code and api definition of EFGS can be found from GitHub: https://github.com/eu-federation-gateway-service/efgs-federation-gateway.
+
+### EFGS related properties
+
+Full list of application properties can be found from application.yml and application-dev.yml under federation-gateway subtopic.
+Latter is optimized for local development and automated tests.
+
+For easier maintenance and security there are some environment variables which are read by application on startup.
+
+* Enable/disable scheduled synchronization of keys (true/false) `EN_EFGS_SYNC_ENABLED`
+* Enable/disable scheduled inbound for keys (true/false) `EN_EFGS_SCHEDULED_INBOUND_ENABLED`
+  * if `EN_EFGS_SYNC_ENABLED` is set to false, then this option will be ignored
+* Enable/disable EFGS callback based inbound for keys (true/false) `EN_EFGS_CALLBACK_ENABLED`
+  * usually if this is set to true, then `EN_EFGS_SCHEDULED_INBOUND_ENABLED` should be set as false, but for flexibility this is not forced.
+* EFGS endpoint for diagnosiskey-api e.g. https://efgs-test.eu/diagnosiskey (string) `EN_EFGS_URL`
+* Local endpoint for callback requests made from EFGS server e.g. https://local-test.fi (string) `EN_EFGS_CALLBACK_URL`
+* Interval to send keys to efgs `EN_EFGS_UPLOAD_INTERVAL`
+
+### Logging 
+
+Same principles, stated in the monitoring section, applies also with efgs-integration. However, there is some details,
+which are worth to mention separately.
+
+With efgs-integration there are two operation tables: *efgs_outbound_operation* an *efgs_inbound_operation*. Both of these
+*always* have some state. 
+
+Operation state have three possible values: STARTED, FINISHED and ERROR.
+
+* STARTED: operation is running (or hanged in a case of application crash, this will be resolved automatically)
+* FINISHED: operation is finished
+* ERROR: operation has resulted an error. In a case of INBOUND operation, operation retry times have fixed maximum.
+For OUTBOUND, new operation will be created on next cycle and retry counter is stored for each key separately.
+  
+There is also a couple of counters for results of processing:
+
+* keys_count_total: total number of keys bound to this operation
+* keys_count_201: total number of successfully processed keys bound to this operation (used only with outbound operations)
+* keys_count_409: total number of keys with http-status 409 bound to this operation (used only with outbound operations)
+* keys_count_500: total number of keys with http-status 500 bound to this operation (used only with outbound operations)
+* invalid_signature_count: total number of keys which are failing when verifying signature and are bound to this operation 
+  (used only with inbound operations)
+
+Also, operation has a field for batch tag, which is used as an identifier between efgs and koronavilkku backend. Outbound and
+inbound batch tags do not have any relation between each other i.e. batches from efgs could contain multiple national batches.
+
+Batch tag or operation id is used for MDC logging, so there are three log properties which are added to every log row resulted from
+individual operation. So, these can be used for further investigations to get all the log rows for a some specific operation.
+
+* outboundOperationId: operation id of upload operation
+* callbackBatchTag: batch tag of inbound operation which are triggered by callback
+* scheduledInboundBatchTag: batch tag of inbound operation which are triggered by scheduler
+* inboundRetryBatchTag: batch tag of inbound operation which are triggered by error handler
+
+### Interchange of keys
+
+Same database table will be used for keys from other national backends than which is used for local keys. Consent of
+user willingness to share keys with other national backends will be stored on each individual key. Same applies to
+user provided data of visited countries.  
+
+![efgs_inbound.png](../documentation/generated_images/efgs_inbound.png)
+
+* Inbound keys will be verified and validated on reception and then mixed with local keys in the database
+  * Inbound operation will be made based on callback request when it arrives or once in a day after UTC midnight
+  * Keys can be separated on the database level by origin field. Origin will not be sent to the mobile app. The mobile app sees
+  all keys coming with region FI, which in this context refers to region of national server, not the actual keys.
+  * More information about verification can be found e.g from [EFGS documentation of certificate governance](https://ec.europa.eu/health/sites/health/files/ehealth/docs/mobileapps_interop_certificate_governance_en.pdf)
+
+![efgs_outbound.png](../documentation/generated_images/efgs_outbound.png)
+
+* Outbound keys received from local mobile app which are not yet send to EFGS will be send on next scheduled outbound run
+  * Outbound interval is specified in application.yml with `upload-interval` parameter
+* Both outbound and inbound operations will be retried in a case of error. Max retries is defined by fixed value.
+  * Retry interval is specified in application.yml with `error-handling-interval` parameter  
+* Metadata of all operations will be stored into the database including number of received or sent keys
+
 ## Configuration API
 API for retrieving exposure configuration parameters as defined in:
 * [Google documentation](https://developers.google.com/android/exposure-notifications/exposure-notifications-api#data-structures)
 * [Apple documentation](https://developer.apple.com/documentation/exposurenotification/enexposureconfiguration)
 
+Participating countries is populated (mainly) from here: https://ec.europa.eu/info/live-work-travel-eu/health/coronavirus-response/travel-during-coronavirus-pandemic/mobile-contact-tracing-apps-eu-member-states_en
+
 ### About Config Versions
 Configuration API responses (AppConfiguration & ExposureConfiguration) return objects with version numbers. 
 The API user should store these objects and request new ones using the version of the previously received configuration.
 If the response comes back empty, the previously stored configuration is up-to-date and can be used as-is. 
-If a config is returned, it should be stored and used instead.  
+If a config is returned, it should be stored and used instead.
 
 ### Get Exposure Configuration
 * **Cache:** This data changes unpredicably, but not often. Cacheable for 1h.
@@ -126,7 +207,8 @@ If a config is returned, it should be stored and used instead.
           "transmissionRiskScoresAndroid": [1,1,1,1,1,1,1,1],
           "durationAtAttenuationThresholds": [50,70],
           "durationAtAttenuationWeights": [1.0, 0.5, 0.0],
-          "exposureRiskDuration": 15
+          "exposureRiskDuration": 15,
+          "participatingCountries": ["DK","DE","IE","IT","LV","ES"]
         }
         ```
   * Configuration is already up to date
@@ -259,6 +341,7 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
 * **Request Body:**
   * keys: List of TemporaryExposureKey objects, as per [the API docs](https://developers.google.com/android/exposure-notifications/verification-system#metadata)
     * <u>Note, that the key data bytes need to be base64 encoded</u>
+    * <u>Note, for visitedCountries and consentToShareWithEfgs value is boolean, use 1 for true and 0 for false</u>
   * Sample Body 
     ```json
     {
@@ -272,8 +355,28 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
           "transmissionRiskLevel": 5,
           "rollingStartIntervalNumber":  123456,
           "rollingPeriod": 144
-        }] 
+        }],
+      "visitedCountries": {"DE":1,"IT":0},
+      "consentToShareWithEfgs": 1
     }
     ```
 * **Success Response:**
   * Status: 200 OK
+
+### Callback api
+Callback api is used to inform application that new batch is available to fetch. Requests should be secured with mTLS.
+* **URL:** `/efgs/callback?batchTag={batchTag}&date={date}`
+* **Method:** `GET`
+* **URL Params:** None
+* **Query Params:**
+  * batchTag: the batch tag of newly available batch 
+  * date: UTC date of batchTag as string in ISO-8601 format e.g. *2020-11-24* 
+* **Request Body:** None
+* **Success Response:**
+  * Status: 202 Accepted
+  * Body: Current status of request as string
+* **Failure Response:**
+  * Callback service is disabled in application
+    * Status: 503 Service unavailable
+  * Such a processing queue is full
+    * Status: 500 Internal server error

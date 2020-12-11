@@ -7,6 +7,7 @@ import java.util.List;
 public final class TransmissionRiskBuckets {
     private TransmissionRiskBuckets() {}
 
+    public static final int DEFAULT_RISK_BUCKET = 4;
     // Risk buckets for an encounter are defined through days since the onset of symptoms.
     private static final List<Integer> INTERVAL_BUCKETS = List.of(14, 10, 8, 6, 4, 2, -3);
 

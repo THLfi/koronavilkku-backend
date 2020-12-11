@@ -1,6 +1,7 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
-import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKey;
+import fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisPublishRequest;
+import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKeyRequest;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerification;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerificationService;
 import org.slf4j.Logger;
@@ -11,7 +12,10 @@ import org.springframework.util.DigestUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
@@ -20,12 +24,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
+
 @Service
 public class DiagnosisKeyService {
 
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyService.class);
 
     private static final Duration MAX_KEY_AGE = Duration.ofDays(14);
+    private static final String DEFAULT_ORIGIN_COUNTRY = "FI";
 
     private final DiagnosisKeyDao dao;
     private final PublishTokenVerificationService tokenVerificationService;
@@ -36,24 +42,41 @@ public class DiagnosisKeyService {
         LOG.info("Initialized");
     }
 
-    public void handlePublishRequest(String publishToken, List<TemporaryExposureKey> keys) {
+    public void handlePublishRequest(String publishToken, DiagnosisPublishRequest request) {
         Instant now = Instant.now();
-        List<TemporaryExposureKey> filtered = filter(keys, now);
         PublishTokenVerification verification = tokenVerificationService.getVerification(publishToken);
+        List<TemporaryExposureKeyRequest> filtered = filter(request.keys, now);
+        List<TemporaryExposureKey> keys = transform(filtered, request.visitedCountriesSet, request.consentToShareWithEfgs, verification.symptomsOnset);
         int currentInterval = IntervalNumber.to24HourInterval(now);
         LOG.info("Publish token verified: {} {} {} {} {}",
                 keyValue("currentInterval", currentInterval),
                 keyValue("filterStart", verification.symptomsOnset.toString()),
                 keyValue("filterEnd", now.toString()),
-                keyValue("postedCount", keys.size()),
-                keyValue("filteredCount", filtered.size()));
-        List<TemporaryExposureKey> adjustedKeys = adjustRiskBuckets(filtered, verification.symptomsOnset);
-
-        dao.addKeys(verification.id, checksum(keys), currentInterval, adjustedKeys, getExportedKeyCount(adjustedKeys));
+                keyValue("postedCount", request.keys.size()),
+                keyValue("filteredCount", filtered.size())
+        );
+        dao.addKeys(verification.id, checksum(keys), currentInterval, keys, getExportedKeyCount(keys));
     }
 
     private long getExportedKeyCount(List<TemporaryExposureKey> keys) {
         return keys.stream().filter(key -> key.transmissionRiskLevel > 0 && key.transmissionRiskLevel < 7).count();
+    }
+
+    private List<TemporaryExposureKey> transform(
+            List<TemporaryExposureKeyRequest> requestKeys,
+            Set<String> visitedCountries,
+            boolean consentToShareWithEfgs, LocalDate symptomsOnset
+    ) {
+        return requestKeys.stream().map(requestKey -> new TemporaryExposureKey(
+                requestKey.keyData,
+                getRiskBucket(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)),
+                requestKey.rollingStartIntervalNumber,
+                requestKey.rollingPeriod,
+                visitedCountries,
+                Optional.of(Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)))),
+                DEFAULT_ORIGIN_COUNTRY,
+                consentToShareWithEfgs
+        )).collect(Collectors.toList());
     }
 
     private String checksum(List<TemporaryExposureKey> keys) {
@@ -61,27 +84,13 @@ public class DiagnosisKeyService {
         return DigestUtils.md5DigestAsHex(bytes);
     }
 
-    private List<TemporaryExposureKey> adjustRiskBuckets(List<TemporaryExposureKey> keys, LocalDate symptomsOnset) {
-        return keys.stream().map(k -> adjustRiskBucket(k, symptomsOnset)).collect(Collectors.toList());
-    }
-
-    private TemporaryExposureKey adjustRiskBucket(TemporaryExposureKey key, LocalDate symptomsOnset) {
-        // The symptoms onset date is local while the key validity is an UTC date
-        // The least inaccurate comparison is to ignore the timezone, making accuracy 24h+<offset>
-        return new TemporaryExposureKey(
-                key.keyData,
-                getRiskBucket(symptomsOnset, utcDateOf10MinInterval(key.rollingStartIntervalNumber)),
-                key.rollingStartIntervalNumber,
-                key.rollingPeriod);
-    }
-
-    List<TemporaryExposureKey> filter(List<TemporaryExposureKey> original, Instant now) {
+    List<TemporaryExposureKeyRequest> filter(List<TemporaryExposureKeyRequest> original, Instant now) {
         int minInterval = dayFirst10MinInterval(now.minus(MAX_KEY_AGE));
         int maxInterval = dayLast10MinInterval(now);
         return original.stream().filter(key -> isBetween(key, minInterval, maxInterval)).collect(Collectors.toList());
     }
 
-    private boolean isBetween(TemporaryExposureKey key, int minPeriod, int maxPeriod) {
+    private boolean isBetween(TemporaryExposureKeyRequest key, int minPeriod, int maxPeriod) {
         return key.rollingStartIntervalNumber >= minPeriod &&
                 key.rollingStartIntervalNumber + key.rollingPeriod - 1 <= maxPeriod;
     }

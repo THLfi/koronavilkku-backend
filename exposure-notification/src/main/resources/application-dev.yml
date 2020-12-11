@@ -15,3 +15,27 @@ covid19:
       randomize-key: true
   publish-token:
     url: "${EN_PT_URL:http://localhost:8081}"
+  federation-gateway:
+    enabled: false
+    base-url: http://localhost:8080/diagnosiskeys
+    dev-client: true
+    callback-initializer-enabled: false
+    client-sha256: "${EN_DEV_EFGS_SHA256:}"
+    client-dn: C=FI,CN=koronavilkku.dev,O=koronavilkku dev
+    rest-client:
+      trust-store:
+        path:
+        password: 3fgs-p4ssw0rd
+      client-key-store:
+        path:
+        password: devdev
+        alias: efgs
+    signing-key-store:
+      implementation: dev
+      path:
+      password: devdev
+      key-alias: signing
+      trust-anchor-alias: efgs-trust-anchor
+    call-back:
+      enabled: false
+      local-url:

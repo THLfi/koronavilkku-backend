@@ -3,17 +3,66 @@
     <!-- FALSE POSITIVES 2020-10-27 -->
     <suppress>
         <notes><![CDATA[
-   file name: tomcat-embed-core-9.0.38.jar
+   file name: micrometer-core-1.5.7.jar
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer\-core@.*$</packageUrl>
+        <cve>CVE-2008-1392</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: micrometer-core-1.5.7.jar
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer\-core@.*$</packageUrl>
+        <cve>CVE-2009-0177</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: micrometer-core-1.5.7.jar
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer\-core@.*$</packageUrl>
+        <cve>CVE-2009-0908</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: micrometer-core-1.5.7.jar
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer\-core@.*$</packageUrl>
+        <cve>CVE-2009-1146</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: micrometer-core-1.5.7.jar
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer\-core@.*$</packageUrl>
+        <cve>CVE-2009-1147</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: micrometer-core-1.5.7.jar
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer\-core@.*$</packageUrl>
+        <cve>CVE-2009-1244</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: micrometer-core-1.5.7.jar
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer\-core@.*$</packageUrl>
+        <cve>CVE-2009-1805</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: tomcat-embed-core-9.0.39.jar
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat\-embed\-core@.*$</packageUrl>
-        <cve>CVE-2020-13943</cve>
+        <cve>CVE-2020-17527</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
    file name: tomcat-embed-websocket-9.0.38.jar
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat\-embed\-websocket@.*$</packageUrl>
-        <cve>CVE-2020-13943</cve>
+        <cve>CVE-2020-17527</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
