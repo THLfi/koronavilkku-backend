@@ -1,5 +1,4 @@
-drop table efgs_operation;
-drop type en.direction_t;
+create type en.state_t as enum('STARTED', 'FINISHED', 'ERROR');
 
 create table en.efgs_outbound_operation (
     id bigint primary key generated always as identity,
@@ -19,5 +18,6 @@ create table en.efgs_inbound_operation (
     invalid_signature_count int not null default 0,
     batch_tag varchar(100),
     retry_count int not null default 0,
-    updated_at timestamptz not null
+    updated_at timestamptz not null,
+    batch_date timestamptz not null
 );
