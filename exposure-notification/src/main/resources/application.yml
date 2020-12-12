@@ -99,3 +99,5 @@ covid19:
     call-back:
       enabled: "${EN_EFGS_CALLBACK_ENABLED:false}"
       local-url: "${EN_EFGS_CALLBACK_URL:}"
+  db-schema-check:
+    enabled: true
