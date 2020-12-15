@@ -56,7 +56,7 @@ public class BatchUtil {
     public static int calculateTransmissionRisk(EfgsProto.DiagnosisKey key) {
         LocalDate keyDate = utcDateOf10MinInterval(key.getRollingStartIntervalNumber());
         Optional<Integer> mappedDsos = DsosInterpretationMapper.mapFrom(key.getDaysSinceOnsetOfSymptoms());
-        return mappedDsos.map(dsos -> getRiskBucket(LocalDate.from(keyDate).plusDays(dsos), keyDate)).orElse(DEFAULT_RISK_BUCKET);
+        return mappedDsos.map(dsos -> getRiskBucket(keyDate.minusDays(dsos), keyDate)).orElse(DEFAULT_RISK_BUCKET);
     }
 
     public static byte[] serialize(EfgsProto.DiagnosisKeyBatch batch) {
