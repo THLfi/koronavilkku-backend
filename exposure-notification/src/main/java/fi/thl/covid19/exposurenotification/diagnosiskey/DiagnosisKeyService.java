@@ -2,6 +2,7 @@ package fi.thl.covid19.exposurenotification.diagnosiskey;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisPublishRequest;
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKeyRequest;
+import fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerification;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerificationService;
 import org.slf4j.Logger;
@@ -73,10 +74,21 @@ public class DiagnosisKeyService {
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
                 visitedCountries,
-                Optional.of(Math.toIntExact(ChronoUnit.DAYS.between(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)))),
+                calculateDsos(symptomsOnset, requestKey),
                 DEFAULT_ORIGIN_COUNTRY,
                 consentToShareWithEfgs
         )).collect(Collectors.toList());
+    }
+
+    private Optional<Integer> calculateDsos(LocalDate symptomsOnset, TemporaryExposureKeyRequest requestKey) {
+        return DsosMapperUtil.DsosInterpretationMapper.mapFrom(
+                Math.toIntExact(
+                        ChronoUnit.DAYS.between(
+                                symptomsOnset,
+                                utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)
+                        )
+                )
+        );
     }
 
     private String checksum(List<TemporaryExposureKey> keys) {
