@@ -16,6 +16,6 @@ public class OutboundOperation {
     public OutboundOperation(List<TemporaryExposureKey> keys, long operationId) {
         this.keys = keys;
         this.operationId = operationId;
-        this.batchTag = "FI__" + getBatchTag(LocalDate.now(ZoneOffset.UTC), Long.toString(operationId));
+        this.batchTag = getBatchTag(LocalDate.now(ZoneOffset.UTC), "fi-" + operationId);
     }
 }
