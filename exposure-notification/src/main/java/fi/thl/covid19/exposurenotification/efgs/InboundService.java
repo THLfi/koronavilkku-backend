@@ -40,6 +40,7 @@ public class InboundService {
     private final String efgsErrorOperationsInbound = "efgs_error_operations_inbound";
     private final String efgsVerificationTotal = "efgs_verification_total";
     private final String efgsVerificationFailed = "efgs_verification_failed";
+    private final String efgsValidationFailed = "efgs_validation_failed";
 
     public InboundService(
             FederationGatewayClient client,
@@ -85,10 +86,10 @@ public class InboundService {
     public void startInboundRetry(LocalDate date) {
         inboundOperationDao.getInboundErrors(date).forEach(
                 operation -> {
-                    MDC.put("inboundRetryBatchTag", operation.batchTag);
+                    MDC.put("inboundRetryBatchTag", operation.batchTag.orElse(""));
                     downloadAndStore(
                             operation.id,
-                            Optional.of(operation.batchTag),
+                            operation.batchTag,
                             getDateString(operation.batchDate)
                     );
                 }
@@ -108,12 +109,23 @@ public class InboundService {
                         download,
                         signer.getTrustAnchor()
                 );
-                List<TemporaryExposureKey> finalKeys = transform(validBatch);
-                diagnosisKeyDao.addInboundKeys(finalKeys, IntervalNumber.to24HourInterval(Instant.now()));
-                int failedCount = download.keysCount() - finalKeys.size();
-                meterRegistry.counter(efgsVerificationTotal).increment(finalKeys.size());
-                meterRegistry.counter(efgsVerificationFailed).increment(failedCount);
-                finished.set(inboundOperationDao.finishOperation(operationId, finalKeys.size(), failedCount, localBatchTag.get()));
+                List<TemporaryExposureKey> successKeys = transform(validBatch);
+                diagnosisKeyDao.addInboundKeys(successKeys, IntervalNumber.to24HourInterval(Instant.now()));
+                int signatureFailedCount = download.keysCount() - validBatch.getKeysCount();
+                int validationFailedCount = validBatch.getKeysCount() - successKeys.size();
+                meterRegistry.counter(efgsVerificationTotal).increment(download.keysCount());
+                meterRegistry.counter(efgsVerificationFailed).increment(signatureFailedCount);
+                meterRegistry.counter(efgsValidationFailed).increment(validationFailedCount);
+                finished.set(
+                        inboundOperationDao.finishOperation(
+                                operationId,
+                                download.keysCount(),
+                                successKeys.size(),
+                                validationFailedCount,
+                                signatureFailedCount,
+                                localBatchTag.get()
+                        )
+                );
                 return download.nextBatchTag;
             });
         } finally {
@@ -129,5 +141,6 @@ public class InboundService {
         meterRegistry.counter(efgsErrorOperationsInbound);
         meterRegistry.counter(efgsVerificationTotal);
         meterRegistry.counter(efgsVerificationFailed);
+        meterRegistry.counter(efgsValidationFailed);
     }
 }

@@ -92,16 +92,26 @@ public class InboundOperationDao {
     }
 
     @Transactional
-    public boolean finishOperation(long operationId, int keysCountTotal, int failedKeysCount, Optional<String> batchTag) {
+    public boolean finishOperation(
+            long operationId,
+            int keysCountTotal,
+            int keysCountSuccess,
+            int validationFailedKeysCount,
+            int verificationFailedKeysCount,
+            Optional<String> batchTag
+    ) {
         String sql = "update en.efgs_inbound_operation set state = cast(:new_state as en.state_t), batch_tag = :batch_tag, " +
-                "keys_count_total = :keys_count_total, invalid_signature_count = :invalid_signature_count, " +
+                "keys_count_total = :keys_count_total, keys_count_success = :keys_count_success, " +
+                "keys_count_not_valid = :keys_count_not_valid, invalid_signature_count = :invalid_signature_count, " +
                 "updated_at = :updated_at, retry_count = retry_count + 1 where id = :id";
         Map<String, Object> params = new HashMap<>();
         params.put("new_state", FINISHED.name());
         params.put("id", operationId);
         params.put("batch_tag", batchTag.orElse(null));
         params.put("keys_count_total", keysCountTotal);
-        params.put("invalid_signature_count", failedKeysCount);
+        params.put("keys_count_success", keysCountSuccess);
+        params.put("keys_count_not_valid", validationFailedKeysCount);
+        params.put("invalid_signature_count", verificationFailedKeysCount);
         params.put("updated_at", Timestamp.from(Instant.now()));
         return jdbcTemplate.update(sql, params) == 1;
     }
@@ -174,8 +184,7 @@ public class InboundOperationDao {
 
     @Transactional
     public int getInvalidSignatureCountForDay() {
-        String sql = "select sum(invalid_signature_count) from en.efgs_inbound_operation where invalid_signature_count is not null " +
-                "and updated_at >= :datetime";
+        String sql = "select sum(invalid_signature_count) from en.efgs_inbound_operation where updated_at >= :datetime";
         return jdbcTemplate.query(
                 sql,
                 Map.of("datetime", Timestamp.valueOf(LocalDateTime.now(ZoneOffset.UTC).minus(1, DAYS))),
@@ -187,8 +196,10 @@ public class InboundOperationDao {
                 rs.getLong("id"),
                 CommonConst.EfgsOperationState.valueOf(rs.getString("state")),
                 rs.getInt("keys_count_total"),
+                rs.getInt("keys_count_success"),
+                rs.getInt("keys_count_not_valid"),
                 rs.getInt("invalid_signature_count"),
-                rs.getString("batch_tag"),
+                Optional.ofNullable(rs.getString("batch_tag")),
                 rs.getInt("retry_count"),
                 rs.getTimestamp("updated_at").toInstant(),
                 rs.getTimestamp("batch_date").toInstant().atZone(ZoneOffset.UTC).toLocalDate()
