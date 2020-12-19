@@ -165,7 +165,7 @@ public class FederationServiceSyncWithDaoTestIT {
         } catch (HttpServerErrorException e) {
             fakeStalled();
             inboundService.startInboundRetry(date);
-            assertTrue(inboundOperationDao.getInboundErrors(date).stream().noneMatch(op -> op.batchTag.equals(TEST_TAG_NAME)));
+            assertTrue(inboundOperationDao.getInboundErrors(date).stream().noneMatch(op -> op.batchTag.get().equals(TEST_TAG_NAME)));
         }
     }
 
@@ -253,7 +253,9 @@ public class FederationServiceSyncWithDaoTestIT {
         inboundService.startInbound(date, Optional.of(TEST_TAG_NAME));
         Map<String, Object> operation = getLatestInboundOperation();
         assertEquals(operation.get("invalid_signature_count"), 10);
-        assertEquals(operation.get("keys_count_total"), 0);
+        assertEquals(operation.get("keys_count_total"), 10);
+        assertEquals(operation.get("keys_count_success"), 0);
+        assertEquals(operation.get("keys_count_not_valid"), 0);
     }
 
     @Test
