@@ -131,12 +131,17 @@ For OUTBOUND, new operation will be created on next cycle and retry counter is s
   
 There is also a couple of counters for results of processing:
 
-* keys_count_total: total number of keys bound to this operation
-* keys_count_201: total number of successfully processed keys bound to this operation (used only with outbound operations)
-* keys_count_409: total number of keys with http-status 409 bound to this operation (used only with outbound operations)
-* keys_count_500: total number of keys with http-status 500 bound to this operation (used only with outbound operations)
-* invalid_signature_count: total number of keys which are failing when verifying signature and are bound to this operation 
-  (used only with inbound operations)
+* efgs_outbound_operation
+  * keys_count_total: total number of keys bound to this operation
+  * keys_count_201: total number of successfully processed keys bound to this operation
+  * keys_count_409: total number of keys with http-status 409 bound to this operation
+  * keys_count_500: total number of keys with http-status 500 bound to this operation
+    
+* efgs_inbound_operation
+  * keys_count_total: total number of keys bound to this operation
+  * keys_count_success: total number of successfully processed keys bound to this operation
+  * keys_count_not_valid: total number of invalid keys bound to this operation
+  * invalid_signature_count: total number of keys which are failing when verifying signature and are bound to this operation 
 
 Also, operation has a field for batch tag, which is used as an identifier between efgs and koronavilkku backend. Outbound and
 inbound batch tags do not have any relation between each other i.e. batches from efgs could contain multiple national batches.

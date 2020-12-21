@@ -12,7 +12,7 @@ state INBOUND {
     STORE --> FINISHED
     STARTED --> ERROR
     VERIFY --> FAIL
-    VALIDATE --> ERROR
+    VALIDATE --> FAIL
     STORE --> ERROR
     ERROR --> STARTED
     ERROR : Retry until max retries reached
