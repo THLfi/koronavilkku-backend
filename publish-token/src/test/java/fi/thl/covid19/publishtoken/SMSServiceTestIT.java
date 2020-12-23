@@ -1,6 +1,7 @@
 package fi.thl.covid19.publishtoken;
 
 import fi.thl.covid19.publishtoken.generation.v1.PublishToken;
+import fi.thl.covid19.publishtoken.sms.SmsPayload;
 import fi.thl.covid19.publishtoken.sms.SmsService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,14 +18,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
-import static java.time.temporal.ChronoUnit.HOURS;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,7 +31,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 @ActiveProfiles({"dev"})
-@SpringBootTest(properties = { "covid19.publish-token.sms.gateway=http://testaddress" })
+@SpringBootTest(properties = {"covid19.publish-token.sms.gateway=http://testaddress"})
 @AutoConfigureMockMvc
 public class SMSServiceTestIT {
 
@@ -46,7 +45,7 @@ public class SMSServiceTestIT {
     NamedParameterJdbcTemplate jdbcTemplate;
 
     @Captor
-    private ArgumentCaptor<HttpEntity<MultiValueMap<String, String>>> reqCaptor;
+    private ArgumentCaptor<HttpEntity<SmsPayload>> reqCaptor;
 
     @BeforeEach
     public void setUp() {
@@ -67,18 +66,19 @@ public class SMSServiceTestIT {
                 .willReturn(ResponseEntity.ok("test"));
         assertTrue(smsService.send(number, new PublishToken(token, Instant.now(), Instant.now())));
         assertSmsStatRowAdded();
-        HttpEntity<MultiValueMap<String, String>> request = reqCaptor.getValue();
+        HttpEntity<SmsPayload> request = reqCaptor.getValue();
         assertNotNull(request);
         verify(rest).postForEntity(eq("http://testaddress"), any(), eq(String.class));
 
         assertNotNull(request.getHeaders());
-        assertEquals(MediaType.APPLICATION_FORM_URLENCODED, request.getHeaders().getContentType());
-        assertEquals(List.of(MediaType.TEXT_PLAIN), request.getHeaders().getAccept());
+        assertEquals(MediaType.APPLICATION_JSON, request.getHeaders().getContentType());
+        assertEquals(List.of(MediaType.APPLICATION_JSON), request.getHeaders().getAccept());
 
         assertNotNull(request.getBody());
-        String message = request.getBody().getFirst("text");
-        String recipient = request.getBody().getFirst("recipient");
+        String message = request.getBody().text;
+        String recipient = request.getBody().destination.toArray()[0].toString();
         assertNotNull(message);
+        // This is not probably max limit, but let's keep this in here because if we grow our message it should be tested first
         assertTrue(message.length() <= 500);
         assertTrue(message.contains(token));
         assertEquals(number, recipient);

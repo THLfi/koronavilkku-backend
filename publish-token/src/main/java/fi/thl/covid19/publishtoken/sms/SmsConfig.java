@@ -20,14 +20,12 @@ public class SmsConfig {
     public final String senderName;
     public final String content;
     public final String senderId;
-    public final String orgId;
 
-    public SmsConfig(Optional<String> gateway, String senderName, String senderId, String orgId, String content) {
+    public SmsConfig(Optional<String> gateway, String senderName, String senderId, String content) {
         this.gateway = requireNonNull(gateway).map(String::trim).filter(s -> !s.isEmpty());
         this.senderName = requireNonNull(senderName);
         this.content = requireNonNull(content);
         this.senderId = requireNonNull(senderId);
-        this.orgId = requireNonNull(orgId);
         if (content.trim().isEmpty()) {
             throw new IllegalStateException("Invalid SMS config: empty content");
         }

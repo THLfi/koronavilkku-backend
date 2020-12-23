@@ -9,14 +9,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Random;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -25,8 +23,6 @@ import static net.logstash.logback.argument.StructuredArguments.keyValue;
 public class SmsService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SmsService.class);
-
-    private static final Random RAND = new Random();
 
     private final RestTemplate restTemplate;
 
@@ -55,42 +51,34 @@ public class SmsService {
     }
 
     private boolean send(String gateway, String number, String content) {
-        String sendEventId = Integer.toString(RAND.nextInt(Integer.MAX_VALUE));
 
-        LOG.info("Sending token via SMS: {} {} {}",
+        LOG.info("Sending token via SMS: {} {}",
                 keyValue("gateway", gateway),
-                keyValue("length", content.length()),
-                keyValue("eventId", sendEventId));
+                keyValue("length", content.length()));
 
         try {
-            HttpEntity<MultiValueMap<String, String>> request = formRequest(sendEventId, number, content);
+            HttpEntity<SmsPayload> request = generateRequest(number, content);
             ResponseEntity<String> result = restTemplate.postForEntity(gateway, request, String.class);
             if (result.getStatusCode().is2xxSuccessful()) {
-                LOG.info("SMS sent: {} {}", keyValue("eventId", sendEventId), keyValue("status", result.getStatusCode()));
+                LOG.info("SMS sent: {}", keyValue("status", result.getStatusCode()));
                 return true;
             } else {
-                LOG.error("Failed to send SMS: {} {}", keyValue("eventId", sendEventId), keyValue("status", result.getStatusCode()));
+                LOG.error("Failed to send SMS: {}", keyValue("status", result.getStatusCode()));
                 return false;
             }
         } catch (RestClientException e) {
-            LOG.error("Failed to send SMS: {}", keyValue("eventId", sendEventId), e);
+            LOG.error("Failed to send SMS.", e);
             return false;
         }
     }
 
-    private HttpEntity<MultiValueMap<String, String>> formRequest(String sendEventId, String number, String content) {
+    private HttpEntity<SmsPayload> generateRequest(String number, String content) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.setAccept(List.of(MediaType.TEXT_PLAIN));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        headers.add("Authorization", config.senderId);
+        SmsPayload sms = new SmsPayload(config.senderName, content, Set.of(number));
 
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("sender", config.senderName);
-        params.add("senderId", config.senderId);
-        params.add("orgOid", config.orgId);
-        params.add("eventOid", sendEventId);
-        params.add("recipient", number);
-        params.add("text", content);
-
-        return new HttpEntity<>(params, headers);
+        return new HttpEntity<>(sms, headers);
     }
 }
