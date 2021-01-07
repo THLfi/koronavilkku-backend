@@ -76,7 +76,7 @@ public class SmsService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-        headers.add("Authorization", config.senderId);
+        headers.add("Authorization", config.senderApiKey);
         SmsPayload sms = new SmsPayload(config.senderName, content, Set.of(number));
 
         return new HttpEntity<>(sms, headers);

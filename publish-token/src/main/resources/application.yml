@@ -64,7 +64,7 @@ covid19:
     sms:
       gateway: "${PT_SMS_GATEWAY_URL:}"
       sender-name: "THL"
-      senderId: ""
+      sender-api-key: ""
       content: "Koronavilkku-avauskoodisi: <code>. Koodi on voimassa 4 tuntia. Ilmoita nimettömästi tartunnastasi: https://koronavilkku.fi/i?<code>\n\nDin startkod för Coronablinkern: <code>. Koden är giltig i 4 timmar. Meddela om din smitta anonymt: https://koronavilkku.fi/i?<code>\n\nYour Koronavilkku key code: <code>. The code is valid for 4 hours. Report your infection anonymously: https://koronavilkku.fi/i?<code>"
   db-schema-check:
     enabled: true
