@@ -55,6 +55,9 @@ public class ApplicationConfiguration {
                     b -> b.name("exposure-config")
                             .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
                             .entryCapacity(1),
+                    b -> b.name("exposure-config-v2")
+                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .entryCapacity(1),
                     b -> b.name("available-intervals")
                             .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
                             .entryCapacity(1),

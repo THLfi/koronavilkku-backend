@@ -1,6 +1,8 @@
 package fi.thl.covid19.exposurenotification.configuration;
 
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
+import fi.thl.covid19.exposurenotification.configuration.v2.ExposureConfigurationV2;
+import org.postgresql.util.HStoreConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -11,6 +13,7 @@ import java.sql.Array;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 
@@ -57,8 +60,55 @@ public class ConfigurationDao {
         ));
     }
 
+    @Cacheable(value = "exposure-config-v2", sync = true)
+    public ExposureConfigurationV2 getLatestV2ExposureConfiguration() {
+        LOG.info("Fetching exposure v2 configuration");
+        String sql = "select " +
+                "version, " +
+                "report_type_weights, " +
+                "infectiousness_weights, " +
+                "attenuation_bucket_threshold_db, " +
+                "attenuation_bucket_weights, " +
+                "days_since_exposure_threshold, " +
+                "minimum_window_score, " +
+                "days_since_onset_to_infectiousness, " +
+                "available_countries " +
+                "from en.exposure_configuration_v2 " +
+                "order by version desc " +
+                "limit 1";
+        return jdbcTemplate.queryForObject(sql, Map.of(), (rs, i) -> new ExposureConfigurationV2(
+                rs.getInt("version"),
+                toStringDouble(rs.getObject("report_type_weights")),
+                toStringDouble(rs.getObject("infectiousness_weights")),
+                toList(rs.getArray("attenuation_bucket_threshold_db")),
+                toList(rs.getArray("attenuation_bucket_weights")),
+                rs.getInt("days_since_exposure_threshold"),
+                rs.getDouble("minimum_window_score"),
+                toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
+                Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())
+        ));
+    }
+
     @SuppressWarnings("unchecked")
     private <T extends Number> List<T> toList(Array sqlArray) throws SQLException {
         return Arrays.asList((T[]) sqlArray.getArray());
+    }
+
+    private Map<String, Double> toStringDouble(Object obj) {
+        Map<String, String> map = HStoreConverter.fromString(obj.toString());
+        return map.entrySet().stream().collect(
+                Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> Double.parseDouble(e.getValue())
+                ));
+    }
+
+    private Map<Integer, String> toIntegerString(Object obj) {
+        Map<String, String> map = HStoreConverter.fromString(obj.toString());
+        return map.entrySet().stream().collect(
+                Collectors.toMap(
+                        e -> Integer.parseInt(e.getKey()),
+                        Map.Entry::getValue
+                ));
     }
 }
