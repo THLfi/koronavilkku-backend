@@ -103,6 +103,8 @@ public final class BatchFileFactory {
                 .setTransmissionRiskLevel(key.transmissionRiskLevel)
                 .setRollingStartIntervalNumber(key.rollingStartIntervalNumber)
                 .setRollingPeriod(key.rollingPeriod)
+                .setDaysSinceOnsetOfSymptoms(key.daysSinceOnsetOfSymptoms.orElse(1))
+                .setReportType(TemporaryExposureKey.ReportType.CONFIRMED_TEST)
                 .build();
     }
 }
