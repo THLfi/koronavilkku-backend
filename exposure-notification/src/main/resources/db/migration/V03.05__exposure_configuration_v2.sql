@@ -1,4 +1,4 @@
-create extension if not exists hstore schema en cascade;
+create extension if not exists hstore schema public cascade;
 create table en.exposure_configuration_v2 (
   version int primary key generated always as identity,
   report_type_weights hstore not null,
