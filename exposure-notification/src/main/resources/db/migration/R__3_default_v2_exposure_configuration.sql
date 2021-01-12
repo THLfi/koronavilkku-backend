@@ -7,9 +7,9 @@ select * from (
         STANDARD => 1.0,
         HIGH => 2.0
        '::hstore,
-       '{ 1.0, 2.0, 3.0 }'::numeric array[3],
+       '{ 55, 70, 80 }'::numeric array[3],
        '{ 0.0, 1.0, 1.5, 2.5 }'::numeric array[4],
-       1::int,
+       10::int,
        1.0::numeric,
        '-7 => NONE,
         7 => STANDARD,
