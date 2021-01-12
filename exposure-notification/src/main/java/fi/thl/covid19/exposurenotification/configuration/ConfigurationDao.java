@@ -2,8 +2,6 @@ package fi.thl.covid19.exposurenotification.configuration;
 
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
 import fi.thl.covid19.exposurenotification.configuration.v2.ExposureConfigurationV2;
-import org.postgresql.util.HStoreConverter;
-import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -95,7 +93,7 @@ public class ConfigurationDao {
     }
 
     private Map<String, Double> toStringDouble(Object obj) {
-        Map<String, String> map = HStoreConverter.fromString(((PGobject) obj).getValue());
+        Map<String, String> map = (Map<String, String>) obj;
         return map.entrySet().stream().collect(
                 Collectors.toMap(
                         Map.Entry::getKey,
@@ -104,7 +102,7 @@ public class ConfigurationDao {
     }
 
     private Map<Integer, String> toIntegerString(Object obj) {
-        Map<String, String> map = HStoreConverter.fromString(((PGobject) obj).getValue());
+        Map<String, String> map = (Map<String, String>) obj;
         return map.entrySet().stream().collect(
                 Collectors.toMap(
                         e -> Integer.parseInt(e.getKey()),
