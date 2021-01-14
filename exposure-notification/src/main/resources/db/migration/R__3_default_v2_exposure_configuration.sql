@@ -1,6 +1,6 @@
 -- As a repeatable migration, this will be re-run whenever the file changes
 insert into en.exposure_configuration_v2
-  (report_type_weights, infectiousness_weights, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness, available_countries)
+  (report_type_weights, infectiousness_weights, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness, infectiousness_when_dsos_missing, available_countries)
 select * from (
     values('CONFIRMED_TEST => 1.0'::hstore,
        'NONE => 0.0,
@@ -15,12 +15,13 @@ select * from (
         7 => STANDARD,
         1 => HIGH
        '::hstore,
+       'STANDARD',
        '{ BE, BG, CZ, DK, DE, EE, IE, GR, ES, FR, HR, IT, CY, LV, LT, LU, HU, MT, NL, AT, PL, PT, RO, SI, SK, SE, IS, NO, LI, CH, GB }'::varchar(2)[])
 ) as default_values
 -- Don't insert a new version if the latest one is identical
 except (
   select
-    report_type_weights, infectiousness_weights, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness, available_countries
+    report_type_weights, infectiousness_weights, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness, infectiousness_when_dsos_missing, available_countries
   from en.exposure_configuration_v2
   order by version desc limit 1
 );

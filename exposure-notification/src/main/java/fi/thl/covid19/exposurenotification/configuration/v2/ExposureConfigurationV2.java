@@ -21,6 +21,7 @@ public class ExposureConfigurationV2 {
 
     // DiagnosisKeysDataMapping
     public final Map<Integer, String> daysSinceOnsetToInfectiousness;
+    public final String infectiousnessWhenDaysSinceOnsetMissing;
 
     /*
      * Set of available countries in ISO-3166 alpha-2 format
@@ -37,6 +38,7 @@ public class ExposureConfigurationV2 {
             int daysSinceExposureThreshold,
             double minimumWindowScore,
             Map<Integer, String> daysSinceOnsetToInfectiousness,
+            String infectiousnessWhenDaysSinceOnsetMissing,
             Set<String> availableCountries
     ) {
         this.version = version;
@@ -47,6 +49,7 @@ public class ExposureConfigurationV2 {
         this.daysSinceExposureThreshold = daysSinceExposureThreshold;
         this.minimumWindowScore = minimumWindowScore;
         this.daysSinceOnsetToInfectiousness = daysSinceOnsetToInfectiousness;
+        this.infectiousnessWhenDaysSinceOnsetMissing = infectiousnessWhenDaysSinceOnsetMissing;
         this.availableCountries = availableCountries;
     }
 }

@@ -70,6 +70,7 @@ public class ConfigurationDao {
                 "days_since_exposure_threshold, " +
                 "minimum_window_score, " +
                 "days_since_onset_to_infectiousness, " +
+                "infectiousness_when_dsos_missing, " +
                 "available_countries " +
                 "from en.exposure_configuration_v2 " +
                 "order by version desc " +
@@ -83,6 +84,7 @@ public class ConfigurationDao {
                 rs.getInt("days_since_exposure_threshold"),
                 rs.getDouble("minimum_window_score"),
                 toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
+                rs.getString("infectiousness_when_dsos_missing"),
                 Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())
         ));
     }

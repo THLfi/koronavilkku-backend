@@ -98,13 +98,13 @@ public final class BatchFileFactory {
     }
 
     private static TemporaryExposureKey toProtoBuf(fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey key) {
-        return TemporaryExposureKey.newBuilder()
+        TemporaryExposureKey.Builder builder = TemporaryExposureKey.newBuilder()
                 .setKeyData(ByteString.copyFrom(Base64.getDecoder().decode(key.keyData.getBytes(UTF_8))))
                 .setTransmissionRiskLevel(key.transmissionRiskLevel)
                 .setRollingStartIntervalNumber(key.rollingStartIntervalNumber)
                 .setRollingPeriod(key.rollingPeriod)
-                .setDaysSinceOnsetOfSymptoms(key.daysSinceOnsetOfSymptoms.orElse(1))
-                .setReportType(TemporaryExposureKey.ReportType.CONFIRMED_TEST)
-                .build();
+                .setReportType(TemporaryExposureKey.ReportType.CONFIRMED_TEST);
+        key.daysSinceOnsetOfSymptoms.ifPresent(builder::setDaysSinceOnsetOfSymptoms);
+        return builder.build();
     }
 }
