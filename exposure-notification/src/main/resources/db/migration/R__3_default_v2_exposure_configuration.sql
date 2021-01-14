@@ -1,12 +1,14 @@
 -- As a repeatable migration, this will be re-run whenever the file changes
 insert into en.exposure_configuration_v2
-  (report_type_weights, infectiousness_weights, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness_none, days_since_onset_to_infectiousness_standard, days_since_onset_to_infectiousness_high, infectiousness_when_dsos_missing, available_countries)
+  (report_type_weight_confirmed_test, report_type_weight_confirmed_clinical_diagnosis, report_type_weight_self_report, report_type_weight_recursive, infectiousness_weight_standard, infectiousness_weight_high, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness_none, days_since_onset_to_infectiousness_standard, days_since_onset_to_infectiousness_high, infectiousness_when_dsos_missing, available_countries)
 select * from (
     values(
-       -- [CONFIRMED_TEST, CONFIRMED_CLINICAL_DIAGNOSIS, SELF_REPORT]
-       '{1.0, 0.0, 0.0}'::numeric array[3],
-       -- [STANDARD, HIGH]
-       '{1.0, 1.5}'::numeric array[2],
+       1.0::numeric,
+       0.0::numeric,
+       0.0::numeric,
+       0.0::numeric,
+       1.0::numeric,
+       1.5::numeric,
        '{ 55, 70, 80 }'::numeric array[3],
        '{ 1.0, 1.0, 1.5, 2.5 }'::numeric array[4],
        10::int,
@@ -20,7 +22,7 @@ select * from (
 -- Don't insert a new version if the latest one is identical
 except (
   select
-    report_type_weights, infectiousness_weights, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness_none, days_since_onset_to_infectiousness_standard, days_since_onset_to_infectiousness_high, infectiousness_when_dsos_missing, available_countries
+    report_type_weight_confirmed_test, report_type_weight_confirmed_clinical_diagnosis, report_type_weight_self_report, report_type_weight_recursive, infectiousness_weight_standard, infectiousness_weight_high, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, days_since_onset_to_infectiousness_none, days_since_onset_to_infectiousness_standard, days_since_onset_to_infectiousness_high, infectiousness_when_dsos_missing, available_countries
   from en.exposure_configuration_v2
   order by version desc limit 1
 );
