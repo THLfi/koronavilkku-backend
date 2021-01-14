@@ -12,15 +12,15 @@ public class ExposureConfigurationV2 {
     public final int version;
 
     // DailySummariesConfig
-    public final Map<String, Double> reportTypeWeights;
-    public final Map<String, Double> infectiousnessWeights;
+    public final Map<String, BigDecimal> reportTypeWeights;
+    public final Map<String, BigDecimal> infectiousnessWeights;
     public final List<BigDecimal> attenuationBucketThresholdDb;
     public final List<BigDecimal> attenuationBucketWeights;
     public final int daysSinceExposureThreshold;
     public final double minimumWindowScore;
 
     // DiagnosisKeysDataMapping
-    public final Map<Integer, String> daysSinceOnsetToInfectiousness;
+    public final Map<String, Set<Integer>> infectiousnessToDaysSinceOnset;
     public final String infectiousnessWhenDaysSinceOnsetMissing;
 
     /*
@@ -31,13 +31,13 @@ public class ExposureConfigurationV2 {
 
     public ExposureConfigurationV2(
             int version,
-            Map<String, Double> reportTypeWeights,
-            Map<String, Double> infectiousnessWeights,
+            Map<String, BigDecimal> reportTypeWeights,
+            Map<String, BigDecimal> infectiousnessWeights,
             List<BigDecimal> attenuationBucketThresholdDb,
             List<BigDecimal> attenuationBucketWeights,
             int daysSinceExposureThreshold,
             double minimumWindowScore,
-            Map<Integer, String> daysSinceOnsetToInfectiousness,
+            Map<String, Set<Integer>> infectiousnessToDaysSinceOnset,
             String infectiousnessWhenDaysSinceOnsetMissing,
             Set<String> availableCountries
     ) {
@@ -48,7 +48,7 @@ public class ExposureConfigurationV2 {
         this.attenuationBucketWeights = attenuationBucketWeights;
         this.daysSinceExposureThreshold = daysSinceExposureThreshold;
         this.minimumWindowScore = minimumWindowScore;
-        this.daysSinceOnsetToInfectiousness = daysSinceOnsetToInfectiousness;
+        this.infectiousnessToDaysSinceOnset = infectiousnessToDaysSinceOnset;
         this.infectiousnessWhenDaysSinceOnsetMissing = infectiousnessWhenDaysSinceOnsetMissing;
         this.availableCountries = availableCountries;
     }

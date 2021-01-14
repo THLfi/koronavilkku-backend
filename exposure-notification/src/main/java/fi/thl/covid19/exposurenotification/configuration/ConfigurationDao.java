@@ -2,13 +2,16 @@ package fi.thl.covid19.exposurenotification.configuration;
 
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
 import fi.thl.covid19.exposurenotification.configuration.v2.ExposureConfigurationV2;
+import fi.thl.covid19.proto.TemporaryExposureKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.sql.Array;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -69,7 +72,9 @@ public class ConfigurationDao {
                 "attenuation_bucket_weights, " +
                 "days_since_exposure_threshold, " +
                 "minimum_window_score, " +
-                "days_since_onset_to_infectiousness, " +
+                "days_since_onset_to_infectiousness_none, " +
+                "days_since_onset_to_infectiousness_standard, " +
+                "days_since_onset_to_infectiousness_high, " +
                 "infectiousness_when_dsos_missing, " +
                 "available_countries " +
                 "from en.exposure_configuration_v2 " +
@@ -77,13 +82,13 @@ public class ConfigurationDao {
                 "limit 1";
         return jdbcTemplate.queryForObject(sql, Map.of(), (rs, i) -> new ExposureConfigurationV2(
                 rs.getInt("version"),
-                toStringDouble(rs.getObject("report_type_weights")),
-                toStringDouble(rs.getObject("infectiousness_weights")),
+                toReportTypeWeights((BigDecimal[]) rs.getArray("report_type_weights").getArray()),
+                toInfectiousnessWeights((BigDecimal[]) rs.getArray("infectiousness_weights").getArray()),
                 toList(rs.getArray("attenuation_bucket_threshold_db")),
                 toList(rs.getArray("attenuation_bucket_weights")),
                 rs.getInt("days_since_exposure_threshold"),
                 rs.getDouble("minimum_window_score"),
-                toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
+                toInfectiousnessToDaysSinceOnset(rs),
                 rs.getString("infectiousness_when_dsos_missing"),
                 Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())
         ));
@@ -94,21 +99,26 @@ public class ConfigurationDao {
         return Arrays.asList((T[]) sqlArray.getArray());
     }
 
-    private Map<String, Double> toStringDouble(Object obj) {
-        Map<String, String> map = (Map<String, String>) obj;
-        return map.entrySet().stream().collect(
-                Collectors.toMap(
-                        Map.Entry::getKey,
-                        e -> Double.parseDouble(e.getValue())
-                ));
+    private Map<String, BigDecimal> toReportTypeWeights(BigDecimal[] array) {
+       return Map.of(
+               TemporaryExposureKey.ReportType.CONFIRMED_TEST.name(), array[0],
+               TemporaryExposureKey.ReportType.CONFIRMED_CLINICAL_DIAGNOSIS.name(), array[1],
+               TemporaryExposureKey.ReportType.SELF_REPORT.name(), array[2]
+       );
     }
 
-    private Map<Integer, String> toIntegerString(Object obj) {
-        Map<String, String> map = (Map<String, String>) obj;
-        return map.entrySet().stream().collect(
-                Collectors.toMap(
-                        e -> Integer.parseInt(e.getKey()),
-                        Map.Entry::getValue
-                ));
+    private Map<String, BigDecimal> toInfectiousnessWeights(BigDecimal[] array) {
+        return Map.of(
+                "STANDARD", array[0],
+                "HIGH", array[1]
+        );
+    }
+
+    private Map<String, Set<Integer>> toInfectiousnessToDaysSinceOnset(ResultSet rs) throws SQLException {
+        return Map.of(
+                "NONE", Set.of((Integer[]) rs.getArray("days_since_onset_to_infectiousness_none").getArray()),
+                "STANDARD",  Set.of((Integer[]) rs.getArray("days_since_onset_to_infectiousness_standard").getArray()),
+                "HIGH",  Set.of((Integer[]) rs.getArray("days_since_onset_to_infectiousness_high").getArray())
+        );
     }
 }
