@@ -10,7 +10,7 @@ select * from (
        1.0::numeric,
        1.5::numeric,
        '{ 55, 70, 80 }'::numeric array[3],
-       '{ 1.0, 1.0, 1.5, 2.5 }'::numeric array[4],
+       '{ 2.0, 1.0, 0.25, 0.0 }'::numeric array[4],
        10::int,
        1.0::numeric,
        '{ -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, 11, 12, 13, 14 }'::int array,
