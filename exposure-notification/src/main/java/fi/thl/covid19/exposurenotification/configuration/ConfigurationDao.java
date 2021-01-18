@@ -73,9 +73,7 @@ public class ConfigurationDao {
                 "attenuation_bucket_weights, " +
                 "days_since_exposure_threshold, " +
                 "minimum_window_score, " +
-                "days_since_onset_to_infectiousness_none, " +
-                "days_since_onset_to_infectiousness_standard, " +
-                "days_since_onset_to_infectiousness_high, " +
+                "days_since_onset_to_infectiousness, " +
                 "infectiousness_when_dsos_missing, " +
                 "available_countries " +
                 "from en.exposure_configuration_v2 " +
@@ -93,9 +91,7 @@ public class ConfigurationDao {
                 toList(rs.getArray("attenuation_bucket_weights")),
                 rs.getInt("days_since_exposure_threshold"),
                 rs.getDouble("minimum_window_score"),
-                Set.of((Integer[]) rs.getArray("days_since_onset_to_infectiousness_none").getArray()),
-                Set.of((Integer[]) rs.getArray("days_since_onset_to_infectiousness_standard").getArray()),
-                Set.of((Integer[]) rs.getArray("days_since_onset_to_infectiousness_high").getArray()),
+                toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
                 rs.getString("infectiousness_when_dsos_missing"),
                 Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())
         ));
@@ -104,5 +100,15 @@ public class ConfigurationDao {
     @SuppressWarnings("unchecked")
     private <T extends Number> List<T> toList(Array sqlArray) throws SQLException {
         return Arrays.asList((T[]) sqlArray.getArray());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<Integer, String> toIntegerString(Object obj) {
+        Map<String, String> map = (Map<String, String>) obj;
+        return map.entrySet().stream().collect(
+                Collectors.toMap(
+                        e -> Integer.parseInt(e.getKey()),
+                        Map.Entry::getValue
+                ));
     }
 }

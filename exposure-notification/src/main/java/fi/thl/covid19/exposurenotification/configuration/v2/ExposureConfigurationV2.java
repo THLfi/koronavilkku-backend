@@ -2,6 +2,7 @@ package fi.thl.covid19.exposurenotification.configuration.v2;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 // Configuration supporting exposure windows (or V2) api of exposure notifications
@@ -23,9 +24,7 @@ public class ExposureConfigurationV2 {
     public final double minimumWindowScore;
 
     // DiagnosisKeysDataMapping
-    public final Set<Integer> infectiousnessToDaysSinceOnsetNone;
-    public final Set<Integer> infectiousnessToDaysSinceOnsetStandard;
-    public final Set<Integer> infectiousnessToDaysSinceOnsetHigh;
+    public final Map<Integer, String> daysSinceOnsetToinfectiousness;
     public final String infectiousnessWhenDaysSinceOnsetMissing;
 
     /*
@@ -46,9 +45,7 @@ public class ExposureConfigurationV2 {
             List<BigDecimal> attenuationBucketWeights,
             int daysSinceExposureThreshold,
             double minimumWindowScore,
-            Set<Integer> infectiousnessToDaysSinceOnsetNone,
-            Set<Integer> infectiousnessToDaysSinceOnsetStandard,
-            Set<Integer> infectiousnessToDaysSinceOnsetHigh,
+            Map<Integer, String> daysSinceOnsetToinfectiousness,
             String infectiousnessWhenDaysSinceOnsetMissing,
             Set<String> availableCountries
     ) {
@@ -63,9 +60,7 @@ public class ExposureConfigurationV2 {
         this.attenuationBucketWeights = attenuationBucketWeights;
         this.daysSinceExposureThreshold = daysSinceExposureThreshold;
         this.minimumWindowScore = minimumWindowScore;
-        this.infectiousnessToDaysSinceOnsetNone = infectiousnessToDaysSinceOnsetNone;
-        this.infectiousnessToDaysSinceOnsetStandard = infectiousnessToDaysSinceOnsetStandard;
-        this.infectiousnessToDaysSinceOnsetHigh = infectiousnessToDaysSinceOnsetHigh;
+        this.daysSinceOnsetToinfectiousness = daysSinceOnsetToinfectiousness;
         this.infectiousnessWhenDaysSinceOnsetMissing = infectiousnessWhenDaysSinceOnsetMissing;
         this.availableCountries = availableCountries;
     }
