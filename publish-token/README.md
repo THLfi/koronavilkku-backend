@@ -63,13 +63,15 @@ Deprecated components will be removed in next api-version.
   * (Mandatory) requestUser: User who made the request (for auditing). Plain-text identifier, unique within the requesting service.
   * (Mandatory) symptomsOnset: (Estimated) date of initial onset of symptoms. This will affect the risk classification of the reported keys.
   * (Optional) patientSmsNumber: Phone number to delivering the token via SMS to the patient. This will not be stored.
+  * (Optional) symptomsExists: indicates if patient has symptoms. If this is set as true, then symptomsOnset should indicate start of symptoms only.
   * **DEPRECATED** (Optional) validateOnly: Boolean (null defaults to false). This is for API verification tests: request is validated and a token created, it isn't stored in the database (activated) or sent via SMS. (If validate-only in the header is true, this has no effect)
   * Sample Body 
       ```json
       { 
         "requestUser": "USER2342",
         "symptomsOnset": "2020-07-01",
-        "patientSmsNumber": "+358401234567"
+        "patientSmsNumber": "+358401234567",
+        "symptomsExists": true
       }
       ```
 * **Success Response:**
@@ -127,11 +129,13 @@ This is an internal API that the exposure-notification service uses for verifyin
   * Body: A JSON object holding 
     * id: Unique ID for the verified token. The token itself can be re-used, but id will appear only once.
     * symptomsOnset: (Estimated) time of initial onset of symptoms, associated with the verified token
+    * symptomsExists: Boolean for existence of symptoms. Might be null, which means existence of symptoms is unknown i.e. data is missing.
   * Sample Response: 
     ```json
     { 
       "id": 1243,
-      "symptomsOnset": "2020-07-01T13:10:10.000Z"
+      "symptomsOnset": "2020-07-01T13:10:10.000Z",
+      "symptomsExists": true
     }
     ```
 * **Verification Rejection Response (No active token found):**

@@ -46,7 +46,8 @@ public class TestKeyGenerator {
                 rand.nextBoolean() ? Set.of() : Set.of("DE","IT"),
                 Optional.of(dsos),
                 "FI",
-                consentToShare
+                consentToShare,
+                Optional.empty()
         );
     }
 

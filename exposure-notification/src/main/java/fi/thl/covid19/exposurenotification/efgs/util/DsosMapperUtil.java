@@ -30,11 +30,24 @@ public class DsosMapperUtil {
         }
 
         public static Optional<Integer> mapFrom(int dsos) {
-            DsosInterpretationMapper mapperInRange = Arrays.stream(values())
+            return mapperInRange(dsos).apply(dsos);
+        }
+
+        public static Optional<Boolean> symptomsExists(int dsos) {
+            DsosInterpretationMapper mapper = mapperInRange(dsos);
+
+            if (SYMPTOMS_UNKNOWN.equals(mapper)) {
+                return Optional.empty();
+            } else {
+                return Optional.of(!NO_SYMPTOMS.equals(mapper));
+            }
+        }
+
+        private static DsosInterpretationMapper mapperInRange(int dsos) {
+            return Arrays.stream(values())
                     .filter(e -> e.range.test(dsos))
                     .findFirst()
                     .orElse(DsosInterpretationMapper.UNKNOWN);
-            return mapperInRange.apply(dsos);
         }
     }
 }

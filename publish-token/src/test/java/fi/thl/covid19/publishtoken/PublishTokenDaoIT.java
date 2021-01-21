@@ -12,6 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Optional;
 
 import static fi.thl.covid19.publishtoken.Validation.SERVICE_NAME_MAX_LENGTH;
 import static fi.thl.covid19.publishtoken.Validation.USER_NAME_MAX_LENGTH;
@@ -42,27 +43,27 @@ public class PublishTokenDaoIT {
     @Test
     public void doubleInsertSameTokenFails() {
         PublishToken token = new PublishToken("testtoken", Instant.now(), Instant.now().plus(1, HOURS));
-        assertTrue(dao.storeToken(token, LocalDate.now(), "testservice", "testuser"));
-        assertFalse(dao.storeToken(token, LocalDate.now(), "testservice", "testuser"));
+        assertTrue(dao.storeToken(token, LocalDate.now(), "testservice", "testuser", Optional.of(true)));
+        assertFalse(dao.storeToken(token, LocalDate.now(), "testservice", "testuser", Optional.of(true)));
         assertStatRowAdded(STATS_TOKEN_CREATE);
     }
 
     @Test
     public void maximumLengthFieldsAreWrittenOk() {
         PublishToken token = new PublishToken("123456789012", Instant.now(), Instant.now().plus(1, HOURS));
-        dao.storeToken(token, LocalDate.now(), repeat("a", SERVICE_NAME_MAX_LENGTH), repeat("a", USER_NAME_MAX_LENGTH));
+        dao.storeToken(token, LocalDate.now(), repeat("a", SERVICE_NAME_MAX_LENGTH), repeat("a", USER_NAME_MAX_LENGTH), Optional.of(false));
     }
 
     @Test
     public void minimumLengthFieldsAreWrittenOk() {
         PublishToken token = new PublishToken("123456789012", Instant.now(), Instant.now().plus(1, HOURS));
-        dao.storeToken(token, LocalDate.now(), "a", "a");
+        dao.storeToken(token, LocalDate.now(), "a", "a", Optional.empty());
     }
 
     @Test
     public void testStatRowsAddedOk() {
         dao.addSmsStatsRow(Instant.now());
-        dao.addTokenCreateStatsRow(Instant.now());
+        dao.addTokenCreateStatsRow(Instant.now(), Optional.empty());
         assertStatRowAdded(STATS_TOKEN_CREATE);
         assertStatRowAdded(STATS_SMS_SEND);
     }

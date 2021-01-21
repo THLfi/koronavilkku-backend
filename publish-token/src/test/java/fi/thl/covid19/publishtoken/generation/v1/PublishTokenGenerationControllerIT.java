@@ -58,7 +58,7 @@ public class PublishTokenGenerationControllerIT {
         Instant start = Instant.now().truncatedTo(SECONDS);
         LocalDate symptomsOnset = LocalDate.now().minus(1, DAYS);
         PublishTokenGenerationRequest request = new PublishTokenGenerationRequest(
-                TEST_USER, symptomsOnset, Optional.empty(), Optional.empty());
+                TEST_USER, symptomsOnset, Optional.empty(), Optional.empty(), Optional.empty());
 
         PublishToken generated = verifiedPost(request);
         Instant end = Instant.now().truncatedTo(SECONDS).plus(1, SECONDS);
@@ -78,11 +78,11 @@ public class PublishTokenGenerationControllerIT {
         assertTokens(TEST_SERVICE, TEST_USER, List.of());
 
         PublishTokenGenerationRequest request1 = new PublishTokenGenerationRequest(
-                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.empty());
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.empty(), Optional.empty());
         PublishTokenGenerationRequest request2 = new PublishTokenGenerationRequest(
-                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(false));
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(false), Optional.of(false));
         PublishTokenGenerationRequest request3 = new PublishTokenGenerationRequest(
-                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(true));
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(true), Optional.of(true));
 
         PublishToken generated1 = verifiedPost(request1);
         PublishToken generated2 = verifiedPost(request2);
@@ -101,11 +101,11 @@ public class PublishTokenGenerationControllerIT {
         assertTokens(TEST_SERVICE, TEST_USER, List.of());
 
         PublishTokenGenerationRequest request1 = new PublishTokenGenerationRequest(
-                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.empty());
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.empty(), Optional.empty());
         PublishTokenGenerationRequest request2 = new PublishTokenGenerationRequest(
-                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(false));
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(false), Optional.of(false));
         PublishTokenGenerationRequest request3 = new PublishTokenGenerationRequest(
-                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(true));
+                TEST_USER, LocalDate.now().minus(1, DAYS), Optional.empty(), Optional.of(true), Optional.of(true));
 
         PublishToken generated1 = verifiedPost(request1);
         PublishToken generated2 = verifiedPost(request2);

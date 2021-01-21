@@ -90,7 +90,7 @@ public class DiagnosisKeyDao {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
                 "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share " +
+                        "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exists " +
                         "from en.diagnosis_key " +
                         "where submission_interval = :interval " +
                         // Level 0 & 7 would get 0 score anyhow, so ignore them
@@ -138,7 +138,7 @@ public class DiagnosisKeyDao {
                 "set efgs_sync = :timestamp, retry_count = retry_count + 1 " +
                 "where key_data in (select key_data from batch) " +
                 "returning key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share";
+                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share, symptoms_exists";
 
         List<TemporaryExposureKey> keys = new ArrayList<>(jdbcTemplate.query(sql, Map.of(
                 "min_retry_count", retry ? 1 : 0,
@@ -192,9 +192,9 @@ public class DiagnosisKeyDao {
     private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, Optional<Timestamp> efgsSync) {
         String sql = "insert into " +
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_sync) " +
+                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_sync, symptoms_exists) " +
                 "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, " +
-                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_sync) " +
+                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_sync, :symptoms_exists) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
                 .map(key -> createParamsMap(interval, key, efgsSync))
@@ -230,7 +230,8 @@ public class DiagnosisKeyDao {
                 Set.of((String[]) rs.getArray("visited_countries").getArray()),
                 Optional.ofNullable((Integer) rs.getObject("days_since_onset_of_symptoms")),
                 rs.getString("origin"),
-                rs.getBoolean("consent_to_share")
+                rs.getBoolean("consent_to_share"),
+                Optional.ofNullable((Boolean) rs.getObject("symptoms_exists"))
         );
     }
 
@@ -246,6 +247,7 @@ public class DiagnosisKeyDao {
         params.put("consent_to_share", key.consentToShareWithEfgs);
         params.put("days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms.orElse(null));
         params.put("efgs_sync", efgsSync.orElse(null));
+        params.put("symptoms_exists", key.symptomsExists.orElse(null));
         return params;
     }
 }

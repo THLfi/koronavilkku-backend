@@ -208,7 +208,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void validRetryIsNotAnError() throws Exception {
-        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
+        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS), Optional.empty());
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
         DiagnosisPublishRequest request = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.of(
                 Map.of("DE", false, "IT", true)
@@ -221,7 +221,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void reusingTokenForDifferentRequestIs403() throws Exception {
-        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
+        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS), Optional.empty());
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
         DiagnosisPublishRequest request1 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
         DiagnosisPublishRequest request2 = new DiagnosisPublishRequest(keyGenerator.someRequestKeys(14), Optional.empty(), Optional.empty());
@@ -351,7 +351,7 @@ public class DiagnosisKeyControllerIT {
         DiagnosisPublishRequest request = new DiagnosisPublishRequest(resetRiskLevelsRequest(keys, 0), visitedCountries, consentToShareWithEfgs);
 
         assertTrue(dao.getAvailableIntervals().isEmpty());
-        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS));
+        PublishTokenVerification verification = new PublishTokenVerification(1, LocalDate.now().minus(7, DAYS), Optional.of(true));
         given(tokenVerificationService.getVerification("123654032165")).willReturn(verification);
         verifiedPost("123654032165", request);
         verify(tokenVerificationService).getVerification("123654032165");

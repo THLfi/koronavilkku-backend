@@ -39,6 +39,7 @@ public class BatchUtil {
                                 .addAllVisitedCountries(localKey.visitedCountries)
                                 .setOrigin(localKey.origin)
                                 .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
+                                //TODO: create mapping
                                 .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms.orElse(DEFAULT_DAYS_SINCE_SYMPTOMS))
                                 .build())
                 .collect(Collectors.toList());
@@ -62,7 +63,9 @@ public class BatchUtil {
                     new HashSet<>(remoteKey.getVisitedCountriesList()),
                     DsosInterpretationMapper.mapFrom(remoteKey.getDaysSinceOnsetOfSymptoms()),
                     remoteKey.getOrigin(),
-                    true));
+                    true,
+                    DsosInterpretationMapper.symptomsExists(remoteKey.getDaysSinceOnsetOfSymptoms())
+                    ));
         } catch (InputValidationException e) {
             LOG.warn("Remote key data validation failed {}", keyValue("exception", e));
             return Stream.empty();

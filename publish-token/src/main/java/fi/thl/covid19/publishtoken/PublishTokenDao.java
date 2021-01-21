@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,20 +34,21 @@ public class PublishTokenDao {
     }
 
     @Transactional
-    public boolean storeToken(PublishToken token, LocalDate symptomsOnset, String originService, String originUser) {
+    public boolean storeToken(PublishToken token, LocalDate symptomsOnset, String originService, String originUser, Optional<Boolean> symptomsExists) {
         try {
             String sql = "insert into " +
-                    "pt.publish_token(token, created_at, valid_through, symptoms_onset, origin_service, origin_user) " +
-                    "values(:token, :created_at, :valid_through, :symptoms_onset, :origin_service, :origin_user)";
-            Map<String, Object> params = Map.of(
-                    "token", token.token,
-                    "created_at", new Timestamp(token.createTime.toEpochMilli()),
-                    "valid_through", new Timestamp(token.validThroughTime.toEpochMilli()),
-                    "symptoms_onset", symptomsOnset,
-                    "origin_service", originService,
-                    "origin_user", originUser);
+                    "pt.publish_token(token, created_at, valid_through, symptoms_onset, origin_service, origin_user, symptoms_exists) " +
+                    "values(:token, :created_at, :valid_through, :symptoms_onset, :origin_service, :origin_user, :symptoms_exists)";
+            Map<String, Object> params = new HashMap<>();
+            params.put("token", token.token);
+            params.put("created_at", new Timestamp(token.createTime.toEpochMilli()));
+            params.put("valid_through", new Timestamp(token.validThroughTime.toEpochMilli()));
+            params.put("symptoms_onset", symptomsOnset);
+            params.put("origin_service", originService);
+            params.put("origin_user", originUser);
+            params.put("symptoms_exists", symptomsExists.orElse(null));
             LOG.info("Adding new publish token");
-            addTokenCreateStatsRow(token.createTime);
+            addTokenCreateStatsRow(token.createTime, symptomsExists);
             return jdbcTemplate.update(sql, params) == 1;
         } catch (DuplicateKeyException e) {
             LOG.warn("Random token collision: {} {}", keyValue("service", originService), keyValue("user", originUser));
@@ -65,7 +67,7 @@ public class PublishTokenDao {
 
     public Optional<PublishTokenVerification> getVerification(String token) {
         String sql =
-                "select id, symptoms_onset " +
+                "select id, symptoms_onset, symptoms_exists " +
                         "from pt.publish_token " +
                         "where token = :token and now() <= valid_through";
         Map<String, Object> params = Map.of("token", token);
@@ -80,10 +82,12 @@ public class PublishTokenDao {
         LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit.toString()), keyValue("count", count));
     }
 
-    public void addTokenCreateStatsRow(Instant createTime) {
-        String sql = "insert into pt.stats_token_create(created_at) values (:created_at)";
-        Map<String, Object> params = Map.of(
-                "created_at", new Timestamp(createTime.toEpochMilli()));
+    public void addTokenCreateStatsRow(Instant createTime, Optional<Boolean> symptomsExists) {
+        String sql = "insert into pt.stats_token_create(created_at, symptoms_exists) values (:created_at, :symptoms_exists)";
+        Map<String, Object> params = new HashMap<>();
+        params.put("created_at", new Timestamp(createTime.toEpochMilli()));
+        params.put("symptoms_exists", symptomsExists.orElse(null));
+
         jdbcTemplate.update(sql, params);
     }
 
@@ -104,6 +108,8 @@ public class PublishTokenDao {
     private PublishTokenVerification mapVerification(ResultSet rs, int i) throws SQLException {
         return new PublishTokenVerification(
                 rs.getInt("id"),
-                rs.getObject("symptoms_onset", LocalDate.class));
+                rs.getObject("symptoms_onset", LocalDate.class),
+                Optional.ofNullable((Boolean) rs.getObject("symptoms_exists"))
+        );
     }
 }

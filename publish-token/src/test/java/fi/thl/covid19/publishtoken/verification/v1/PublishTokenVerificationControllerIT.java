@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Optional;
 
 import static fi.thl.covid19.publishtoken.verification.v1.PublishTokenVerificationController.TOKEN_HEADER;
 import static java.time.temporal.ChronoUnit.*;
@@ -86,7 +87,7 @@ public class PublishTokenVerificationControllerIT {
 
     private void addToken(String token, Instant created, Instant expired, LocalDate symptomsOnset) {
         dao.storeToken(new PublishToken(token, created, expired),
-                symptomsOnset, "testservice", "testuser");
+                symptomsOnset, "testservice", "testuser", Optional.empty());
     }
 
     private void expectFailedVerification(String token) throws Exception {
