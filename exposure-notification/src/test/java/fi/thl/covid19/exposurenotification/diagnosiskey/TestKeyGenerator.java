@@ -35,6 +35,10 @@ public class TestKeyGenerator {
     }
 
     public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare, int dsos) {
+        return someKey(ageDays, symptomsDays, consentToShare, dsos, Optional.empty());
+    }
+
+    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare, int dsos, Optional<Boolean> symptomsExists) {
         byte[] bytes = new byte[16];
         rand.nextBytes(bytes);
         String keyData = Base64.getEncoder().encodeToString(bytes);
@@ -47,7 +51,7 @@ public class TestKeyGenerator {
                 Optional.of(dsos),
                 "FI",
                 consentToShare,
-                Optional.empty()
+                symptomsExists
         );
     }
 

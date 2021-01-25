@@ -74,7 +74,6 @@ public class DiagnosisKeyService {
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
                 visitedCountries,
-                // TODO: we'll need to decide if we'll use verification.symptomsOnset or submission date
                 calculateDsos(verification.symptomsOnset, requestKey),
                 DEFAULT_ORIGIN_COUNTRY,
                 consentToShareWithEfgs,

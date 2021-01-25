@@ -39,8 +39,7 @@ public class BatchUtil {
                                 .addAllVisitedCountries(localKey.visitedCountries)
                                 .setOrigin(localKey.origin)
                                 .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
-                                //TODO: create mapping
-                                .setDaysSinceOnsetOfSymptoms(localKey.daysSinceOnsetOfSymptoms.orElse(DEFAULT_DAYS_SINCE_SYMPTOMS))
+                                .setDaysSinceOnsetOfSymptoms(DsosInterpretationMapper.mapToEfgs(localKey.daysSinceOnsetOfSymptoms, localKey.symptomsExists))
                                 .build())
                 .collect(Collectors.toList());
 

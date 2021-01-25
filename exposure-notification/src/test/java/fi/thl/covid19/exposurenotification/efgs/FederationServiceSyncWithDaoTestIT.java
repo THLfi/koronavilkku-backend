@@ -207,11 +207,9 @@ public class FederationServiceSyncWithDaoTestIT {
         String date = getDateString(LocalDate.now(ZoneOffset.UTC));
         List<TemporaryExposureKey> keys = transform(transform(
                 List.of(
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 1),
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 1000),
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 2000),
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 3000),
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 4000)
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 1, Optional.of(true)),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 2, Optional.of(false)),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 3)
                 )
         ));
         mockServer.expect(ExpectedCount.once(),
@@ -231,9 +229,6 @@ public class FederationServiceSyncWithDaoTestIT {
                 calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKeys.get(0).transmissionRiskLevel);
         assertTrue(dbKeys.get(1).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(1).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
         assertTrue(dbKeys.get(2).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(2).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
-        assertTrue(dbKeys.get(3).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(3).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
-        assertTrue(dbKeys.get(4).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(4).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
-
     }
 
     @Test
