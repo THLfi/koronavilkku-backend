@@ -77,7 +77,7 @@ public class DiagnosisKeyService {
                 calculateDsos(verification.symptomsOnset, requestKey),
                 DEFAULT_ORIGIN_COUNTRY,
                 consentToShareWithEfgs,
-                verification.symptomsExists
+                verification.symptomsExist
         )).collect(Collectors.toList());
     }
 

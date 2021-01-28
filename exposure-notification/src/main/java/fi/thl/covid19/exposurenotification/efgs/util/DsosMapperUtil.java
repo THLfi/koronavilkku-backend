@@ -37,7 +37,7 @@ public class DsosMapperUtil {
             return mapperInRange(dsos).apply(dsos);
         }
 
-        public static Optional<Boolean> symptomsExists(int dsos) {
+        public static Optional<Boolean> symptomsExist(int dsos) {
             DsosInterpretationMapper mapper = mapperInRange(dsos);
 
             if (SYMPTOMS_UNKNOWN.equals(mapper)) {
@@ -47,17 +47,17 @@ public class DsosMapperUtil {
             }
         }
 
-        public static int mapToEfgs(Optional<Integer> localDsos, Optional<Boolean> symptomsExists) {
+        public static int mapToEfgs(Optional<Integer> localDsos, Optional<Boolean> symptomsExist) {
             final int dsos = localDsos.orElse(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
             AtomicInteger efgsDsos = new AtomicInteger(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
-            symptomsExists.ifPresentOrElse(
+            symptomsExist.ifPresentOrElse(
                     e -> efgsDsos.set(mapDsos(dsos, e)),
                     () -> efgsDsos.set(SYMPTOMS_UNKNOWN.zero + dsos));
             return efgsDsos.get();
         }
 
-        private static int mapDsos(int dsos, boolean symptomsExists) {
-            if (symptomsExists) {
+        private static int mapDsos(int dsos, boolean symptomsExist) {
+            if (symptomsExist) {
                 return SYMPTOMS_WITH_DATE.zero + dsos;
             } else {
                 return NO_SYMPTOMS.zero + dsos;

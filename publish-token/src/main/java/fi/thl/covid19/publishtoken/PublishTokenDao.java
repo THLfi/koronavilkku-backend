@@ -34,11 +34,11 @@ public class PublishTokenDao {
     }
 
     @Transactional
-    public boolean storeToken(PublishToken token, LocalDate symptomsOnset, String originService, String originUser, Optional<Boolean> symptomsExists) {
+    public boolean storeToken(PublishToken token, LocalDate symptomsOnset, String originService, String originUser, Optional<Boolean> symptomsExist) {
         try {
             String sql = "insert into " +
-                    "pt.publish_token(token, created_at, valid_through, symptoms_onset, origin_service, origin_user, symptoms_exists) " +
-                    "values(:token, :created_at, :valid_through, :symptoms_onset, :origin_service, :origin_user, :symptoms_exists)";
+                    "pt.publish_token(token, created_at, valid_through, symptoms_onset, origin_service, origin_user, symptoms_exist) " +
+                    "values(:token, :created_at, :valid_through, :symptoms_onset, :origin_service, :origin_user, :symptoms_exist)";
             Map<String, Object> params = new HashMap<>();
             params.put("token", token.token);
             params.put("created_at", new Timestamp(token.createTime.toEpochMilli()));
@@ -46,9 +46,9 @@ public class PublishTokenDao {
             params.put("symptoms_onset", symptomsOnset);
             params.put("origin_service", originService);
             params.put("origin_user", originUser);
-            params.put("symptoms_exists", symptomsExists.orElse(null));
+            params.put("symptoms_exists", symptomsExist.orElse(null));
             LOG.info("Adding new publish token");
-            addTokenCreateStatsRow(token.createTime, symptomsExists);
+            addTokenCreateStatsRow(token.createTime, symptomsExist);
             return jdbcTemplate.update(sql, params) == 1;
         } catch (DuplicateKeyException e) {
             LOG.warn("Random token collision: {} {}", keyValue("service", originService), keyValue("user", originUser));
@@ -82,11 +82,11 @@ public class PublishTokenDao {
         LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit.toString()), keyValue("count", count));
     }
 
-    public void addTokenCreateStatsRow(Instant createTime, Optional<Boolean> symptomsExists) {
-        String sql = "insert into pt.stats_token_create(created_at, symptoms_exists) values (:created_at, :symptoms_exists)";
+    public void addTokenCreateStatsRow(Instant createTime, Optional<Boolean> symptomsExist) {
+        String sql = "insert into pt.stats_token_create(created_at, symptoms_exists) values (:created_at, :symptoms_exist)";
         Map<String, Object> params = new HashMap<>();
         params.put("created_at", new Timestamp(createTime.toEpochMilli()));
-        params.put("symptoms_exists", symptomsExists.orElse(null));
+        params.put("symptoms_exists", symptomsExist.orElse(null));
 
         jdbcTemplate.update(sql, params);
     }

@@ -247,7 +247,7 @@ public class DiagnosisKeyDao {
         params.put("consent_to_share", key.consentToShareWithEfgs);
         params.put("days_since_onset_of_symptoms", key.daysSinceOnsetOfSymptoms.orElse(null));
         params.put("efgs_sync", efgsSync.orElse(null));
-        params.put("symptoms_exists", key.symptomsExists.orElse(null));
+        params.put("symptoms_exist", key.symptomsExist.orElse(null));
         return params;
     }
 }

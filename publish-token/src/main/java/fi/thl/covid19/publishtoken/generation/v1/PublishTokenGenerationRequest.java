@@ -19,14 +19,14 @@ public class PublishTokenGenerationRequest {
     public final Optional<String> patientSmsNumber;
     @Deprecated
     public final boolean validateOnly;
-    public final Optional<Boolean> symptomsExists;
+    public final Optional<Boolean> symptomsExist;
 
     @JsonCreator
     public PublishTokenGenerationRequest(String requestUser,
                                          LocalDate symptomsOnset,
                                          Optional<String> patientSmsNumber,
                                          Optional<Boolean> validateOnly,
-                                         Optional<Boolean> symptomsExists) {
+                                         Optional<Boolean> symptomsExist) {
 
         this.validateOnly = validateOnly.orElse(false);
 
@@ -34,7 +34,7 @@ public class PublishTokenGenerationRequest {
             this.requestUser = validateUserName(requireNonNull(requestUser, "User required"));
             this.symptomsOnset = requireNonNull(symptomsOnset, "Symptoms onset date required");
             this.patientSmsNumber = requireNonNull(patientSmsNumber).map(Validation::normalizeAndValidatePhoneNumber);
-            this.symptomsExists = requireNonNull(symptomsExists);
+            this.symptomsExist = requireNonNull(symptomsExist);
             if (symptomsOnset.isAfter(LocalDate.now(ZoneOffset.UTC).plus(1, ChronoUnit.DAYS))) {
                 throw new InputValidationException("Symptoms onset time in the future: date=" + symptomsOnset);
             }

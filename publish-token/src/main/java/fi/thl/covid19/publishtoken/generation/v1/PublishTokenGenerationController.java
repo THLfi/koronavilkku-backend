@@ -50,7 +50,7 @@ public class PublishTokenGenerationController {
                     correctedDate,
                     requestService,
                     request.requestUser,
-                    request.symptomsExists);
+                    request.symptomsExist);
             request.patientSmsNumber.ifPresent(number -> smsService.send(number, token));
             return token;
         }

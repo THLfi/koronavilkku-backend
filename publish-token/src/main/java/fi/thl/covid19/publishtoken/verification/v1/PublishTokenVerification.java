@@ -8,11 +8,11 @@ import static java.util.Objects.requireNonNull;
 public class PublishTokenVerification {
     public final int id;
     public final LocalDate symptomsOnset;
-    public final Optional<Boolean> symptomsExists;
+    public final Optional<Boolean> symptomsExist;
 
-    public PublishTokenVerification(int id, LocalDate symptomsOnset, Optional<Boolean> symptomsExists) {
+    public PublishTokenVerification(int id, LocalDate symptomsOnset, Optional<Boolean> symptomsExist) {
         this.id = id;
         this.symptomsOnset = requireNonNull(symptomsOnset);
-        this.symptomsExists = requireNonNull(symptomsExists);
+        this.symptomsExist = requireNonNull(symptomsExist);
     }
 }
