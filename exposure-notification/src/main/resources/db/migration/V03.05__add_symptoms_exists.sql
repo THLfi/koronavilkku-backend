@@ -1,1 +1,1 @@
-alter table en.diagnosis_key add symptoms_exists boolean;
+alter table en.diagnosis_key add symptoms_exist boolean;

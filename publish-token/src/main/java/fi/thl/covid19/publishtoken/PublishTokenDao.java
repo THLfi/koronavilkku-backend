@@ -46,7 +46,7 @@ public class PublishTokenDao {
             params.put("symptoms_onset", symptomsOnset);
             params.put("origin_service", originService);
             params.put("origin_user", originUser);
-            params.put("symptoms_exists", symptomsExist.orElse(null));
+            params.put("symptoms_exist", symptomsExist.orElse(null));
             LOG.info("Adding new publish token");
             addTokenCreateStatsRow(token.createTime, symptomsExist);
             return jdbcTemplate.update(sql, params) == 1;
@@ -67,7 +67,7 @@ public class PublishTokenDao {
 
     public Optional<PublishTokenVerification> getVerification(String token) {
         String sql =
-                "select id, symptoms_onset, symptoms_exists " +
+                "select id, symptoms_onset, symptoms_exist " +
                         "from pt.publish_token " +
                         "where token = :token and now() <= valid_through";
         Map<String, Object> params = Map.of("token", token);
@@ -83,10 +83,10 @@ public class PublishTokenDao {
     }
 
     public void addTokenCreateStatsRow(Instant createTime, Optional<Boolean> symptomsExist) {
-        String sql = "insert into pt.stats_token_create(created_at, symptoms_exists) values (:created_at, :symptoms_exist)";
+        String sql = "insert into pt.stats_token_create(created_at, symptoms_exist) values (:created_at, :symptoms_exist)";
         Map<String, Object> params = new HashMap<>();
         params.put("created_at", new Timestamp(createTime.toEpochMilli()));
-        params.put("symptoms_exists", symptomsExist.orElse(null));
+        params.put("symptoms_exist", symptomsExist.orElse(null));
 
         jdbcTemplate.update(sql, params);
     }
@@ -109,7 +109,7 @@ public class PublishTokenDao {
         return new PublishTokenVerification(
                 rs.getInt("id"),
                 rs.getObject("symptoms_onset", LocalDate.class),
-                Optional.ofNullable((Boolean) rs.getObject("symptoms_exists"))
+                Optional.ofNullable((Boolean) rs.getObject("symptoms_exist"))
         );
     }
 }
