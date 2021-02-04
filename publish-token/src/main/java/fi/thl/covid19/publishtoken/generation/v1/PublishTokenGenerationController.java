@@ -7,8 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-
 import static fi.thl.covid19.publishtoken.Validation.validateUserName;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -35,7 +33,6 @@ public class PublishTokenGenerationController {
                                       @RequestHeader(name = VALIDATE_ONLY_HEADER, required = false) boolean validateOnly,
                                       @RequestBody PublishTokenGenerationRequest request) {
         String requestService = Validation.validateServiceName(rawRequestService);
-        LocalDate correctedDate = fixForErroneousSymptomsOnsetSendByClient(request.symptomsOnset, requestService);
 
         if (validateOnly || request.validateOnly) {
             LOG.debug("API Validation Test: Generate new publish token: {} {}",
@@ -47,7 +44,7 @@ public class PublishTokenGenerationController {
                     keyValue("user", request.requestUser),
                     keyValue("smsUsed", request.patientSmsNumber.isPresent()));
             PublishToken token = publishTokenService.generateAndStore(
-                    correctedDate,
+                    request.symptomsOnset,
                     requestService,
                     request.requestUser,
                     request.symptomsExist);
@@ -62,14 +59,5 @@ public class PublishTokenGenerationController {
         String validatedUser = validateUserName(requireNonNull(user));
         LOG.info("Fetching tokens: {} {}", keyValue("service", validatedService), keyValue("user", user));
         return new PublishTokenList(publishTokenService.getTokensBy(validatedService, validatedUser));
-    }
-
-    // TODO: remove after fix is made on client side
-    private LocalDate fixForErroneousSymptomsOnsetSendByClient(LocalDate receivedDate, String requestService) {
-        if ("www.omaolo.fi".equals(requestService)) {
-            return receivedDate.plusDays(1);
-        } else {
-            return receivedDate;
-        }
     }
 }
