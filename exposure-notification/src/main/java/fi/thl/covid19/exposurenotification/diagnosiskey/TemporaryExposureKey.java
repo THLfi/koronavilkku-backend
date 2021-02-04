@@ -25,6 +25,8 @@ public final class TemporaryExposureKey {
     public final String origin;
     /** Consent to share data with efgs **/
     public final boolean consentToShareWithEfgs;
+    /** Existence of symptoms **/
+    public final Optional<Boolean> symptomsExist;
 
 
     public TemporaryExposureKey(String keyData,
@@ -34,7 +36,8 @@ public final class TemporaryExposureKey {
                                 Set<String> visitedCountries,
                                 Optional<Integer> daysSinceOnsetOfSymptoms,
                                 String origin,
-                                boolean consentToShareWithEfgs) {
+                                boolean consentToShareWithEfgs,
+                                Optional<Boolean> symptomsExist) {
         this.keyData = validateKeyData(requireNonNull(keyData));
         this.transmissionRiskLevel = validateTransmissionRiskLevel(transmissionRiskLevel);
         this.rollingStartIntervalNumber = validateRollingStartIntervalNumber(rollingStartIntervalNumber);
@@ -43,6 +46,7 @@ public final class TemporaryExposureKey {
         this.daysSinceOnsetOfSymptoms = daysSinceOnsetOfSymptoms;
         this.origin = Validation.getValidatedISOCountryCode(requireNonNull(origin));
         this.consentToShareWithEfgs = consentToShareWithEfgs;
+        this.symptomsExist = requireNonNull(symptomsExist);
     }
 
     @Override
@@ -57,13 +61,14 @@ public final class TemporaryExposureKey {
                 visitedCountries.equals(that.visitedCountries) &&
                 daysSinceOnsetOfSymptoms.equals(that.daysSinceOnsetOfSymptoms) &&
                 origin.equals(that.origin) &&
-                consentToShareWithEfgs == that.consentToShareWithEfgs;
+                consentToShareWithEfgs == that.consentToShareWithEfgs &&
+                symptomsExist.equals(that.symptomsExist);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(keyData, transmissionRiskLevel, rollingStartIntervalNumber, rollingPeriod,
-                visitedCountries, daysSinceOnsetOfSymptoms, origin, consentToShareWithEfgs);
+                visitedCountries, daysSinceOnsetOfSymptoms, origin, consentToShareWithEfgs, symptomsExist);
     }
 
     @Override
@@ -77,6 +82,7 @@ public final class TemporaryExposureKey {
                 ", daysSinceOnsetOfSymptoms=" + daysSinceOnsetOfSymptoms +
                 ", origin=" + origin +
                 ", consentToShareWithEfgs=" + consentToShareWithEfgs +
+                ", symptomsExist=" + symptomsExist +
                 '}';
     }
 }

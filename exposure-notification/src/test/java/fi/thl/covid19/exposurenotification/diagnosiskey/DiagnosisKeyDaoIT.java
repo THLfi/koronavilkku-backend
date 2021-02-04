@@ -151,13 +151,13 @@ public class DiagnosisKeyDaoIT {
     public void keysAreSorted() {
         int interval = to24HourInterval(Instant.now());
         TemporaryExposureKey key1 = new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==",
-                2, interval, 144, Set.of(), Optional.empty(), "FI", false);
+                2, interval, 144, Set.of(), Optional.empty(), "FI", false, Optional.empty());
         TemporaryExposureKey key2 = new TemporaryExposureKey("0MwsNfC4Rgnl8SxV3YWrqA==",
-                2, interval - 1, 144, Set.of(), Optional.of(0), "FI", false);
+                2, interval - 1, 144, Set.of(), Optional.of(0), "FI", false, Optional.empty());
         TemporaryExposureKey key3 = new TemporaryExposureKey("1dm+92gI87Vy5ZABErgZJw==",
-                2, interval - 2, 144, Set.of(), Optional.of(0), "FI", false);
+                2, interval - 2, 144, Set.of(), Optional.of(0), "FI", false, Optional.empty());
         TemporaryExposureKey key4 = new TemporaryExposureKey("ulu19n4b2ii0BJvw5K7XjQ==",
-                2, interval - 3, 144, Set.of(), Optional.of(0), "FI", false);
+                2, interval - 3, 144, Set.of(), Optional.of(0), "FI", false, Optional.empty());
 
         // Expect ordering to be by key, not by insert order
         dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, List.of(key1, key2, key3, key4), 4);

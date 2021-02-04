@@ -38,10 +38,10 @@ public class PublishTokenService {
         LOG.info("Initialized: {}", keyValue("tokenValidityDuration", tokenValidityDuration));
     }
 
-    public PublishToken generateAndStore(LocalDate symptomsOnset, String requestService, String requestUser) {
+    public PublishToken generateAndStore(LocalDate symptomsOnset, String requestService, String requestUser, Optional<Boolean> symptomsExist) {
         int retryCount = 0;
         PublishToken token = generate();
-        while (!dao.storeToken(token, symptomsOnset, requestService, requestUser)) {
+        while (!dao.storeToken(token, symptomsOnset, requestService, requestUser, symptomsExist)) {
             if (retryCount++ >= 5) throw new IllegalStateException("Unable to generate unique token!");
             token = generate();
         }

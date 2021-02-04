@@ -114,6 +114,6 @@ public class DiagnosisKeyServiceTest {
     private TemporaryExposureKey generateDomainKeyAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {
         int interval = to10MinInterval(keyDate.atStartOfDay(UTC).toInstant());
         return new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==", transmissionRiskLevel, interval,
-                rollingPeriod, Set.of(), Optional.of(0), "FI", false);
+                rollingPeriod, Set.of(), Optional.of(0), "FI", false, Optional.empty());
     }
 }

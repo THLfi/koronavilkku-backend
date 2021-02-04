@@ -15,6 +15,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 import static fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerificationServiceRest.PUBLISH_TOKEN_HEADER;
 import static fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerificationServiceRest.TOKEN_VERIFICATION_PATH;
@@ -58,7 +59,7 @@ public class PublishTokenVerificationServiceRestTest {
 
     @Test
     public void verificationWorks() throws Exception {
-        PublishTokenVerification response = new PublishTokenVerification(123, LocalDate.now());
+        PublishTokenVerification response = new PublishTokenVerification(123, LocalDate.now(), Optional.empty());
         server.expect(requestTo(VERIFICATION_URL))
                 .andExpect(header(PUBLISH_TOKEN_HEADER, "123456789012"))
                 .andRespond(withSuccess(objectMapper.writeValueAsString(response), APPLICATION_JSON));

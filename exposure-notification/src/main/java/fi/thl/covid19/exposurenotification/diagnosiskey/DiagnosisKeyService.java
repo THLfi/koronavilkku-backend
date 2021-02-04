@@ -47,7 +47,7 @@ public class DiagnosisKeyService {
         Instant now = Instant.now();
         PublishTokenVerification verification = tokenVerificationService.getVerification(publishToken);
         List<TemporaryExposureKeyRequest> filtered = filter(request.keys, now);
-        List<TemporaryExposureKey> keys = transform(filtered, request.visitedCountriesSet, request.consentToShareWithEfgs, verification.symptomsOnset);
+        List<TemporaryExposureKey> keys = transform(filtered, request.visitedCountriesSet, request.consentToShareWithEfgs, verification);
         int currentInterval = IntervalNumber.to24HourInterval(now);
         LOG.info("Publish token verified: {} {} {} {} {}",
                 keyValue("currentInterval", currentInterval),
@@ -66,17 +66,18 @@ public class DiagnosisKeyService {
     private List<TemporaryExposureKey> transform(
             List<TemporaryExposureKeyRequest> requestKeys,
             Set<String> visitedCountries,
-            boolean consentToShareWithEfgs, LocalDate symptomsOnset
+            boolean consentToShareWithEfgs, PublishTokenVerification verification
     ) {
         return requestKeys.stream().map(requestKey -> new TemporaryExposureKey(
                 requestKey.keyData,
-                getRiskBucket(symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)),
+                getRiskBucket(verification.symptomsOnset, utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)),
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
                 visitedCountries,
-                calculateDsos(symptomsOnset, requestKey),
+                calculateDsos(verification.symptomsOnset, requestKey),
                 DEFAULT_ORIGIN_COUNTRY,
-                consentToShareWithEfgs
+                consentToShareWithEfgs,
+                verification.symptomsExist
         )).collect(Collectors.toList());
     }
 

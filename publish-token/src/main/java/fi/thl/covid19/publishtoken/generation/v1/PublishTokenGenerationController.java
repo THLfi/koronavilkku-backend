@@ -49,7 +49,8 @@ public class PublishTokenGenerationController {
             PublishToken token = publishTokenService.generateAndStore(
                     correctedDate,
                     requestService,
-                    request.requestUser);
+                    request.requestUser,
+                    request.symptomsExist);
             request.patientSmsNumber.ifPresent(number -> smsService.send(number, token));
             return token;
         }
