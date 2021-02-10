@@ -49,14 +49,16 @@ public class DiagnosisKeyService {
         List<TemporaryExposureKeyRequest> filtered = filter(request.keys, now);
         List<TemporaryExposureKey> keys = transform(filtered, request.visitedCountriesSet, request.consentToShareWithEfgs, verification);
         int currentInterval = IntervalNumber.to24HourInterval(now);
-        LOG.info("Publish token verified: {} {} {} {} {}",
+        int currentIntervalV2 = IntervalNumber.toV2Interval(now);
+        LOG.info("Publish token verified: {} {} {} {} {} {}",
                 keyValue("currentInterval", currentInterval),
+                keyValue("currentIntervalV2", currentIntervalV2),
                 keyValue("filterStart", verification.symptomsOnset.toString()),
                 keyValue("filterEnd", now.toString()),
                 keyValue("postedCount", request.keys.size()),
                 keyValue("filteredCount", filtered.size())
         );
-        dao.addKeys(verification.id, checksum(keys), currentInterval, keys, getExportedKeyCount(keys));
+        dao.addKeys(verification.id, checksum(keys), currentInterval, currentIntervalV2, keys, getExportedKeyCount(keys));
     }
 
     private long getExportedKeyCount(List<TemporaryExposureKey> keys) {

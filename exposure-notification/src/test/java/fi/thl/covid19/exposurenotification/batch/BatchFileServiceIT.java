@@ -11,6 +11,8 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
 
+import static fi.thl.covid19.exposurenotification.batch.BatchIntervals.DAILY_BATCHES_COUNT;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.from24hourToV2Interval;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,10 +48,11 @@ public class BatchFileServiceIT {
     @Test
     public void generateBatchesWorks() {
         for (int next = INTERVALS.first; next <= INTERVALS.last; next++) {
-            dao.addKeys(next, "TEST" + next, next, keyGenerator.someKeys(5), 5);
+            dao.addKeys(next, "TEST" + next, next, from24hourToV2Interval(next), keyGenerator.someKeys(5), 5);
             assertFalse(fileStorage.fileExists(new BatchId(next)));
             fileService.cacheMissingBatchesBetween(INTERVALS.first, INTERVALS.last);
             assertTrue(fileStorage.fileExists(new BatchId(next)));
+            // TODO: V2
         }
     }
 }

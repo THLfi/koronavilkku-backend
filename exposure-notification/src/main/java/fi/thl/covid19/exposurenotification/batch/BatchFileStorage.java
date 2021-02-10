@@ -126,7 +126,7 @@ public class BatchFileStorage {
             if (channel.size() > Integer.MAX_VALUE) {
                 throw new IllegalStateException("File too large: batchId=" + batchId + " size=" + channel.size());
             }
-            ByteBuffer buffer = ByteBuffer.allocate((int)channel.size());
+            ByteBuffer buffer = ByteBuffer.allocate((int) channel.size());
             channel.read(buffer);
             return Optional.of(buffer.array());
         } catch (NoSuchFileException e) {

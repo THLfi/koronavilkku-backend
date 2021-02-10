@@ -13,7 +13,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
-import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to24HourInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.util.DigestUtils.md5DigestAsHex;
 
@@ -43,12 +43,14 @@ public class DiagnosisKeyDaoIT {
 
     @Test
     public void createReadDeleteWorks() {
-        int interval = to24HourInterval(Instant.now());
+        Instant now = Instant.now();
+        int interval = to24HourInterval(now);
+        int intervalV2 = toV2Interval(now);
 
         List<TemporaryExposureKey> keys = keyGenerator.someKeys(3);
         assertKeysNotStored(interval, keys);
 
-        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, keys, keys.size());
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, intervalV2, keys, keys.size());
         assertKeysStored(interval, keys);
         assertStatRowAdded();
 
@@ -63,16 +65,20 @@ public class DiagnosisKeyDaoIT {
 
     @Test
     public void emptyKeysListCreatesStatsRowOk() {
-        int interval = to24HourInterval(Instant.now());
-        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, Collections.emptyList(), 0);
+        Instant now = Instant.now();
+        int interval = to24HourInterval(now);
+        int intervalV2 = toV2Interval(now);
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, intervalV2, Collections.emptyList(), 0);
         assertStatRowAdded();
         assertCountsAreStoredOk(0, 0);
     }
 
     @Test
     public void totalCountStatsStoredOk() {
-        int interval = to24HourInterval(Instant.now());
-        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, keyGenerator.someKeys(5), 4);
+        Instant now = Instant.now();
+        int interval = to24HourInterval(now);
+        int intervalV2 = toV2Interval(now);
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, intervalV2, keyGenerator.someKeys(5), 4);
         assertStatRowAdded();
         assertCountsAreStoredOk(5, 4);
     }
@@ -81,29 +87,42 @@ public class DiagnosisKeyDaoIT {
     public void intervalMetadataWorks() {
         assertEquals(List.of(), dao.getAvailableIntervals());
         assertEquals(0, dao.getKeyCount(1234));
+        assertEquals(0, dao.getKeyCountV2(from24hourToV2Interval(1234)));
 
-        dao.addKeys(1, md5DigestAsHex("test".getBytes()), 1234, keyGenerator.someKeys(1), 1);
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), 1234, from24hourToV2Interval(1234), keyGenerator.someKeys(1), 1);
         assertEquals(List.of(1234), dao.getAvailableIntervals());
         assertEquals(1, dao.getKeyCount(1234));
+        assertEquals(List.of(from24hourToV2Interval(1234)), dao.getAvailableIntervalsV2());
+        assertEquals(1, dao.getKeyCountV2(from24hourToV2Interval(1234)));
 
-        dao.addKeys(2, md5DigestAsHex("test2".getBytes()), 1235, keyGenerator.someKeys(2), 2);
+        dao.addKeys(2, md5DigestAsHex("test2".getBytes()), 1235, from24hourToV2Interval(1235), keyGenerator.someKeys(2), 2);
         assertEquals(List.of(1234, 1235), dao.getAvailableIntervals());
         assertEquals(1, dao.getKeyCount(1234));
         assertEquals(2, dao.getKeyCount(1235));
         assertEquals(0, dao.getKeyCount(1236));
+        assertEquals(List.of(from24hourToV2Interval(1234), from24hourToV2Interval(1235)), dao.getAvailableIntervalsV2());
+        assertEquals(1, dao.getKeyCountV2(from24hourToV2Interval(1234)));
+        assertEquals(2, dao.getKeyCountV2(from24hourToV2Interval(1235)));
+        assertEquals(0, dao.getKeyCountV2(from24hourToV2Interval(1236)));
 
-        dao.addKeys(3, md5DigestAsHex("test3".getBytes()), 1236, keyGenerator.someKeys(3), 3);
+        dao.addKeys(3, md5DigestAsHex("test3".getBytes()), 1236, from24hourToV2Interval(1236), keyGenerator.someKeys(3), 3);
         assertEquals(List.of(1234, 1235, 1236), dao.getAvailableIntervals());
         assertEquals(3, dao.getKeyCount(1236));
+        assertEquals(List.of(from24hourToV2Interval(1234), from24hourToV2Interval(1235), from24hourToV2Interval(1236)), dao.getAvailableIntervalsV2());
+        assertEquals(3, dao.getKeyCountV2(from24hourToV2Interval(1236)));
 
-        dao.addKeys(4, md5DigestAsHex("test4".getBytes()), 123, keyGenerator.someKeys(1), 1);
+        dao.addKeys(4, md5DigestAsHex("test4".getBytes()), 123, from24hourToV2Interval(123), keyGenerator.someKeys(1), 1);
         assertEquals(List.of(123, 1234, 1235, 1236), dao.getAvailableIntervals());
         assertEquals(1, dao.getKeyCount(123));
+        assertEquals(List.of(from24hourToV2Interval(123), from24hourToV2Interval(1234), from24hourToV2Interval(1235), from24hourToV2Interval(1236)), dao.getAvailableIntervalsV2());
+        assertEquals(1, dao.getKeyCountV2(from24hourToV2Interval(123)));
     }
 
     @Test
     public void multipleInsertsWork() {
-        int interval = to24HourInterval(Instant.now());
+        Instant now = Instant.now();
+        int interval = to24HourInterval(now);
+        int intervalV2 = toV2Interval(now);
 
         List<TemporaryExposureKey> keys1 = keyGenerator.someKeys(3);
         List<TemporaryExposureKey> keys2 = keyGenerator.someKeys(3);
@@ -111,45 +130,51 @@ public class DiagnosisKeyDaoIT {
         assertKeysNotStored(interval, keys1);
         assertKeysNotStored(interval, keys2);
 
-        assertDoesNotThrow(() -> dao.addKeys(1, md5DigestAsHex("test1".getBytes()), interval, keys1, keys1.size()));
+        assertDoesNotThrow(() -> dao.addKeys(1, md5DigestAsHex("test1".getBytes()), interval, intervalV2, keys1, keys1.size()));
         assertKeysStored(interval, keys1);
         assertKeysNotStored(interval, keys2);
 
-        assertDoesNotThrow(() -> dao.addKeys(2, md5DigestAsHex("test2".getBytes()), interval, keys2, keys2.size()));
+        assertDoesNotThrow(() -> dao.addKeys(2, md5DigestAsHex("test2".getBytes()), interval, intervalV2, keys2, keys2.size()));
         assertKeysStored(interval, keys1);
         assertKeysStored(interval, keys2);
     }
 
     @Test
     public void doubleInsertWithSameVerificationIdAndHashIsOkWithNoChange() {
-        int interval = to24HourInterval(Instant.now());
+        Instant now = Instant.now();
+        int interval = to24HourInterval(now);
+        int intervalV2 = toV2Interval(now);
 
         List<TemporaryExposureKey> keys1 = keyGenerator.someKeys(3);
-        assertDoesNotThrow(() -> dao.addKeys(1, md5DigestAsHex("test1".getBytes()), interval, keys1, keys1.size()));
+        assertDoesNotThrow(() -> dao.addKeys(1, md5DigestAsHex("test1".getBytes()), interval, intervalV2, keys1, keys1.size()));
         assertKeysStored(interval, keys1);
 
         List<TemporaryExposureKey> keys2 = keyGenerator.someKeys(3);
-        assertDoesNotThrow(() -> dao.addKeys(1, md5DigestAsHex("test1".getBytes()), interval, keys2, keys2.size()));
+        assertDoesNotThrow(() -> dao.addKeys(1, md5DigestAsHex("test1".getBytes()), interval, intervalV2, keys2, keys2.size()));
         assertKeysNotStored(interval, keys2);
     }
 
     @Test
     public void doubleInsertWithSameVerificationIdAndDifferentHashFails() {
-        int interval = to24HourInterval(Instant.now());
+        Instant now = Instant.now();
+        int interval = to24HourInterval(now);
+        int intervalV2 = toV2Interval(now);
 
         List<TemporaryExposureKey> keys1 = keyGenerator.someKeys(3);
-        assertDoesNotThrow(() -> dao.addKeys(1, "test1", interval, keys1, keys1.size()));
+        assertDoesNotThrow(() -> dao.addKeys(1, "test1", interval, intervalV2, keys1, keys1.size()));
         assertKeysStored(interval, keys1);
 
         List<TemporaryExposureKey> keys2 = keyGenerator.someKeys(3);
         assertThrows(TokenValidationException.class,
-                () -> dao.addKeys(1, "test2", interval, keys2, keys2.size()));
+                () -> dao.addKeys(1, "test2", interval, intervalV2, keys2, keys2.size()));
         assertKeysNotStored(interval, keys2);
     }
 
     @Test
     public void keysAreSorted() {
-        int interval = to24HourInterval(Instant.now());
+        Instant now = Instant.now();
+        int interval = to24HourInterval(now);
+        int intervalV2 = toV2Interval(now);
         TemporaryExposureKey key1 = new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==",
                 2, interval, 144, Set.of(), Optional.empty(), "FI", false, Optional.empty());
         TemporaryExposureKey key2 = new TemporaryExposureKey("0MwsNfC4Rgnl8SxV3YWrqA==",
@@ -160,7 +185,7 @@ public class DiagnosisKeyDaoIT {
                 2, interval - 3, 144, Set.of(), Optional.of(0), "FI", false, Optional.empty());
 
         // Expect ordering to be by key, not by insert order
-        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, List.of(key1, key2, key3, key4), 4);
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, intervalV2, List.of(key1, key2, key3, key4), 4);
         List<TemporaryExposureKey> fromDb = dao.getIntervalKeys(interval);
         assertEquals(List.of(key2, key3, key1, key4), fromDb);
     }

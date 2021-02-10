@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 
+import static fi.thl.covid19.exposurenotification.batch.BatchIntervals.DAILY_BATCHES_COUNT;
+
 public final class IntervalNumber {
 
     private IntervalNumber() {}
@@ -14,6 +16,14 @@ public final class IntervalNumber {
 
     public static int to24HourInterval(Instant time) {
         long value = time.getEpochSecond() / SECONDS_PER_24H;
+        if (value > Integer.MAX_VALUE) {
+            throw new IllegalStateException("Cannot represent time as 24h interval: " + time);
+        }
+        return (int) value;
+    }
+
+    public static int toV2Interval(Instant time) {
+        long value = time.getEpochSecond() / (SECONDS_PER_24H / DAILY_BATCHES_COUNT);
         if (value > Integer.MAX_VALUE) {
             throw new IllegalStateException("Cannot represent time as 24h interval: " + time);
         }
@@ -45,5 +55,9 @@ public final class IntervalNumber {
     public static LocalDate utcDateOf10MinInterval(int interval) {
         Instant startMoment = Instant.ofEpochSecond((long) interval * SECONDS_PER_10MIN);
         return startMoment.atOffset(ZoneOffset.UTC).toLocalDate();
+    }
+
+    public static int from24hourToV2Interval(int interval24hour) {
+       return interval24hour * 24 / DAILY_BATCHES_COUNT;
     }
 }

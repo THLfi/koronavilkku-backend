@@ -56,8 +56,17 @@ public class BatchFileService {
     }
 
     public int cacheMissingBatchesBetween(int fromInterval, int untilInterval) {
-        int added = 0;
         List<Integer> available = dao.getAvailableIntervalsDirect();
+        return cacheBatchesBetweenInner(fromInterval, untilInterval, available);
+    }
+
+    public int cacheMissingBatchesBetweenV2(int fromInterval, int untilInterval) {
+        List<Integer> available = dao.getAvailableIntervalsDirectV2();
+        return cacheBatchesBetweenInner(fromInterval, untilInterval, available);
+    }
+
+    private int cacheBatchesBetweenInner(int fromInterval, int untilInterval, List<Integer> available) {
+        int added = 0;
         for (int interval = fromInterval; interval <= untilInterval; interval++) {
             BatchId id = new BatchId(interval);
             if (available.contains(interval) && !batchFileStorage.fileExists(id)) {
