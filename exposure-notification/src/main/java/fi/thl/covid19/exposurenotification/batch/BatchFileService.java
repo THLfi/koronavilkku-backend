@@ -150,11 +150,12 @@ public class BatchFileService {
 
     private byte[] createBatchDataV2(BatchId id) {
         LOG.debug("Generating V2 batch file: {}", keyValue("batchId", id));
-        List<TemporaryExposureKey> keys = dao.getIntervalKeysV2(id.intervalNumberV2.orElseThrow());
+        int intervalV2 = id.intervalNumberV2.orElseThrow();
+        List<TemporaryExposureKey> keys = dao.getIntervalKeysV2(intervalV2);
         if (keys.isEmpty()) {
             throw new BatchNotFoundException(id);
         } else {
-            BatchMetadata metadata = BatchMetadata.ofV2(id.intervalNumber, region);
+            BatchMetadata metadata = BatchMetadata.ofV2(intervalV2, region);
             return BatchFileFactory.createBatchFile(signatureConfig, signingKey, metadata, keys);
         }
     }
