@@ -17,14 +17,15 @@ import java.util.zip.ZipOutputStream;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class BatchFileFactory {
-    private BatchFileFactory() {}
+    private BatchFileFactory() {
+    }
 
     public static final String BIN_HEADER = "EK Export v1";
     public static final int BIN_HEADER_LENGTH = 16;
     public static final String BIN_NAME = "export.bin";
     public static final String SIG_NAME = "export.sig";
 
-    private static final int DEFAULT_BYTE_SIZE = 32*1024;
+    private static final int DEFAULT_BYTE_SIZE = 32 * 1024;
 
     public static byte[] createBatchFile(
             SignatureConfig signatureConfig,
@@ -76,7 +77,7 @@ public final class BatchFileFactory {
                 .setBatchSize(1)
                 .addAllKeys(keys.stream().map(BatchFileFactory::toProtoBuf).collect(Collectors.toList()))
                 .addSignatureInfos(BatchFileFactory.createSignatureInfo(signatureConfig))
-            .build();
+                .build();
     }
 
     private static SignatureInfo createSignatureInfo(SignatureConfig config) {
@@ -104,7 +105,7 @@ public final class BatchFileFactory {
                 .setRollingStartIntervalNumber(key.rollingStartIntervalNumber)
                 .setRollingPeriod(key.rollingPeriod)
                 .setReportType(TemporaryExposureKey.ReportType.CONFIRMED_TEST);
-        key.daysSinceOnsetOfSymptoms.ifPresent(builder::setDaysSinceOnsetOfSymptoms);
-        return builder.build();
+
+        return key.daysSinceOnsetOfSymptoms.map(integer -> builder.setDaysSinceOnsetOfSymptoms(integer).build()).orElseGet(builder::build);
     }
 }

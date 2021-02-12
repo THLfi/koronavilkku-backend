@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.fromV2to24hourInterval;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -56,17 +57,8 @@ public class BatchFileService {
     }
 
     public int cacheMissingBatchesBetween(int fromInterval, int untilInterval) {
-        List<Integer> available = dao.getAvailableIntervalsDirect();
-        return cacheBatchesBetweenInner(fromInterval, untilInterval, available);
-    }
-
-    public int cacheMissingBatchesBetweenV2(int fromInterval, int untilInterval) {
-        List<Integer> available = dao.getAvailableIntervalsDirectV2();
-        return cacheBatchesBetweenInner(fromInterval, untilInterval, available);
-    }
-
-    private int cacheBatchesBetweenInner(int fromInterval, int untilInterval, List<Integer> available) {
         int added = 0;
+        List<Integer> available = dao.getAvailableIntervalsDirect();
         for (int interval = fromInterval; interval <= untilInterval; interval++) {
             BatchId id = new BatchId(interval);
             if (available.contains(interval) && !batchFileStorage.fileExists(id)) {
@@ -77,10 +69,33 @@ public class BatchFileService {
         return added;
     }
 
+    public int cacheMissingBatchesBetweenV2(int fromInterval, int untilInterval) {
+        int added = 0;
+        List<Integer> available = dao.getAvailableIntervalsDirectV2();
+        for (int interval = fromInterval; interval <= untilInterval; interval++) {
+            BatchId id = new BatchId(fromV2to24hourInterval(interval), Optional.of(interval));
+            if (available.contains(interval) && !batchFileStorage.fileExists(id)) {
+                batchFileStorage.addBatchFile(id, createBatchDataV2(id));
+                added++;
+            }
+        }
+        return added;
+    }
+
     public List<BatchId> listBatchIdsSince(BatchId previous, BatchIntervals intervals) {
         Stream<BatchId> batches = dao.getAvailableIntervals().stream()
                 .filter(i -> i != intervals.current && intervals.isDistributed(i))
                 .map(BatchId::new);
+        if (intervals.current == intervals.last) {
+            batches = Stream.concat(batches, getDemoBatchId(intervals.current).stream());
+        }
+        return batches.filter(previous::isBefore).collect(Collectors.toList());
+    }
+
+    public List<BatchId> listBatchIdsSinceV2(BatchId previous, BatchIntervals intervals) {
+        Stream<BatchId> batches = dao.getAvailableIntervalsV2().stream()
+                .filter(i -> i != intervals.current && intervals.isDistributed(i))
+                .map(i -> new BatchId(fromV2to24hourInterval(i), Optional.of(i)));
         if (intervals.current == intervals.last) {
             batches = Stream.concat(batches, getDemoBatchId(intervals.current).stream());
         }
@@ -114,6 +129,14 @@ public class BatchFileService {
         }
     }
 
+    public BatchId getLatestBatchIdV2(BatchIntervals intervals) {
+        if (intervals.current == intervals.last) {
+            return new BatchId(intervals.last, Optional.of(dao.getKeyCount(intervals.last)));
+        } else {
+            return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(intervals.last));
+        }
+    }
+
     private byte[] createBatchData(BatchId id) {
         LOG.debug("Generating batch file: {}", keyValue("batchId", id));
         List<TemporaryExposureKey> keys = dao.getIntervalKeys(id.intervalNumber);
@@ -121,6 +144,17 @@ public class BatchFileService {
             throw new BatchNotFoundException(id);
         } else {
             BatchMetadata metadata = BatchMetadata.of(id.intervalNumber, region);
+            return BatchFileFactory.createBatchFile(signatureConfig, signingKey, metadata, keys);
+        }
+    }
+
+    private byte[] createBatchDataV2(BatchId id) {
+        LOG.debug("Generating V2 batch file: {}", keyValue("batchId", id));
+        List<TemporaryExposureKey> keys = dao.getIntervalKeysV2(id.intervalNumberV2.orElseThrow());
+        if (keys.isEmpty()) {
+            throw new BatchNotFoundException(id);
+        } else {
+            BatchMetadata metadata = BatchMetadata.ofV2(id.intervalNumber, region);
             return BatchFileFactory.createBatchFile(signatureConfig, signingKey, metadata, keys);
         }
     }

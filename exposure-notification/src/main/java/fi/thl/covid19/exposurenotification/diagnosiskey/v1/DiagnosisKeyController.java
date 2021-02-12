@@ -81,7 +81,7 @@ public class DiagnosisKeyController {
         ExposureConfiguration exposureConfig = configurationService.getLatestExposureConfig();
         AppConfiguration appConfig = configurationService.getLatestAppConfig();
         Status result = new Status(
-                batchId.map(id -> batchFileService.listBatchIdsSince(id, intervals)).orElse(List.of()),
+                batchId.map(id -> enApiVersion == 2 ? batchFileService.listBatchIdsSinceV2(id, intervals) : batchFileService.listBatchIdsSince(id, intervals)).orElse(List.of()),
                 toLatest(appConfig, appConfig.version, appConfigVersion),
                 toLatest(exposureConfig, exposureConfig.version, exposureConfigVersion));
         boolean cacheableBatchId = batchId.isEmpty() || intervals.isDistributed(batchId.get().intervalNumber);
@@ -95,7 +95,7 @@ public class DiagnosisKeyController {
     public ResponseEntity<CurrentBatch> getCurrentDiagnosisBatchKey(
             @RequestParam(value = "en-api-version") Optional<Integer> enApiVersionOptional) {
         int enApiVersion = enApiVersionOptional.orElse(1);
-        BatchId latest = enApiVersion == 2 ? batchFileService.getLatestBatchId(getExportIntervalsV2()) : batchFileService.getLatestBatchId(getExportIntervals());
+        BatchId latest = enApiVersion == 2 ? batchFileService.getLatestBatchIdV2(getExportIntervalsV2()) : batchFileService.getLatestBatchId(getExportIntervals());
         LOG.info("Fetching current batch ID: {} {}", keyValue("current", latest), keyValue("enApiVersion", enApiVersion));
         return statusResponse(new CurrentBatch(latest), true);
     }
@@ -106,7 +106,7 @@ public class DiagnosisKeyController {
             @RequestParam(value = "en-api-version") Optional<Integer> enApiVersionOptional) {
         int enApiVersion = enApiVersionOptional.orElse(1);
         BatchIntervals intervals = enApiVersion == 2 ? getExportIntervalsV2() : getExportIntervals();
-        List<BatchId> batches = batchFileService.listBatchIdsSince(previousBatchId, intervals);
+        List<BatchId> batches = enApiVersion == 2 ? batchFileService.listBatchIdsSinceV2(previousBatchId, intervals) : batchFileService.listBatchIdsSince(previousBatchId, intervals);
         LOG.info("Listing diagnosis batches since: {} {}",
                 keyValue("previousBatchId", previousBatchId),
                 keyValue("resultBatches", batches.size()));
@@ -116,10 +116,11 @@ public class DiagnosisKeyController {
     @GetMapping("/batch/{batch_id}")
     public ResponseEntity<Resource> getDiagnosisBatch(@PathVariable(value = "batch_id") BatchId batchId) {
         LOG.info("Requesting diagnosis batch: {}", keyValue("batchId", batchId));
-        if (!getExportIntervals().isDistributed(batchId.intervalNumber)) {
+        if (getExportIntervals().isDistributed(batchId.intervalNumber) || (batchId.intervalNumberV2.isPresent() && getExportIntervalsV2().isDistributed(batchId.intervalNumberV2.get()))) {
+            return batchResponse(batchFileService.getBatchFile(batchId));
+        } else {
             throw new BatchNotFoundException(batchId);
         }
-        return batchResponse(batchFileService.getBatchFile(batchId));
     }
 
     @PostMapping

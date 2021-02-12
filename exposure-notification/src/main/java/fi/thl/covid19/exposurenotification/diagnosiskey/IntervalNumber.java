@@ -52,6 +52,10 @@ public final class IntervalNumber {
         return (long) interval24h * SECONDS_PER_24H;
     }
 
+    public static long startSecondOfV2Interval(int intervalV2) {
+        return (long) intervalV2 / DAILY_BATCHES_COUNT * SECONDS_PER_24H;
+    }
+
     public static LocalDate utcDateOf10MinInterval(int interval) {
         Instant startMoment = Instant.ofEpochSecond((long) interval * SECONDS_PER_10MIN);
         return startMoment.atOffset(ZoneOffset.UTC).toLocalDate();
@@ -59,5 +63,9 @@ public final class IntervalNumber {
 
     public static int from24hourToV2Interval(int interval24hour) {
        return interval24hour * 24 / DAILY_BATCHES_COUNT;
+    }
+
+    public static int fromV2to24hourInterval(int intervalV2) {
+        return intervalV2 / DAILY_BATCHES_COUNT;
     }
 }

@@ -125,6 +125,24 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
+    public List<TemporaryExposureKey> getIntervalKeysV2(int intervalV2) {
+        LOG.info("Fetching keys: {}", keyValue("intervalV2", intervalV2));
+        String sql =
+                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                        "submission_interval_v2, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                        "from en.diagnosis_key " +
+                        "where submission_interval_v2 = :interval_v2 " +
+                        // Level 0 & 7 would get 0 score anyhow, so ignore them
+                        // This also clips the range, so that we can manage the difference between iOS & Android APIs
+                        "and transmission_risk_level between 1 and 6 " +
+                        "order by key_data";
+        Map<String, Object> params = Map.of("interval_v2", intervalV2);
+        // We should not have invalid data in the DB, but if we do, pass by it and move on
+        return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(intervalV2, rs, i))
+                .stream().flatMap(Optional::stream).collect(Collectors.toList());
+    }
+
+    @Transactional
     public boolean verify(int verificationId, String requestChecksum, long totalKeyCount, long exportedKeyCount) {
         String sql = "insert into " +
                 "en.token_verification (verification_id, request_checksum) " +
