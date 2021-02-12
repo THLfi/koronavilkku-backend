@@ -36,12 +36,12 @@ public class BatchIdTest {
 
     @Test
     public void demoBatchIsRecognized() {
-        assertTrue(new BatchId(23, Optional.of(67)).isDemoBatch());
-        assertTrue(new BatchId("345_21").isDemoBatch());
+        assertTrue(new BatchId(23, Optional.of(67)).isDemoOrV2Batch());
+        assertTrue(new BatchId("345_21").isDemoOrV2Batch());
 
-        assertFalse(new BatchId(23).isDemoBatch());
-        assertFalse(new BatchId(23, Optional.empty()).isDemoBatch());
-        assertFalse(new BatchId("345").isDemoBatch());
+        assertFalse(new BatchId(23).isDemoOrV2Batch());
+        assertFalse(new BatchId(23, Optional.empty()).isDemoOrV2Batch());
+        assertFalse(new BatchId("345").isDemoOrV2Batch());
     }
 
     @Test

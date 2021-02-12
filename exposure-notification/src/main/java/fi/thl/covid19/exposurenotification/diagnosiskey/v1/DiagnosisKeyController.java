@@ -9,7 +9,6 @@ import fi.thl.covid19.exposurenotification.configuration.v1.AppConfiguration;
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyService;
 import fi.thl.covid19.exposurenotification.error.BatchNotFoundException;
-import fi.thl.covid19.exposurenotification.error.InputValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,14 +69,15 @@ public class DiagnosisKeyController {
     public ResponseEntity<Status> getCurrentStatus(
             @RequestParam(value = "batch") Optional<BatchId> batchId,
             @RequestParam(value = "app-config") Optional<Integer> appConfigVersion,
-            @RequestParam(value = "exposure-config") Optional<Integer> exposureConfigVersion) {
-        //batchId.ifPresent(this::validateDemoModeVsId);
-        LOG.info("Fetching full status info: {} {} {}",
+            @RequestParam(value = "exposure-config") Optional<Integer> exposureConfigVersion,
+            @RequestParam(value = "en-api-version") Optional<Integer> enApiVersionOptional) {
+        int enApiVersion = enApiVersionOptional.orElse(1);
+        LOG.info("Fetching full status info: {} {} {} {}",
                 keyValue("clientBatchId", batchId),
                 keyValue("clientAppConfigVersion", appConfigVersion),
+                keyValue("enApiVersion", enApiVersion),
                 keyValue("clientExposureConfigVersion", exposureConfigVersion));
-        // TODO: V2
-        BatchIntervals intervals = getExportIntervals();
+        BatchIntervals intervals = enApiVersion == 2 ? getExportIntervalsV2() : getExportIntervals();
         ExposureConfiguration exposureConfig = configurationService.getLatestExposureConfig();
         AppConfiguration appConfig = configurationService.getLatestAppConfig();
         Status result = new Status(
@@ -92,16 +92,20 @@ public class DiagnosisKeyController {
     }
 
     @GetMapping("/current")
-    public ResponseEntity<CurrentBatch> getCurrentDiagnosisBatchKey(@RequestParam(value = "en-api-version") Optional<Integer> enApiVersion) {
-        BatchId latest = enApiVersion.isPresent() && enApiVersion.get().equals(2) ? batchFileService.getLatestBatchId(getExportIntervalsV2()) : batchFileService.getLatestBatchId(getExportIntervals());
+    public ResponseEntity<CurrentBatch> getCurrentDiagnosisBatchKey(
+            @RequestParam(value = "en-api-version") Optional<Integer> enApiVersionOptional) {
+        int enApiVersion = enApiVersionOptional.orElse(1);
+        BatchId latest = enApiVersion == 2 ? batchFileService.getLatestBatchId(getExportIntervalsV2()) : batchFileService.getLatestBatchId(getExportIntervals());
         LOG.info("Fetching current batch ID: {} {}", keyValue("current", latest), keyValue("enApiVersion", enApiVersion));
         return statusResponse(new CurrentBatch(latest), true);
     }
 
     @GetMapping("/list")
-    public ResponseEntity<BatchList> listDiagnosisBatchesSince(@RequestParam(value = "previous") BatchId previousBatchId, @RequestParam(value = "en-api-version") Optional<Integer> enApiVersion) {
-        //validateDemoModeVsId(previousBatchId);
-        BatchIntervals intervals = enApiVersion.isPresent() && enApiVersion.get().equals(2) ? getExportIntervalsV2() : getExportIntervals();
+    public ResponseEntity<BatchList> listDiagnosisBatchesSince(
+            @RequestParam(value = "previous") BatchId previousBatchId,
+            @RequestParam(value = "en-api-version") Optional<Integer> enApiVersionOptional) {
+        int enApiVersion = enApiVersionOptional.orElse(1);
+        BatchIntervals intervals = enApiVersion == 2 ? getExportIntervalsV2() : getExportIntervals();
         List<BatchId> batches = batchFileService.listBatchIdsSince(previousBatchId, intervals);
         LOG.info("Listing diagnosis batches since: {} {}",
                 keyValue("previousBatchId", previousBatchId),
@@ -111,7 +115,6 @@ public class DiagnosisKeyController {
 
     @GetMapping("/batch/{batch_id}")
     public ResponseEntity<Resource> getDiagnosisBatch(@PathVariable(value = "batch_id") BatchId batchId) {
-        //validateDemoModeVsId(batchId);
         LOG.info("Requesting diagnosis batch: {}", keyValue("batchId", batchId));
         if (!getExportIntervals().isDistributed(batchId.intervalNumber)) {
             throw new BatchNotFoundException(batchId);
@@ -145,12 +148,6 @@ public class DiagnosisKeyController {
                 .contentType(APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION, nameHeader)
                 .body(new ByteArrayResource(file.data));
-    }
-
-    private void validateDemoModeVsId(BatchId id) {
-        if (id.isDemoBatch() && !demoMode) {
-            throw new InputValidationException("Invalid Batch ID: " + id);
-        }
     }
 
     private BatchIntervals getExportIntervals() {
