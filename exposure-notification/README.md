@@ -9,7 +9,7 @@ The most relevant and environment-specific properties are provided as ENV variab
 * The main REST API listening port: `EN_SERVER_PORT`
 * Port for monitoring services via Spring Actuator: `EN_MANAGEMENT_SERVER_PORT` 
 * Database connection parameters: `EN_DATABASE_URL`, `EN_DATABASE_USERNAME`, `EN_DATABASE_PASSWORD`
-* Demo-mode activation (distribute today's keys immediately, default false): `EN_DEMO_MODE`
+* Demo-mode activation (distribute also keys of current batch immediately, default false): `EN_DEMO_MODE`
 * Local directory for caching batch files (defaults to a temp-directory): `EN_FILES`
 * Address for reaching the publish-token service for token verification: `EN_PT_URL`
 * Private key for signing diagnosis batches (see details below): `EN_SIGNING_PRIVATE_PKCS8`
@@ -189,13 +189,13 @@ The API user should store these objects and request new ones using the version o
 If the response comes back empty, the previously stored configuration is up-to-date and can be used as-is. 
 If a config is returned, it should be stored and used instead.
 
-### Get Exposure Configuration
-* **Cache:** This data changes unpredicably, but not often. Cacheable for 1h.
+### Get Exposure Configuration V1
+* **Cache:** This data changes unpredictably, but not often. Cacheable for 1h.
 * **URL:** `/exposure/configuration/v1`
 * **Method:** `GET`
 * **URL Params:** None 
 * **Query Params:** 
-  * (Optional) previous: The version number of the previous exposure configuration the client has received. Empty for new client.
+  * (Optional) previous: The version number of the previous exposure configuration the client has received. Empty for new client.  
 * **Request Body:** None
 * **Success Response:**
   * Configuration has been updated 
@@ -219,6 +219,69 @@ If a config is returned, it should be stored and used instead.
   * Configuration is already up to date
     * Status: 204 No Content
 
+### Get Exposure Configuration V2
+* **Cache:** This data changes unpredictably, but not often. Cacheable for 1h.
+* **URL:** `/exposure/configuration/v2`
+* **Method:** `GET`
+* **URL Params:** None
+* **Query Params:**
+    * (Optional) previous: The version number of the previous exposure configuration the client has received. Empty for new client.
+* **Request Body:** None
+* **Success Response:**
+    * Configuration has been updated
+        * Status: 200 OK
+        * Body: JSON ExposureConfiguration object, adjusted from the Google/Apple definitions
+            ```json
+            {
+              "version":1,
+              "reportTypeWeightConfirmedTest":1.0,
+              "reportTypeWeightConfirmedClinicalDiagnosis":0.0,
+              "reportTypeWeightSelfReport":0.0,
+              "reportTypeWeightRecursive":0.0,
+              "infectiousnessWeightStandard":1.0,
+              "infectiousnessWeightHigh":1.5,
+              "attenuationBucketThresholdDb":[55,70,80],
+              "attenuationBucketWeights":[2.0,1.0,0.25,0.0],
+              "daysSinceExposureThreshold":10,
+              "minimumWindowScore":1.0,
+              "daysSinceOnsetToinfectiousness": {
+                  "-1":"HIGH",
+                  "0":"HIGH",
+                  "-2":"STANDARD",
+                  "1":"HIGH",
+                  "-3":"NONE",
+                  "2":"HIGH",
+                  "-4":"NONE",
+                  "3":"HIGH",
+                  "-5":"NONE",
+                  "4":"STANDARD",
+                  "-6":"NONE",
+                  "5":"STANDARD",
+                  "-7":"NONE",
+                  "6":"STANDARD",
+                  "-8":"NONE",
+                  "7":"STANDARD",
+                  "-9":"NONE",
+                  "8":"STANDARD",
+                  "-10":"NONE",
+                  "9":"STANDARD",
+                  "-11":"NONE",
+                  "10":"STANDARD",
+                  "-12":"NONE",
+                  "11":"NONE",
+                  "-13":"NONE",
+                  "12":"NONE",
+                  "-14":"NONE",
+                  "13":"NONE",
+                  "14":"NONE"
+              },
+              "infectiousnessWhenDaysSinceOnsetMissing":"STANDARD",
+              "availableCountries":["DE","NO","BE","PT","BG","DK","LT","LU","HR","LV","FR","HU","SE","SI","SK","GB","IE","EE","CH","MT","IS","GR","IT","ES","AT","CY","CZ","PL","RO","LI","NL"]
+            }
+            ```
+    * Configuration is already up to date
+        * Status: 204 No Content
+
 ## Diagnosis API
 API for posting Temporary Exposure Keys after a positive diagnosis as per 
 * [Google Documentation for the API](https://developers.google.com/android/exposure-notifications/exposure-notifications-api)
@@ -236,7 +299,8 @@ This batch does not need to be processed, as the new client should not have any 
 * **URL:** `/diagnosis/v1/current`
 * **Method:** `GET`
 * **URL Params:** None 
-* **Query Params:** None
+* **Query Params:**
+    * (Optional) en-api-version: Possible value is 2. Defaults to 1. If value is != 2 or parameter is missing, default value will be used. This should match en api version used in client to get compatible batches.
 * **Request Body:** None
 * **Success Response:** 
   * Status: 200 OK
@@ -254,6 +318,7 @@ The list <u>needs to be processed in the order it is given</u>, remembering the 
 * **URL Params:** None 
 * **Query Params:** 
   * (Mandatory) previous: the batch-id of the previous processed batch. If missing (new client), the client should request a batch  ID with `/diagnosis/current` first.
+  * (Optional) en-api-version: Possible value is 2. Defaults to 1. If value is != 2 or parameter is missing, default value will be used. This should match en api version used in client to get compatible batches.
 * **Request Body:** None
 * **Success Response:** 
   * New content exists: 
@@ -275,6 +340,8 @@ Status API is a one-call replacement for diagnosis key current & list fetches as
   * (Optional) batch: the batch-id of the previous processed batch. Leave out if new client.
   * (Optional) app-config: the version of the previous AppConfiguration the client has received. Leave out if new client.
   * (Optional) exposure-config: the version of the previous ExposureConfiguration the client has received. Leave out if new client.
+  * (Optional) exposure-config-v2: the version of the previous ExposureConfiguration V2 the client has received. Leave out if new client.
+  * (Optional) en-api-version: Possible value is 2. Defaults to 1. If value is != 2 or parameter is missing, default value will be used. This should match en api version used in client to get compatible batches.  
 * **Request Body:** None
 * **Success Response:** 
   * Status: 200 OK
