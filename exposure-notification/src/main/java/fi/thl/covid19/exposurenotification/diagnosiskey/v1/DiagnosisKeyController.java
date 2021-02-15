@@ -7,6 +7,7 @@ import fi.thl.covid19.exposurenotification.batch.BatchIntervals;
 import fi.thl.covid19.exposurenotification.configuration.ConfigurationService;
 import fi.thl.covid19.exposurenotification.configuration.v1.AppConfiguration;
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
+import fi.thl.covid19.exposurenotification.configuration.v2.ExposureConfigurationV2;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyService;
 import fi.thl.covid19.exposurenotification.error.BatchNotFoundException;
 import org.slf4j.Logger;
@@ -70,25 +71,30 @@ public class DiagnosisKeyController {
             @RequestParam(value = "batch") Optional<BatchId> batchId,
             @RequestParam(value = "app-config") Optional<Integer> appConfigVersion,
             @RequestParam(value = "exposure-config") Optional<Integer> exposureConfigVersion,
+            @RequestParam(value = "exposure-config-v2") Optional<Integer> exposureConfigVersionV2,
             @RequestParam(value = "en-api-version") Optional<Integer> enApiVersionOptional) {
         int enApiVersion = enApiVersionOptional.orElse(1);
-        LOG.info("Fetching full status info: {} {} {} {}",
+        LOG.info("Fetching full status info: {} {} {} {} {}",
                 keyValue("clientBatchId", batchId),
                 keyValue("clientAppConfigVersion", appConfigVersion),
                 keyValue("enApiVersion", enApiVersion),
-                keyValue("clientExposureConfigVersion", exposureConfigVersion));
+                keyValue("clientExposureConfigVersion", exposureConfigVersion),
+                keyValue("clientExposureConfigVersionV2", exposureConfigVersionV2));
         BatchIntervals intervals = enApiVersion == 2 ? getExportIntervalsV2() : getExportIntervals();
         ExposureConfiguration exposureConfig = configurationService.getLatestExposureConfig();
+        ExposureConfigurationV2 exposureConfigV2 = configurationService.getLatestV2ExposureConfig();
         AppConfiguration appConfig = configurationService.getLatestAppConfig();
         Status result = new Status(
                 batchId.map(id -> enApiVersion == 2 ? batchFileService.listBatchIdsSinceV2(id, intervals) : batchFileService.listBatchIdsSince(id, intervals)).orElse(List.of()),
                 toLatest(appConfig, appConfig.version, appConfigVersion),
-                toLatest(exposureConfig, exposureConfig.version, exposureConfigVersion));
+                toLatest(exposureConfig, exposureConfig.version, exposureConfigVersion),
+                toLatest(exposureConfigV2, exposureConfigV2.version, exposureConfigVersionV2));
         boolean cacheableBatchId = batchId.isEmpty() || intervals.isDistributed(batchId.get().intervalNumber);
         boolean cacheableAppConfig = appConfigVersion.isEmpty() || appConfigVersion.get().equals(appConfig.version);
         boolean cacheableExposureConfig = exposureConfigVersion.isEmpty() || exposureConfigVersion.get().equals(exposureConfig.version);
+        boolean cacheableExposureConfigV2 = exposureConfigVersionV2.isEmpty() || exposureConfigVersionV2.get().equals(exposureConfigV2.version);
 
-        return statusResponse(result, cacheableBatchId && cacheableAppConfig && cacheableExposureConfig);
+        return statusResponse(result, cacheableBatchId && cacheableAppConfig && cacheableExposureConfig && cacheableExposureConfigV2);
     }
 
     @GetMapping("/current")

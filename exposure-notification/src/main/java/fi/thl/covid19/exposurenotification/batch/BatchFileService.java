@@ -97,14 +97,19 @@ public class BatchFileService {
                 .filter(i -> i != intervals.current && intervals.isDistributed(i))
                 .map(i -> new BatchId(fromV2to24hourInterval(i), Optional.of(i)));
         if (intervals.current == intervals.last) {
-            batches = Stream.concat(batches, getDemoBatchId(intervals.current).stream());
+            batches = Stream.concat(batches, getDemoBatchIdV2(intervals.current).stream());
         }
         return batches.filter(previous::isBefore).collect(Collectors.toList());
     }
 
     public Optional<BatchId> getDemoBatchId(int currentInterval) {
         int count = dao.getKeyCount(currentInterval);
-        return count > 0 ? Optional.of(new BatchId(currentInterval, Optional.of(count))) : Optional.empty();
+        return count > 0 ? Optional.of(new BatchId(currentInterval, Optional.of(Integer.parseInt("" + currentInterval + count)))) : Optional.empty();
+    }
+
+    public Optional<BatchId> getDemoBatchIdV2(int currentInterval) {
+        int count = dao.getKeyCountV2(currentInterval);
+        return count > 0 ? Optional.of(new BatchId(fromV2to24hourInterval(currentInterval), Optional.of(Integer.parseInt("" + currentInterval + count)))) : Optional.empty();
     }
 
     public BatchFile getBatchFile(BatchId id) {

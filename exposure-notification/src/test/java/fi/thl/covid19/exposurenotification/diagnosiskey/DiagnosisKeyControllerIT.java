@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static fi.thl.covid19.exposurenotification.batch.BatchIntervals.DAILY_BATCHES_COUNT;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisKeyController.FAKE_REQUEST_HEADER;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisKeyController.PUBLISH_TOKEN_HEADER;
@@ -56,12 +55,17 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
 public class DiagnosisKeyControllerIT {
 
     private static final String BASE_URL = "/diagnosis/v1";
+    private static final String EN_API_VERSION_2_PARAM = "en-api-version=2";
     private static final String CURRENT_URL = BASE_URL + "/current";
+    private static final String CURRENT_URL_V2 = BASE_URL + "/current?" + EN_API_VERSION_2_PARAM;
     private static final String LIST_URL = BASE_URL + "/list?previous=";
+    private static final String LIST_URL_V2 = BASE_URL + "/list?" + EN_API_VERSION_2_PARAM + "&previous=";
     private static final String STATUS_URL = BASE_URL + "/status?batch=";
+    private static final String STATUS_URL_V2 = BASE_URL + "/status?" + EN_API_VERSION_2_PARAM + "&batch=";
     private static final String BATCH_URL = BASE_URL + "/batch";
 
     private static final BatchIntervals INTERVALS = BatchIntervals.forExport(false);
+    private static final BatchIntervals INTERVALS_V2 = BatchIntervals.forExportV2(false);
 
     @Autowired
     private ObjectMapper mapper;
@@ -99,6 +103,7 @@ public class DiagnosisKeyControllerIT {
     @Test
     public void currentWithNoDataReturnsOk() throws Exception {
         assertCurrent(new BatchId(INTERVALS.last));
+        assertCurrent(new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last)), true);
     }
 
     @Test
@@ -106,6 +111,10 @@ public class DiagnosisKeyControllerIT {
         assertListing(BatchId.DEFAULT, List.of());
         assertListing(new BatchId(INTERVALS.first), List.of());
         assertListing(new BatchId(INTERVALS.last), List.of());
+
+        assertListing(BatchId.DEFAULT, List.of(), true);
+        assertListing(new BatchId(from24hourToV2Interval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of());
+        assertListing(new BatchId(from24hourToV2Interval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last)), List.of());
     }
 
     @Test
@@ -130,6 +139,27 @@ public class DiagnosisKeyControllerIT {
     }
 
     @Test
+    public void listWithKeysReturnsBatchIdsV2() throws Exception {
+        BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last - 1));
+        BatchId batchId2 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last));
+
+        dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
+                batchId1.intervalNumber, batchId1.intervalNumberV2.get(), keyGenerator.someKeys(1), 1);
+
+        assertListing(BatchId.DEFAULT, List.of(batchId1), true);
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1), true);
+        assertListing(batchId1, List.of(), true);
+
+        dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
+                batchId2.intervalNumber, batchId2.intervalNumberV2.get(), keyGenerator.someKeys(2), 2);
+
+        assertListing(BatchId.DEFAULT, List.of(batchId1, batchId2), true);
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1, batchId2), true);
+        assertListing(batchId1, List.of(batchId2), true);
+        assertListing(batchId2, List.of(), true);
+    }
+
+    @Test
     public void statusWithKeysReturnsBatchIds() throws Exception {
         BatchId batchId1 = new BatchId(INTERVALS.last - 1);
         BatchId batchId2 = new BatchId(INTERVALS.last);
@@ -151,11 +181,40 @@ public class DiagnosisKeyControllerIT {
     }
 
     @Test
+    public void statusWithKeysReturnsBatchIdsV2() throws Exception {
+        BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last - 1));
+        BatchId batchId2 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last));
+
+        dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
+                batchId1.intervalNumber, batchId1.intervalNumberV2.get(), keyGenerator.someKeys(1), 1);
+
+        assertStatus(BatchId.DEFAULT, List.of(batchId1), true);
+        assertStatus(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1), true);
+        assertStatus(batchId1, List.of(), true);
+
+        dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
+                batchId2.intervalNumber, batchId2.intervalNumberV2.get(), keyGenerator.someKeys(1), 1);
+
+        assertStatus(BatchId.DEFAULT, List.of(batchId1, batchId2), true);
+        assertStatus(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1, batchId2), true);
+        assertStatus(batchId1, List.of(batchId2), true);
+        assertStatus(batchId2, List.of(), true);
+    }
+
+    @Test
     public void newBatchIsGeneratedFromKeys() throws Exception {
         BatchId batch = new BatchId(INTERVALS.last);
         assertNoFile(batch);
         dao.addKeys(1, md5DigestAsHex("test".getBytes()), INTERVALS.last, from24hourToV2Interval(INTERVALS.last), keyGenerator.someKeys(1), 1);
         assertFileExists(batch);
+    }
+
+    @Test
+    public void newBatchIsGeneratedFromKeysV2() throws Exception {
+        BatchId batch = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last));
+        assertNoFile(batch, true);
+        dao.addKeys(1, md5DigestAsHex("test".getBytes()), fromV2to24hourInterval(INTERVALS_V2.last), INTERVALS_V2.last, keyGenerator.someKeys(1), 1);
+        assertFileExists(batch, true);
     }
 
     @Test
@@ -170,6 +229,15 @@ public class DiagnosisKeyControllerIT {
         assertNoFile(id);
         storage.addBatchFile(id, content);
         assertFileContent(id, content);
+    }
+
+    @Test
+    public void existingFileIsReturnedFromCacheV2() throws Exception {
+        BatchId id = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last - 1));
+        byte[] content = "TEST CONTENT".getBytes(UTF_8);
+        assertNoFile(id, true);
+        storage.addBatchFile(id, content);
+        assertFileContent(id, content, true);
     }
 
     @Test
@@ -201,10 +269,13 @@ public class DiagnosisKeyControllerIT {
     public void batchFetchingSucceeds() throws Exception {
         Instant now = Instant.now();
         int interval = to24HourInterval(now) - 1;
-        int intervalV2 = toV2Interval(now) - DAILY_BATCHES_COUNT;
+        int intervalV2 = toV2Interval(now) - 1;
 
         dao.addKeys(123, "TEST", interval, intervalV2, keyGenerator.someKeys(14), 14);
         mockMvc.perform(get("/diagnosis/v1/batch/" + interval))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM));
+        mockMvc.perform(get("/diagnosis/v1/batch/" + interval + "_" + intervalV2 + "?" + EN_API_VERSION_2_PARAM))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM));
     }
@@ -405,8 +476,12 @@ public class DiagnosisKeyControllerIT {
     }
 
     private void assertCurrent(BatchId expected) throws Exception {
+        assertCurrent(expected, false);
+    }
+
+    private void assertCurrent(BatchId expected, boolean v2) throws Exception {
         CurrentBatch current = new CurrentBatch(expected);
-        mockMvc.perform(get(CURRENT_URL))
+        mockMvc.perform(get(v2 ? CURRENT_URL_V2 : CURRENT_URL))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=900, public"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -414,8 +489,14 @@ public class DiagnosisKeyControllerIT {
     }
 
     private void assertListing(BatchId previous, List<BatchId> expected) throws Exception {
+        assertListing(previous, expected, false);
+    }
+
+
+    private void assertListing(BatchId previous, List<BatchId> expected, boolean v2) throws Exception {
         BatchList list = new BatchList(expected);
-        mockMvc.perform(get(LIST_URL + previous))
+        String listUrl = v2 ? LIST_URL_V2 : LIST_URL;
+        mockMvc.perform(get(listUrl + previous))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("Cache-Control"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -423,10 +504,16 @@ public class DiagnosisKeyControllerIT {
     }
 
     private void assertStatus(BatchId previous, List<BatchId> expected) throws Exception {
+        assertStatus(previous, expected, false);
+    }
+
+    private void assertStatus(BatchId previous, List<BatchId> expected, boolean v2) throws Exception {
+        String statusUrl = v2 ? STATUS_URL_V2 : STATUS_URL;
         Status status = new Status(expected,
                 Optional.of(configService.getLatestAppConfig()),
-                Optional.of(configService.getLatestExposureConfig()));
-        mockMvc.perform(get(STATUS_URL + previous))
+                Optional.of(configService.getLatestExposureConfig()),
+                Optional.of(configService.getLatestV2ExposureConfig()));
+        mockMvc.perform(get(statusUrl + previous))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("Cache-Control"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -434,12 +521,21 @@ public class DiagnosisKeyControllerIT {
     }
 
     private void assertNoFile(BatchId id) throws Exception {
-        mockMvc.perform(get(BATCH_URL + "/" + id))
-                .andExpect(status().isNotFound());
+        assertNoFile(id, false);
+    }
+
+    private void assertNoFile(BatchId id, boolean v2) throws Exception {
+        String url = v2 ? BATCH_URL + "/" + id + "?" + EN_API_VERSION_2_PARAM : BATCH_URL + "/" + id;
+        mockMvc.perform(get(url)).andExpect(status().isNotFound());
     }
 
     private void assertFileContent(BatchId id, byte[] expected) throws Exception {
-        mockMvc.perform(get(BATCH_URL + "/" + id))
+        assertFileContent(id, expected, false);
+    }
+
+    private void assertFileContent(BatchId id, byte[] expected, boolean v2) throws Exception {
+        String url = v2 ? BATCH_URL + "/" + id + "?" + EN_API_VERSION_2_PARAM : BATCH_URL + "/" + id;
+        mockMvc.perform(get(url))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=43200, public"))
                 .andExpect(header().string(
@@ -449,7 +545,12 @@ public class DiagnosisKeyControllerIT {
     }
 
     private void assertFileExists(BatchId id) throws Exception {
-        mockMvc.perform(get(BATCH_URL + "/" + id))
+        assertFileExists(id, false);
+    }
+
+    private void assertFileExists(BatchId id, boolean v2) throws Exception {
+        String url = v2 ? BATCH_URL + "/" + id + "?" + EN_API_VERSION_2_PARAM : BATCH_URL + "/" + id;
+        mockMvc.perform(get(url))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=43200, public"))
                 .andExpect(header().string(
