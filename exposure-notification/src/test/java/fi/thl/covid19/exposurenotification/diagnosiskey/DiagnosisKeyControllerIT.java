@@ -113,8 +113,8 @@ public class DiagnosisKeyControllerIT {
         assertListing(new BatchId(INTERVALS.last), List.of());
 
         assertListing(BatchId.DEFAULT, List.of(), true);
-        assertListing(new BatchId(from24hourToV2Interval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of());
-        assertListing(new BatchId(from24hourToV2Interval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last)), List.of());
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(), true);
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last)), List.of(), true);
     }
 
     @Test
@@ -140,7 +140,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void listWithKeysReturnsBatchIdsV2() throws Exception {
-        BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last - 1));
+        BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last - 1), Optional.of(INTERVALS_V2.last - 1));
         BatchId batchId2 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last));
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
@@ -182,7 +182,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void statusWithKeysReturnsBatchIdsV2() throws Exception {
-        BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last - 1));
+        BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last - 1), Optional.of(INTERVALS_V2.last - 1));
         BatchId batchId2 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last));
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
@@ -233,7 +233,7 @@ public class DiagnosisKeyControllerIT {
 
     @Test
     public void existingFileIsReturnedFromCacheV2() throws Exception {
-        BatchId id = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last - 1));
+        BatchId id = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last - 1), Optional.of(INTERVALS_V2.last - 1));
         byte[] content = "TEST CONTENT".getBytes(UTF_8);
         assertNoFile(id, true);
         storage.addBatchFile(id, content);
@@ -491,7 +491,6 @@ public class DiagnosisKeyControllerIT {
     private void assertListing(BatchId previous, List<BatchId> expected) throws Exception {
         assertListing(previous, expected, false);
     }
-
 
     private void assertListing(BatchId previous, List<BatchId> expected, boolean v2) throws Exception {
         BatchList list = new BatchList(expected);

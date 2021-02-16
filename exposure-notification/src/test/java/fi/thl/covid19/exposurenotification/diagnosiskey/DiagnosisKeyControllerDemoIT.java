@@ -88,6 +88,7 @@ public class DiagnosisKeyControllerDemoIT {
     @Test
     public void currentWithNoDataReturnsOk() throws Exception {
         assertCurrent(new BatchId(INTERVALS.last, Optional.of(0)));
+        assertCurrent(new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(Integer.parseInt(INTERVALS_V2.current + "0"))), true);
     }
 
     @Test
@@ -95,6 +96,10 @@ public class DiagnosisKeyControllerDemoIT {
         assertListing(BatchId.DEFAULT, List.of());
         assertListing(new BatchId(INTERVALS.first, Optional.of(1)), List.of());
         assertListing(new BatchId(INTERVALS.current, Optional.of(0)), List.of());
+
+        assertListing(BatchId.DEFAULT, List.of(), true);
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(), true);
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.current), Optional.of(INTERVALS_V2.current)), List.of(), true);
     }
 
     @Test
@@ -113,6 +118,25 @@ public class DiagnosisKeyControllerDemoIT {
         assertListing(new BatchId(INTERVALS.first), List.of(batchId2));
         assertListing(batchId1, List.of(batchId2));
         assertListing(batchId2, List.of());
+    }
+
+    @Test
+    public void listWithKeysReturnsDemoBatchIdsV2() throws Exception {
+        dao.addKeys(1, md5DigestAsHex("test1".getBytes()), fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current, keyGenerator.someKeys(1), 1);
+
+        BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.current), Optional.of(Integer.parseInt(INTERVALS_V2.current + "1")));
+        assertListing(BatchId.DEFAULT, List.of(batchId1), true);
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1), true);
+        assertListing(batchId1, List.of(), true);
+
+        BatchId batchId2 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.current), Optional.of(Integer.parseInt(INTERVALS_V2.current + "3")));
+        dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
+                fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current, keyGenerator.someKeys(2), 2);
+
+        assertListing(BatchId.DEFAULT, List.of(batchId2), true);
+        assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId2), true);
+        assertListing(batchId1, List.of(batchId2), true);
+        assertListing(batchId2, List.of(), true);
     }
 
     @Test
@@ -208,8 +232,12 @@ public class DiagnosisKeyControllerDemoIT {
     }
 
     private void assertCurrent(BatchId expected) throws Exception {
+        assertCurrent(expected, false);
+    }
+
+    private void assertCurrent(BatchId expected, boolean v2) throws Exception {
         CurrentBatch current = new CurrentBatch(expected);
-        mockMvc.perform(get(CURRENT_URL))
+        mockMvc.perform(get(v2 ? CURRENT_URL_V2 : CURRENT_URL))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=900, public"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -217,8 +245,13 @@ public class DiagnosisKeyControllerDemoIT {
     }
 
     private void assertListing(BatchId previous, List<BatchId> expected) throws Exception {
+        assertListing(previous, expected, false);
+    }
+
+    private void assertListing(BatchId previous, List<BatchId> expected, boolean v2) throws Exception {
         BatchList list = new BatchList(expected);
-        mockMvc.perform(get(LIST_URL + previous))
+        String listUrl = v2 ? LIST_URL_V2 : LIST_URL;
+        mockMvc.perform(get(listUrl + previous))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("Cache-Control"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))

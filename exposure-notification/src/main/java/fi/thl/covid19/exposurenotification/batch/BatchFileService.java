@@ -136,7 +136,7 @@ public class BatchFileService {
 
     public BatchId getLatestBatchIdV2(BatchIntervals intervals) {
         if (intervals.current == intervals.last) {
-            return new BatchId(intervals.last, Optional.of(dao.getKeyCountV2(intervals.last)));
+            return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(Integer.parseInt("" + intervals.last + dao.getKeyCountV2(intervals.last))));
         } else {
             return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(intervals.last));
         }

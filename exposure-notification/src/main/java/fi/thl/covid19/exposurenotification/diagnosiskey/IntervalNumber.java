@@ -62,7 +62,7 @@ public final class IntervalNumber {
     }
 
     public static int from24hourToV2Interval(int interval24hour) {
-       return interval24hour * 24 / DAILY_BATCHES_COUNT;
+       return interval24hour * DAILY_BATCHES_COUNT;
     }
 
     public static int fromV2to24hourInterval(int intervalV2) {

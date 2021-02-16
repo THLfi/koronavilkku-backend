@@ -19,7 +19,7 @@ public class BatchIdTest {
     }
 
     @Test
-    public void demoBatchIdStringFormatIsCorrect() {
+    public void demoAndV2BatchIdStringFormatIsCorrect() {
         BatchId id = new BatchId(123, Optional.of(45));
         String stringId = "123_45";
         assertEquals(stringId, id.toString());
@@ -35,7 +35,7 @@ public class BatchIdTest {
     }
 
     @Test
-    public void demoBatchIsRecognized() {
+    public void demoAndV2BatchIsRecognized() {
         assertTrue(new BatchId(23, Optional.of(67)).isDemoOrV2Batch());
         assertTrue(new BatchId("345_21").isDemoOrV2Batch());
 
