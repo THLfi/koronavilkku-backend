@@ -8,9 +8,11 @@ import static fi.thl.covid19.exposurenotification.batch.BatchIntervals.DAILY_BAT
 
 public final class IntervalNumber {
 
-    private IntervalNumber() {}
+    private IntervalNumber() {
+    }
 
     public static final int SECONDS_PER_24H = 60 * 60 * 24;
+    public static final int SECONDS_PER_V2_INTERVAL = 60 * 60 * (24 / DAILY_BATCHES_COUNT);
     public static final int SECONDS_PER_10MIN = 60 * 10;
     public static final int INTERVALS_10MIN_PER_24H = 6 * 24;
 
@@ -23,7 +25,7 @@ public final class IntervalNumber {
     }
 
     public static int toV2Interval(Instant time) {
-        long value = time.getEpochSecond() / (SECONDS_PER_24H / DAILY_BATCHES_COUNT);
+        long value = time.getEpochSecond() / SECONDS_PER_V2_INTERVAL;
         if (value > Integer.MAX_VALUE) {
             throw new IllegalStateException("Cannot represent time as 24h interval: " + time);
         }
@@ -53,7 +55,7 @@ public final class IntervalNumber {
     }
 
     public static long startSecondOfV2Interval(int intervalV2) {
-        return (long) intervalV2 / DAILY_BATCHES_COUNT * SECONDS_PER_24H;
+        return (long) intervalV2 * SECONDS_PER_V2_INTERVAL;
     }
 
     public static LocalDate utcDateOf10MinInterval(int interval) {
@@ -62,7 +64,7 @@ public final class IntervalNumber {
     }
 
     public static int from24hourToV2Interval(int interval24hour) {
-       return interval24hour * DAILY_BATCHES_COUNT;
+        return interval24hour * DAILY_BATCHES_COUNT;
     }
 
     public static int fromV2to24hourInterval(int intervalV2) {

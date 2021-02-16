@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 
+import static fi.thl.covid19.exposurenotification.batch.BatchIntervals.DAILY_BATCHES_COUNT;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static java.time.ZoneOffset.UTC;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,6 +25,7 @@ public class IntervalNumberTest {
     public void gettingV2IntervalWorks() {
         assertEquals(0, toV2Interval(Instant.EPOCH));
         assertEquals(123, toV2Interval(Instant.parse("1970-01-21T12:00:00Z")));
+        assertEquals(Integer.MAX_VALUE / (6 * (24 / DAILY_BATCHES_COUNT)), toV2Interval(MAX_SUPPORTED_TIME));
     }
 
     @Test
@@ -64,6 +66,9 @@ public class IntervalNumberTest {
     @Test
     public void secondsAreCorrectlyCalculatedForV2Interval() {
         assertEquals(0, startSecondOfV2Interval(toV2Interval(Instant.EPOCH)));
+        assertEquals(
+                MAX_SUPPORTED_TIME.getEpochSecond() - MAX_SUPPORTED_TIME.getEpochSecond() % (60 * 60 * (24 / DAILY_BATCHES_COUNT)),
+                startSecondOfV2Interval(toV2Interval(MAX_SUPPORTED_TIME)));
     }
 
     @Test
