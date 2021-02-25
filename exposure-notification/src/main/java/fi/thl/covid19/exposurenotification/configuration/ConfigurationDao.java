@@ -73,6 +73,7 @@ public class ConfigurationDao {
                 "attenuation_bucket_weights, " +
                 "days_since_exposure_threshold, " +
                 "minimum_window_score, " +
+                "minimum_daily_score, " +
                 "days_since_onset_to_infectiousness, " +
                 "infectiousness_when_dsos_missing, " +
                 "available_countries " +
@@ -91,6 +92,7 @@ public class ConfigurationDao {
                 toList(rs.getArray("attenuation_bucket_weights")),
                 rs.getInt("days_since_exposure_threshold"),
                 rs.getDouble("minimum_window_score"),
+                rs.getInt("minimum_daily_score"),
                 toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
                 rs.getString("infectiousness_when_dsos_missing"),
                 Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())

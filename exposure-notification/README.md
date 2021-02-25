@@ -244,7 +244,8 @@ If a config is returned, it should be stored and used instead.
               "attenuationBucketWeights":[2.0,1.0,0.25,0.0],
               "daysSinceExposureThreshold":10,
               "minimumWindowScore":1.0,
-              "daysSinceOnsetToinfectiousness": {
+              "minimumDailyScore":900,
+              "daysSinceOnsetToInfectiousness": {
                   "-1":"HIGH",
                   "0":"HIGH",
                   "-2":"STANDARD",

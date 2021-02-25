@@ -11,6 +11,7 @@ create table en.exposure_configuration_v2 (
   attenuation_bucket_weights numeric array[4] not null,
   days_since_exposure_threshold int not null,
   minimum_window_score numeric not null,
+  minimum_daily_score int not null,
   days_since_onset_to_infectiousness hstore not null,
   infectiousness_when_dsos_missing varchar(20) not null,
   available_countries varchar(2)[] not null

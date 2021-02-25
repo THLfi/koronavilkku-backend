@@ -22,9 +22,10 @@ public class ExposureConfigurationV2 {
     public final List<BigDecimal> attenuationBucketWeights;
     public final int daysSinceExposureThreshold;
     public final double minimumWindowScore;
+    public final int minimumDailyScore;
 
     // DiagnosisKeysDataMapping
-    public final Map<Integer, String> daysSinceOnsetToinfectiousness;
+    public final Map<Integer, String> daysSinceOnsetToInfectiousness;
     public final String infectiousnessWhenDaysSinceOnsetMissing;
 
     /*
@@ -45,7 +46,8 @@ public class ExposureConfigurationV2 {
             List<BigDecimal> attenuationBucketWeights,
             int daysSinceExposureThreshold,
             double minimumWindowScore,
-            Map<Integer, String> daysSinceOnsetToinfectiousness,
+            int minimumDailyScore,
+            Map<Integer, String> daysSinceOnsetToInfectiousness,
             String infectiousnessWhenDaysSinceOnsetMissing,
             Set<String> availableCountries
     ) {
@@ -60,7 +62,8 @@ public class ExposureConfigurationV2 {
         this.attenuationBucketWeights = attenuationBucketWeights;
         this.daysSinceExposureThreshold = daysSinceExposureThreshold;
         this.minimumWindowScore = minimumWindowScore;
-        this.daysSinceOnsetToinfectiousness = daysSinceOnsetToinfectiousness;
+        this.minimumDailyScore = minimumDailyScore;
+        this.daysSinceOnsetToInfectiousness = daysSinceOnsetToInfectiousness;
         this.infectiousnessWhenDaysSinceOnsetMissing = infectiousnessWhenDaysSinceOnsetMissing;
         this.availableCountries = availableCountries;
     }
