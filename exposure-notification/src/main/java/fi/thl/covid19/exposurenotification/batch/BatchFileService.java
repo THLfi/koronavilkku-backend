@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.fromV2to24hourInterval;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -68,6 +69,19 @@ public class BatchFileService {
         return added;
     }
 
+    public int cacheMissingBatchesBetweenV2(int fromInterval, int untilInterval) {
+        int added = 0;
+        List<Integer> available = dao.getAvailableIntervalsDirectV2();
+        for (int interval = fromInterval; interval <= untilInterval; interval++) {
+            BatchId id = new BatchId(fromV2to24hourInterval(interval), Optional.of(interval));
+            if (available.contains(interval) && !batchFileStorage.fileExists(id)) {
+                batchFileStorage.addBatchFile(id, createBatchDataV2(id));
+                added++;
+            }
+        }
+        return added;
+    }
+
     public List<BatchId> listBatchIdsSince(BatchId previous, BatchIntervals intervals) {
         Stream<BatchId> batches = dao.getAvailableIntervals().stream()
                 .filter(i -> i != intervals.current && intervals.isDistributed(i))
@@ -78,9 +92,24 @@ public class BatchFileService {
         return batches.filter(previous::isBefore).collect(Collectors.toList());
     }
 
+    public List<BatchId> listBatchIdsSinceV2(BatchId previous, BatchIntervals intervals) {
+        Stream<BatchId> batches = dao.getAvailableIntervalsV2().stream()
+                .filter(i -> i != intervals.current && intervals.isDistributed(i))
+                .map(i -> new BatchId(fromV2to24hourInterval(i), Optional.of(i)));
+        if (intervals.current == intervals.last) {
+            batches = Stream.concat(batches, getDemoBatchIdV2(intervals.current).stream());
+        }
+        return batches.filter(previous::isBefore).collect(Collectors.toList());
+    }
+
     public Optional<BatchId> getDemoBatchId(int currentInterval) {
         int count = dao.getKeyCount(currentInterval);
-        return count > 0 ? Optional.of(new BatchId(currentInterval, Optional.of(count))) : Optional.empty();
+        return count > 0 ? Optional.of(new BatchId(currentInterval, Optional.of(Integer.parseInt("" + currentInterval + count)))) : Optional.empty();
+    }
+
+    public Optional<BatchId> getDemoBatchIdV2(int currentInterval) {
+        int count = dao.getKeyCountV2(currentInterval);
+        return count > 0 ? Optional.of(new BatchId(fromV2to24hourInterval(currentInterval), Optional.of(Integer.parseInt("" + currentInterval + count)))) : Optional.empty();
     }
 
     public BatchFile getBatchFile(BatchId id) {
@@ -105,6 +134,14 @@ public class BatchFileService {
         }
     }
 
+    public BatchId getLatestBatchIdV2(BatchIntervals intervals) {
+        if (intervals.current == intervals.last) {
+            return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(Integer.parseInt("" + intervals.last + dao.getKeyCountV2(intervals.last))));
+        } else {
+            return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(intervals.last));
+        }
+    }
+
     private byte[] createBatchData(BatchId id) {
         LOG.debug("Generating batch file: {}", keyValue("batchId", id));
         List<TemporaryExposureKey> keys = dao.getIntervalKeys(id.intervalNumber);
@@ -112,6 +149,18 @@ public class BatchFileService {
             throw new BatchNotFoundException(id);
         } else {
             BatchMetadata metadata = BatchMetadata.of(id.intervalNumber, region);
+            return BatchFileFactory.createBatchFile(signatureConfig, signingKey, metadata, keys);
+        }
+    }
+
+    private byte[] createBatchDataV2(BatchId id) {
+        LOG.debug("Generating V2 batch file: {}", keyValue("batchId", id));
+        int intervalV2 = id.intervalNumberV2.orElseThrow();
+        List<TemporaryExposureKey> keys = dao.getIntervalKeysV2(intervalV2);
+        if (keys.isEmpty()) {
+            throw new BatchNotFoundException(id);
+        } else {
+            BatchMetadata metadata = BatchMetadata.ofV2(intervalV2, region);
             return BatchFileFactory.createBatchFile(signatureConfig, signingKey, metadata, keys);
         }
     }

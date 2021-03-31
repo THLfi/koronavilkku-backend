@@ -262,7 +262,8 @@ public class FederationServiceSyncWithDaoTestIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
-        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+        Instant now = Instant.now();
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
         Set<Long> operationIds = outboundService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
         long operationId = operationIds.stream().findFirst().get();
@@ -275,7 +276,8 @@ public class FederationServiceSyncWithDaoTestIT {
     @Test
     public void uploadKeysPartialSuccess() throws JsonProcessingException {
         List<TemporaryExposureKey> keys = keyGenerator.someKeys(5);
-        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(Instant.now()), keys, 5);
+        Instant now = Instant.now();
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(now), toV2Interval(now), keys, 5);
 
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/upload/"))
@@ -317,8 +319,9 @@ public class FederationServiceSyncWithDaoTestIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
+        Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
 
         try {
             outboundService.startOutbound(false);
@@ -341,8 +344,9 @@ public class FederationServiceSyncWithDaoTestIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
+        Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
 
         doOutBound();
         IntStream.range(1, MAX_RETRY_COUNT).forEach(this::doOutBoundRetry);
@@ -360,8 +364,9 @@ public class FederationServiceSyncWithDaoTestIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("")
                 );
+        Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(10000), 10000);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(10000), 10000);
 
         Set<Long> operationIds = outboundService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
@@ -372,8 +377,9 @@ public class FederationServiceSyncWithDaoTestIT {
 
     @Test
     public void fetchPartialBatch() {
+        Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(5005), 5005);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5005), 5005);
 
         List<TemporaryExposureKey> batch1 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
         List<TemporaryExposureKey> batch2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
@@ -385,16 +391,18 @@ public class FederationServiceSyncWithDaoTestIT {
 
     @Test
     public void crashDoNotReturnKeys() {
+        Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
         assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
         assertCrashDoNotReturnKeys();
     }
 
     @Test
     public void crashDoReturnKeys() {
+        Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
         assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
         assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         fakeStalled();
@@ -404,10 +412,11 @@ public class FederationServiceSyncWithDaoTestIT {
 
     @Test
     public void keysWithoutConsentWillNotBeFetched() {
+        Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test1".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(5, 5, false), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, 5, false), 5);
         diagnosisKeyDao.addKeys(2, md5DigestAsHex("test2".getBytes()),
-                to24HourInterval(Instant.now()), keyGenerator.someKeys(5, 5, true), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, 5, true), 5);
 
         assertEquals(10, getAllDiagnosisKeys().size());
         OutboundOperation operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get();

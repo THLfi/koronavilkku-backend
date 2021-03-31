@@ -1,6 +1,7 @@
 package fi.thl.covid19.exposurenotification.configuration;
 
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
+import fi.thl.covid19.exposurenotification.configuration.v2.ExposureConfigurationV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -57,8 +58,61 @@ public class ConfigurationDao {
         ));
     }
 
+    @Cacheable(value = "exposure-config-v2", sync = true)
+    public ExposureConfigurationV2 getLatestV2ExposureConfiguration() {
+        LOG.info("Fetching exposure v2 configuration");
+        String sql = "select " +
+                "version, " +
+                "report_type_weight_confirmed_test, " +
+                "report_type_weight_confirmed_clinical_diagnosis, " +
+                "report_type_weight_self_report, " +
+                "report_type_weight_recursive, " +
+                "infectiousness_weight_standard, " +
+                "infectiousness_weight_high, " +
+                "attenuation_bucket_threshold_db, " +
+                "attenuation_bucket_weights, " +
+                "days_since_exposure_threshold, " +
+                "minimum_window_score, " +
+                "minimum_daily_score, " +
+                "days_since_onset_to_infectiousness, " +
+                "infectiousness_when_dsos_missing, " +
+                "available_countries " +
+                "from en.exposure_configuration_v2 " +
+                "order by version desc " +
+                "limit 1";
+        return jdbcTemplate.queryForObject(sql, Map.of(), (rs, i) -> new ExposureConfigurationV2(
+                rs.getInt("version"),
+                rs.getBigDecimal("report_type_weight_confirmed_test"),
+                rs.getBigDecimal("report_type_weight_confirmed_clinical_diagnosis"),
+                rs.getBigDecimal("report_type_weight_self_report"),
+                rs.getBigDecimal("report_type_weight_recursive"),
+                rs.getBigDecimal("infectiousness_weight_standard"),
+                rs.getBigDecimal("infectiousness_weight_high"),
+                toList(rs.getArray("attenuation_bucket_threshold_db")),
+                toList(rs.getArray("attenuation_bucket_weights")),
+                rs.getInt("days_since_exposure_threshold"),
+                rs.getDouble("minimum_window_score"),
+                rs.getInt("minimum_daily_score"),
+                toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
+                rs.getString("infectiousness_when_dsos_missing"),
+                Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())
+        ));
+    }
+
     @SuppressWarnings("unchecked")
     private <T extends Number> List<T> toList(Array sqlArray) throws SQLException {
         return Arrays.asList((T[]) sqlArray.getArray());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<Integer, String> toIntegerString(Object obj) {
+        Map<String, String> map = (Map<String, String>) obj;
+        return map.entrySet().stream().collect(
+                Collectors.toMap(
+                        e -> Integer.parseInt(e.getKey()),
+                        Map.Entry::getValue,
+                        (existing, replacement) -> replacement,
+                        TreeMap::new
+                ));
     }
 }

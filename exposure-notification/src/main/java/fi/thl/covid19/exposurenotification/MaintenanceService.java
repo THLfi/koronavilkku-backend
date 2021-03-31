@@ -42,21 +42,29 @@ public class MaintenanceService {
             fixedRateString = "${covid19.maintenance.interval}")
     public void runMaintenance() {
         BatchIntervals intervals = BatchIntervals.forGeneration();
+        BatchIntervals intervalsV2 = BatchIntervals.forGenerationV2();
 
         LOG.info("Cleaning keys and updating batch files: {} {} {}",
                 keyValue("currentInterval", intervals.current),
                 keyValue("firstFile", intervals.first),
                 keyValue("lastFile", intervals.last));
 
+        LOG.info("Cleaning keys and updating batch files for V2: {} {} {}",
+                keyValue("currentInterval", intervalsV2.current),
+                keyValue("firstFile", intervalsV2.first),
+                keyValue("lastFile", intervalsV2.last));
+
         int removedKeys = dao.deleteKeysBefore(intervals.first);
         int removedVerifications = dao.deleteVerificationsBefore(Instant.now().minus(tokenVerificationLifetime));
         int removedBatches = batchFileStorage.deleteKeyBatchesBefore(intervals.first);
         int addedBatches = batchFileService.cacheMissingBatchesBetween(intervals.first, intervals.last);
+        int addedBatchesV2 = batchFileService.cacheMissingBatchesBetweenV2(intervalsV2.first, intervalsV2.last);
 
-        LOG.info("Batches updated: {} {} {} {}",
+        LOG.info("Batches updated: {} {} {} {} {}",
                 keyValue("removedKeys", removedBatches),
                 keyValue("removedVerifications", removedVerifications),
                 keyValue("removedBatches", removedKeys),
-                keyValue("addedBatches", addedBatches));
+                keyValue("addedBatches", addedBatches),
+                keyValue("addedBatchesV2", addedBatchesV2));
     }
 }

@@ -57,10 +57,10 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public void addKeys(int verificationId, String requestChecksum, int interval, List<TemporaryExposureKey> keys, long exportedKeyCount) {
+    public void addKeys(int verificationId, String requestChecksum, int interval, int intervalV2, List<TemporaryExposureKey> keys, long exportedKeyCount) {
         if (verify(verificationId, requestChecksum, keys.size(), exportedKeyCount) && !keys.isEmpty()) {
-            batchInsert(interval, keys, Optional.empty());
-            LOG.info("Inserted keys: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
+            batchInsert(interval, intervalV2, keys, Optional.empty());
+            LOG.info("Inserted keys: {} {} {}", keyValue("interval", interval), keyValue("intervalV2", intervalV2), keyValue("count", keys.size()));
         }
     }
 
@@ -69,11 +69,23 @@ public class DiagnosisKeyDao {
         return getAvailableIntervalsDirect();
     }
 
+    @Cacheable(value = "available-intervals-v2", sync = true)
+    public List<Integer> getAvailableIntervalsV2() {
+        return getAvailableIntervalsDirectV2();
+    }
+
     @Transactional
     public List<Integer> getAvailableIntervalsDirect() {
         LOG.info("Fetching available intervals");
-        String sql = "select distinct submission_interval from en.diagnosis_key order by submission_interval";
-        return jdbcTemplate.query(sql, (rs, i) -> rs.getInt("submission_interval"));
+        String sql_v1 = "select distinct submission_interval from en.diagnosis_key order by submission_interval";
+        return jdbcTemplate.query(sql_v1, (rs, i) -> rs.getInt("submission_interval"));
+    }
+
+    @Transactional
+    public List<Integer> getAvailableIntervalsDirectV2() {
+        LOG.info("Fetching available intervals for V2");
+        String sql = "select distinct submission_interval_v2 from en.diagnosis_key order by submission_interval_v2";
+        return jdbcTemplate.query(sql, (rs, i) -> rs.getInt("submission_interval_v2"));
     }
 
     @Cacheable(value = "key-count", sync = true)
@@ -81,6 +93,15 @@ public class DiagnosisKeyDao {
         LOG.info("Fetching key-count from DB: {}", keyValue("interval", interval));
         String sql = "select count(*) from en.diagnosis_key where submission_interval = :interval";
         Map<String, Object> params = Map.of("interval", interval);
+        return jdbcTemplate.query(sql, params, (rs, i) -> rs.getInt(1))
+                .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing."));
+    }
+
+    @Cacheable(value = "key-count-v2", sync = true)
+    public int getKeyCountV2(int intervalV2) {
+        LOG.info("Fetching key-count from DB: {}", keyValue("intervalV2", intervalV2));
+        String sql = "select count(*) from en.diagnosis_key where submission_interval_v2 = :interval_v2";
+        Map<String, Object> params = Map.of("interval_v2", intervalV2);
         return jdbcTemplate.query(sql, params, (rs, i) -> rs.getInt(1))
                 .stream().findFirst().orElseThrow(() -> new IllegalStateException("Count returned nothing."));
     }
@@ -100,6 +121,24 @@ public class DiagnosisKeyDao {
         Map<String, Object> params = Map.of("interval", interval);
         // We should not have invalid data in the DB, but if we do, pass by it and move on
         return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(interval, rs, i))
+                .stream().flatMap(Optional::stream).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public List<TemporaryExposureKey> getIntervalKeysV2(int intervalV2) {
+        LOG.info("Fetching keys: {}", keyValue("intervalV2", intervalV2));
+        String sql =
+                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                        "submission_interval_v2, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                        "from en.diagnosis_key " +
+                        "where submission_interval_v2 = :interval_v2 " +
+                        // Level 0 & 7 would get 0 score anyhow, so ignore them
+                        // This also clips the range, so that we can manage the difference between iOS & Android APIs
+                        "and transmission_risk_level between 1 and 6 " +
+                        "order by key_data";
+        Map<String, Object> params = Map.of("interval_v2", intervalV2);
+        // We should not have invalid data in the DB, but if we do, pass by it and move on
+        return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(intervalV2, rs, i))
                 .stream().flatMap(Optional::stream).collect(Collectors.toList());
     }
 
@@ -177,9 +216,9 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public void addInboundKeys(List<TemporaryExposureKey> keys, int interval) {
+    public void addInboundKeys(List<TemporaryExposureKey> keys, int interval, int intervalV2) {
         if (!keys.isEmpty()) {
-            batchInsert(interval, keys, Optional.of(new Timestamp(Instant.now().toEpochMilli())));
+            batchInsert(interval, intervalV2, keys, Optional.of(new Timestamp(Instant.now().toEpochMilli())));
             LOG.info("Inserted keys from efgs: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
         }
     }
@@ -189,15 +228,15 @@ public class DiagnosisKeyDao {
         return jdbcTemplate.queryForObject(sql, Map.of("verification_id", verificationId), String.class);
     }
 
-    private void batchInsert(int interval, List<TemporaryExposureKey> newKeys, Optional<Timestamp> efgsSync) {
+    private void batchInsert(int interval, int intervalV2, List<TemporaryExposureKey> newKeys, Optional<Timestamp> efgsSync) {
         String sql = "insert into " +
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_sync, symptoms_exist) " +
+                "submission_interval, submission_interval_v2, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_sync, symptoms_exist) " +
                 "values (:key_data, :rolling_period, :rolling_start_interval_number, :transmission_risk_level, " +
-                ":submission_interval, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_sync, :symptoms_exist) " +
+                ":submission_interval, :submission_interval_v2, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_sync, :symptoms_exist) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
-                .map(key -> createParamsMap(interval, key, efgsSync))
+                .map(key -> createParamsMap(interval, intervalV2, key, efgsSync))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);
         jdbcTemplate.batchUpdate(sql, params);
     }
@@ -235,13 +274,14 @@ public class DiagnosisKeyDao {
         );
     }
 
-    private Map<String, Object> createParamsMap(int interval, TemporaryExposureKey key, Optional<Timestamp> efgsSync) {
+    private Map<String, Object> createParamsMap(int interval, int intervalV2, TemporaryExposureKey key, Optional<Timestamp> efgsSync) {
         Map<String, Object> params = new HashMap<>();
         params.put("key_data", key.keyData);
         params.put("rolling_period", key.rollingPeriod);
         params.put("rolling_start_interval_number", key.rollingStartIntervalNumber);
         params.put("transmission_risk_level", key.transmissionRiskLevel);
         params.put("submission_interval", interval);
+        params.put("submission_interval_v2", intervalV2);
         params.put("origin", key.origin);
         params.put("visited_countries", key.visitedCountries.toArray(new String[0]));
         params.put("consent_to_share", key.consentToShareWithEfgs);

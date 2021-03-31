@@ -55,10 +55,19 @@ public class ApplicationConfiguration {
                     b -> b.name("exposure-config")
                             .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
                             .entryCapacity(1),
+                    b -> b.name("exposure-config-v2")
+                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .entryCapacity(1),
                     b -> b.name("available-intervals")
                             .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
                             .entryCapacity(1),
+                    b -> b.name("available-intervals-v2")
+                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .entryCapacity(1),
                     b -> b.name("key-count")
+                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .entryCapacity(ACTIVE_INTERVALS),
+                    b -> b.name("key-count-v2")
                             .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
                             .entryCapacity(ACTIVE_INTERVALS));
         } else {

@@ -2,6 +2,7 @@ package fi.thl.covid19.exposurenotification.configuration;
 
 import fi.thl.covid19.exposurenotification.configuration.v1.AppConfiguration;
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
+import fi.thl.covid19.exposurenotification.configuration.v2.ExposureConfigurationV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,10 @@ public class ConfigurationService {
 
     public ExposureConfiguration getLatestExposureConfig() {
         return dao.getLatestExposureConfiguration();
+    }
+
+    public ExposureConfigurationV2 getLatestV2ExposureConfig() {
+        return dao.getLatestV2ExposureConfiguration();
     }
 
     public AppConfiguration getLatestAppConfig() {

@@ -110,7 +110,8 @@ public class InboundService {
                         signer.getTrustAnchor()
                 );
                 List<TemporaryExposureKey> successKeys = transform(validBatch);
-                diagnosisKeyDao.addInboundKeys(successKeys, IntervalNumber.to24HourInterval(Instant.now()));
+                Instant now = Instant.now();
+                diagnosisKeyDao.addInboundKeys(successKeys, IntervalNumber.to24HourInterval(now), IntervalNumber.toV2Interval(now));
                 int signatureFailedCount = download.keysCount() - validBatch.getKeysCount();
                 int validationFailedCount = validBatch.getKeysCount() - successKeys.size();
                 meterRegistry.counter(efgsVerificationTotal).increment(download.keysCount());

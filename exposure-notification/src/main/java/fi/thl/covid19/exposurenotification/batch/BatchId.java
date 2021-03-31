@@ -11,37 +11,37 @@ public class BatchId implements Comparable<BatchId> {
     public static final BatchId DEFAULT = new BatchId(0);
 
     public final int intervalNumber;
-    public final Optional<Integer> demoBatchNumber;
+    public final Optional<Integer> intervalNumberV2;
 
     public BatchId(int intervalNumber) {
         this(intervalNumber, Optional.empty());
     }
-    public BatchId(int intervalNumber, Optional<Integer> demoBatchNumber) {
-        if (intervalNumber < 0 || (demoBatchNumber.isPresent() && demoBatchNumber.get() < 0)) {
-            String formatted = intervalNumber + demoBatchNumber.map(n -> "_" + n).orElse("");
+    public BatchId(int intervalNumber, Optional<Integer> intervalNumberV2) {
+        if (intervalNumber < 0 || (intervalNumberV2.isPresent() && intervalNumberV2.get() < 0)) {
+            String formatted = intervalNumber + intervalNumberV2.map(n -> "_" + n).orElse("");
             throw new IllegalArgumentException("Batch ID out of range: " + formatted);
         }
         this.intervalNumber = intervalNumber;
-        this.demoBatchNumber = requireNonNull(demoBatchNumber);
+        this.intervalNumberV2 = requireNonNull(intervalNumberV2);
     }
 
     public BatchId(String idString) {
         String cleaned = requireNonNull(idString, "The batch ID cannot be null.").trim();
         if (cleaned.contains(SEPARATOR) && cleaned.length() <= 30) {
             String[] pieces = cleaned.split(SEPARATOR);
-            if (pieces.length != 2) throw new IllegalArgumentException("Invalid Demo Batch ID: parts=" + pieces.length);
+            if (pieces.length != 2) throw new IllegalArgumentException("Invalid Demo or V2 Batch ID: parts=" + pieces.length);
             this.intervalNumber = Integer.parseInt(pieces[0]);
-            this.demoBatchNumber = Optional.of(Integer.parseInt(pieces[1]));
+            this.intervalNumberV2 = Optional.of(Integer.parseInt(pieces[1]));
         } else if (cleaned.length() > 0 && cleaned.length() <= 20) {
             this.intervalNumber = Integer.parseInt(cleaned);
-            this.demoBatchNumber = Optional.empty();
+            this.intervalNumberV2 = Optional.empty();
         } else {
             throw new IllegalArgumentException("Invalid Batch ID: length=" + cleaned.length());
         }
     }
 
-    public boolean isDemoBatch() {
-        return demoBatchNumber.isPresent();
+    public boolean isDemoOrV2Batch() {
+        return intervalNumberV2.isPresent();
     }
 
     public boolean isBefore(BatchId other) {
@@ -54,7 +54,7 @@ public class BatchId implements Comparable<BatchId> {
 
     @Override
     public String toString() {
-        return this.intervalNumber + demoBatchNumber.map(n -> SEPARATOR + n).orElse("");
+        return this.intervalNumber + intervalNumberV2.map(n -> SEPARATOR + n).orElse("");
     }
 
     @Override
@@ -63,7 +63,7 @@ public class BatchId implements Comparable<BatchId> {
         if (main != 0) {
             return main;
         } else {
-            return demoBatchNumber.orElse(Integer.MAX_VALUE).compareTo(o.demoBatchNumber.orElse(Integer.MAX_VALUE));
+            return intervalNumberV2.orElse(Integer.MAX_VALUE).compareTo(o.intervalNumberV2.orElse(Integer.MAX_VALUE));
         }
     }
 
@@ -73,11 +73,11 @@ public class BatchId implements Comparable<BatchId> {
         if (o == null || getClass() != o.getClass()) return false;
         BatchId batchId = (BatchId) o;
         return intervalNumber == batchId.intervalNumber &&
-                demoBatchNumber.equals(batchId.demoBatchNumber);
+                intervalNumberV2.equals(batchId.intervalNumberV2);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(intervalNumber, demoBatchNumber);
+        return Objects.hash(intervalNumber, intervalNumberV2);
     }
 }
