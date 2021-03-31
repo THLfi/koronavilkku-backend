@@ -110,7 +110,9 @@ public class ConfigurationDao {
         return map.entrySet().stream().collect(
                 Collectors.toMap(
                         e -> Integer.parseInt(e.getKey()),
-                        Map.Entry::getValue
+                        Map.Entry::getValue,
+                        (existing, replacement) -> replacement,
+                        TreeMap::new
                 ));
     }
 }
