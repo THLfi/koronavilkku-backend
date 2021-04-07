@@ -47,9 +47,10 @@ public class DiagnosisKeyService {
         Instant now = Instant.now();
         PublishTokenVerification verification = tokenVerificationService.getVerification(publishToken);
         List<TemporaryExposureKeyRequest> filtered = filter(request.keys, now);
-        List<TemporaryExposureKey> keys = transform(filtered, request.visitedCountriesSet, request.consentToShareWithEfgs, verification);
-        int currentInterval = IntervalNumber.to24HourInterval(now);
-        int currentIntervalV2 = IntervalNumber.toV2Interval(now);
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
+        List<TemporaryExposureKey> keys = transform(
+                filtered, request.visitedCountriesSet, request.consentToShareWithEfgs, verification, currentInterval, currentIntervalV2);
         LOG.info("Publish token verified: {} {} {} {} {} {}",
                 keyValue("currentInterval", currentInterval),
                 keyValue("currentIntervalV2", currentIntervalV2),
@@ -68,7 +69,10 @@ public class DiagnosisKeyService {
     private List<TemporaryExposureKey> transform(
             List<TemporaryExposureKeyRequest> requestKeys,
             Set<String> visitedCountries,
-            boolean consentToShareWithEfgs, PublishTokenVerification verification
+            boolean consentToShareWithEfgs,
+            PublishTokenVerification verification,
+            int intervalNumber,
+            int intervalNumberV2
     ) {
         return requestKeys.stream().map(requestKey -> new TemporaryExposureKey(
                 requestKey.keyData,
@@ -79,7 +83,9 @@ public class DiagnosisKeyService {
                 calculateDsos(verification.symptomsOnset, requestKey),
                 DEFAULT_ORIGIN_COUNTRY,
                 consentToShareWithEfgs,
-                verification.symptomsExist
+                verification.symptomsExist,
+                intervalNumber,
+                intervalNumberV2
         )).collect(Collectors.toList());
     }
 

@@ -50,7 +50,7 @@ public class BatchFileServiceIT {
     @Test
     public void generateBatchesWorks() {
         for (int next = INTERVALS.first; next <= INTERVALS.last; next++) {
-            dao.addKeys(next, "TEST" + next, next, from24hourToV2Interval(next), keyGenerator.someKeys(5), 5);
+            dao.addKeys(next, "TEST" + next, next, from24hourToV2Interval(next), keyGenerator.someKeys(5, next, from24hourToV2Interval(next)), 5);
             assertFalse(fileStorage.fileExists(new BatchId(next)));
             fileService.cacheMissingBatchesBetween(INTERVALS.first, INTERVALS.last);
             assertTrue(fileStorage.fileExists(new BatchId(next)));
@@ -60,7 +60,7 @@ public class BatchFileServiceIT {
     @Test
     public void generateBatchesWorksV2() {
         for (int next = INTERVALS_V2.first; next <= INTERVALS_V2.last; next++) {
-            dao.addKeys(next, "TEST" + next, fromV2to24hourInterval(next), next, keyGenerator.someKeys(5), 5);
+            dao.addKeys(next, "TEST" + next, fromV2to24hourInterval(next), next, keyGenerator.someKeys(5, fromV2to24hourInterval(next), next), 5);
             assertFalse(fileStorage.fileExists(new BatchId(fromV2to24hourInterval(next), Optional.of(next))));
             fileService.cacheMissingBatchesBetweenV2(INTERVALS_V2.first, INTERVALS_V2.last);
             assertTrue(fileStorage.fileExists(new BatchId(fromV2to24hourInterval(next), Optional.of(next))));

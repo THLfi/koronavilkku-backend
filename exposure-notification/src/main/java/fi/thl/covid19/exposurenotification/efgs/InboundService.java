@@ -1,7 +1,6 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
-import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.efgs.dao.InboundOperationDao;
 import fi.thl.covid19.exposurenotification.efgs.entity.DownloadData;
@@ -21,6 +20,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to24HourInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.toV2Interval;
 import static fi.thl.covid19.exposurenotification.efgs.util.BatchUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.util.SignatureValidationUtil.validateSignature;
 import static java.util.Objects.requireNonNull;
@@ -109,9 +110,11 @@ public class InboundService {
                         download,
                         signer.getTrustAnchor()
                 );
-                List<TemporaryExposureKey> successKeys = transform(validBatch);
                 Instant now = Instant.now();
-                diagnosisKeyDao.addInboundKeys(successKeys, IntervalNumber.to24HourInterval(now), IntervalNumber.toV2Interval(now));
+                int currentInterval = to24HourInterval(now);
+                int currentIntervalV2 = toV2Interval(now);
+                List<TemporaryExposureKey> successKeys = transform(validBatch, currentInterval, currentIntervalV2);
+                diagnosisKeyDao.addInboundKeys(successKeys, currentInterval, currentIntervalV2);
                 int signatureFailedCount = download.keysCount() - validBatch.getKeysCount();
                 int validationFailedCount = validBatch.getKeysCount() - successKeys.size();
                 meterRegistry.counter(efgsVerificationTotal).increment(download.keysCount());
