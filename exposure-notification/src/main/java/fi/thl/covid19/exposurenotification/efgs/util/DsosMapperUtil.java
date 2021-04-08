@@ -45,7 +45,7 @@ public class DsosMapperUtil {
         public static Optional<Boolean> symptomsExist(int dsos) {
             DsosInterpretationMapper mapper = mapperInRange(dsos);
 
-            if (SYMPTOMS_UNKNOWN.equals(mapper)) {
+            if (SYMPTOMS_UNKNOWN.equals(mapper) || UNKNOWN.equals(mapper)) {
                 return Optional.empty();
             } else {
                 return Optional.of(!NO_SYMPTOMS.equals(mapper));
