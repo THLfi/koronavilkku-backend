@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class BatchFileFactory {
@@ -99,13 +100,13 @@ public final class BatchFileFactory {
     }
 
     private static TemporaryExposureKey toProtoBuf(fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey key) {
-        TemporaryExposureKey.Builder builder = TemporaryExposureKey.newBuilder()
+        return TemporaryExposureKey.newBuilder()
                 .setKeyData(ByteString.copyFrom(Base64.getDecoder().decode(key.keyData.getBytes(UTF_8))))
                 .setTransmissionRiskLevel(key.transmissionRiskLevel)
                 .setRollingStartIntervalNumber(key.rollingStartIntervalNumber)
                 .setRollingPeriod(key.rollingPeriod)
-                .setReportType(TemporaryExposureKey.ReportType.CONFIRMED_TEST);
-
-        return key.daysSinceOnsetOfSymptoms.map(integer -> builder.setDaysSinceOnsetOfSymptoms(integer).build()).orElseGet(builder::build);
+                .setReportType(TemporaryExposureKey.ReportType.CONFIRMED_TEST)
+                .setDaysSinceOnsetOfSymptoms(key.daysSinceOnsetOfSymptoms.orElse(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS))
+                .build();
     }
 }
