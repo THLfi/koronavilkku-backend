@@ -59,7 +59,7 @@ public class DiagnosisKeyDao {
     @Transactional
     public void addKeys(int verificationId, String requestChecksum, int interval, int intervalV2, List<TemporaryExposureKey> keys, long exportedKeyCount) {
         if (verify(verificationId, requestChecksum, keys.size(), exportedKeyCount) && !keys.isEmpty()) {
-            batchInsert(interval, intervalV2, keys, Optional.empty());
+            batchInsert(keys, Optional.empty());
             LOG.info("Inserted keys: {} {} {}", keyValue("interval", interval), keyValue("intervalV2", intervalV2), keyValue("count", keys.size()));
         }
     }
@@ -111,7 +111,8 @@ public class DiagnosisKeyDao {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
         String sql =
                 "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                        "submission_interval, submission_interval_v2, " +
+                        "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
                         "from en.diagnosis_key " +
                         "where submission_interval = :interval " +
                         // Level 0 & 7 would get 0 score anyhow, so ignore them
@@ -129,7 +130,8 @@ public class DiagnosisKeyDao {
         LOG.info("Fetching keys: {}", keyValue("intervalV2", intervalV2));
         String sql =
                 "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval_v2, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                        "submission_interval, submission_interval_v2, " +
+                        "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
                         "from en.diagnosis_key " +
                         "where submission_interval_v2 = :interval_v2 " +
                         // Level 0 & 7 would get 0 score anyhow, so ignore them
@@ -177,7 +179,8 @@ public class DiagnosisKeyDao {
                 "set efgs_sync = :timestamp, retry_count = retry_count + 1 " +
                 "where key_data in (select key_data from batch) " +
                 "returning key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share, symptoms_exist";
+                "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share, symptoms_exist, " +
+                "submission_interval, submission_interval_v2";
 
         List<TemporaryExposureKey> keys = new ArrayList<>(jdbcTemplate.query(sql, Map.of(
                 "min_retry_count", retry ? 1 : 0,
@@ -218,8 +221,9 @@ public class DiagnosisKeyDao {
     @Transactional
     public void addInboundKeys(List<TemporaryExposureKey> keys, int interval, int intervalV2) {
         if (!keys.isEmpty()) {
-            batchInsert(interval, intervalV2, keys, Optional.of(new Timestamp(Instant.now().toEpochMilli())));
-            LOG.info("Inserted keys from efgs: {} {}", keyValue("interval", interval), keyValue("count", keys.size()));
+            batchInsert(keys, Optional.of(new Timestamp(Instant.now().toEpochMilli())));
+            LOG.info("Inserted keys from efgs: {} {} {}",
+                    keyValue("interval", interval), keyValue("intervalV2", intervalV2), keyValue("count", keys.size()));
         }
     }
 
@@ -228,7 +232,7 @@ public class DiagnosisKeyDao {
         return jdbcTemplate.queryForObject(sql, Map.of("verification_id", verificationId), String.class);
     }
 
-    private void batchInsert(int interval, int intervalV2, List<TemporaryExposureKey> newKeys, Optional<Timestamp> efgsSync) {
+    private void batchInsert(List<TemporaryExposureKey> newKeys, Optional<Timestamp> efgsSync) {
         String sql = "insert into " +
                 "en.diagnosis_key (key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
                 "submission_interval, submission_interval_v2, origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, efgs_sync, symptoms_exist) " +
@@ -236,7 +240,7 @@ public class DiagnosisKeyDao {
                 ":submission_interval, :submission_interval_v2, :origin, :visited_countries, :days_since_onset_of_symptoms, :consent_to_share, :efgs_sync, :symptoms_exist) " +
                 "on conflict do nothing";
         Map<String, Object>[] params = newKeys.stream()
-                .map(key -> createParamsMap(interval, intervalV2, key, efgsSync))
+                .map(key -> createParamsMap(key, efgsSync))
                 .toArray((IntFunction<Map<String, Object>[]>) Map[]::new);
         jdbcTemplate.batchUpdate(sql, params);
     }
@@ -270,18 +274,20 @@ public class DiagnosisKeyDao {
                 Optional.ofNullable((Integer) rs.getObject("days_since_onset_of_symptoms")),
                 rs.getString("origin"),
                 rs.getBoolean("consent_to_share"),
-                Optional.ofNullable((Boolean) rs.getObject("symptoms_exist"))
+                Optional.ofNullable((Boolean) rs.getObject("symptoms_exist")),
+                rs.getInt("submission_interval"),
+                rs.getInt("submission_interval_v2")
         );
     }
 
-    private Map<String, Object> createParamsMap(int interval, int intervalV2, TemporaryExposureKey key, Optional<Timestamp> efgsSync) {
+    private Map<String, Object> createParamsMap(TemporaryExposureKey key, Optional<Timestamp> efgsSync) {
         Map<String, Object> params = new HashMap<>();
         params.put("key_data", key.keyData);
         params.put("rolling_period", key.rollingPeriod);
         params.put("rolling_start_interval_number", key.rollingStartIntervalNumber);
         params.put("transmission_risk_level", key.transmissionRiskLevel);
-        params.put("submission_interval", interval);
-        params.put("submission_interval_v2", intervalV2);
+        params.put("submission_interval", key.submissionInterval);
+        params.put("submission_interval_v2", key.submissionIntervalV2);
         params.put("origin", key.origin);
         params.put("visited_countries", key.visitedCountries.toArray(new String[0]));
         params.put("consent_to_share", key.consentToShareWithEfgs);

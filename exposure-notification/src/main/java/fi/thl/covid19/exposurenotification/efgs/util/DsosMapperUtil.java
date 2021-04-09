@@ -1,13 +1,18 @@
 package fi.thl.covid19.exposurenotification.efgs.util;
 
+import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
+
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf24HourInterval;
+
 public class DsosMapperUtil {
-    public static final int DEFAULT_DAYS_SINCE_SYMPTOMS = 4000;
     public static final int DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS = 0;
     private static final Integer DEFAULT_VALUE = null;
 
@@ -40,27 +45,39 @@ public class DsosMapperUtil {
         public static Optional<Boolean> symptomsExist(int dsos) {
             DsosInterpretationMapper mapper = mapperInRange(dsos);
 
-            if (SYMPTOMS_UNKNOWN.equals(mapper)) {
+            if (SYMPTOMS_UNKNOWN.equals(mapper) || UNKNOWN.equals(mapper)) {
                 return Optional.empty();
             } else {
                 return Optional.of(!NO_SYMPTOMS.equals(mapper));
             }
         }
 
-        public static int mapToEfgs(Optional<Integer> localDsos, Optional<Boolean> symptomsExist) {
-            final int dsos = localDsos.orElse(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
+        public static int mapToEfgs(TemporaryExposureKey localKey) {
+            final int dsos = localKey.daysSinceOnsetOfSymptoms.orElse(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
+            final int submissionDsos = calculateDsosFromSubmission(localKey);
             AtomicInteger efgsDsos = new AtomicInteger(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
-            symptomsExist.ifPresentOrElse(
-                    e -> efgsDsos.set(mapDsos(dsos, e)),
-                    () -> efgsDsos.set(SYMPTOMS_UNKNOWN.zero + dsos));
+            localKey.symptomsExist.ifPresentOrElse(
+                    e -> efgsDsos.set(mapDsos(dsos, submissionDsos, e)),
+                    () -> efgsDsos.set(SYMPTOMS_UNKNOWN.zero + submissionDsos));
             return efgsDsos.get();
         }
 
-        private static int mapDsos(int dsos, boolean symptomsExist) {
+        private static int calculateDsosFromSubmission(TemporaryExposureKey localKey) {
+            return mapFrom(
+                    Math.toIntExact(
+                            ChronoUnit.DAYS.between(
+                                    utcDateOf24HourInterval(localKey.submissionInterval),
+                                    utcDateOf10MinInterval(localKey.rollingStartIntervalNumber)
+                            )
+                    )
+            ).orElse(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
+        }
+
+        private static int mapDsos(int dsos, int submissionDsos, boolean symptomsExist) {
             if (symptomsExist) {
                 return SYMPTOMS_WITH_DATE.zero + dsos;
             } else {
-                return NO_SYMPTOMS.zero + dsos;
+                return NO_SYMPTOMS.zero + submissionDsos;
             }
         }
 

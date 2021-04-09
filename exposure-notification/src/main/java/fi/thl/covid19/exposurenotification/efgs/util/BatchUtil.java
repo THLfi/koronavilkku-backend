@@ -18,7 +18,6 @@ import java.util.stream.Stream;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.utcDateOf10MinInterval;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.DEFAULT_RISK_BUCKET;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
-import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DEFAULT_DAYS_SINCE_SYMPTOMS;
 import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DsosInterpretationMapper;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -39,20 +38,20 @@ public class BatchUtil {
                                 .addAllVisitedCountries(localKey.visitedCountries)
                                 .setOrigin(localKey.origin)
                                 .setReportType(EfgsProto.ReportType.CONFIRMED_TEST)
-                                .setDaysSinceOnsetOfSymptoms(DsosInterpretationMapper.mapToEfgs(localKey.daysSinceOnsetOfSymptoms, localKey.symptomsExist))
+                                .setDaysSinceOnsetOfSymptoms(DsosInterpretationMapper.mapToEfgs(localKey))
                                 .build())
                 .collect(Collectors.toList());
 
         return EfgsProto.DiagnosisKeyBatch.newBuilder().addAllKeys(efgsKeys).build();
     }
 
-    public static List<TemporaryExposureKey> transform(EfgsProto.DiagnosisKeyBatch batch) {
+    public static List<TemporaryExposureKey> transform(EfgsProto.DiagnosisKeyBatch batch, int currentInterval, int currentIntervalV2) {
         return batch.getKeysList().stream()
-                .flatMap(BatchUtil::constructTemporaryExposureKey)
+                .flatMap(key -> constructTemporaryExposureKey(key, currentInterval, currentIntervalV2))
                 .collect(Collectors.toList());
     }
 
-    private static Stream<TemporaryExposureKey> constructTemporaryExposureKey(EfgsProto.DiagnosisKey remoteKey) {
+    private static Stream<TemporaryExposureKey> constructTemporaryExposureKey(EfgsProto.DiagnosisKey remoteKey, int currentInterval, int currentIntervalV2) {
         try {
             return Stream.of(new TemporaryExposureKey(
                     new String(Base64.getEncoder().encode(remoteKey.getKeyData().toByteArray()), StandardCharsets.UTF_8),
@@ -63,8 +62,10 @@ public class BatchUtil {
                     DsosInterpretationMapper.mapFrom(remoteKey.getDaysSinceOnsetOfSymptoms()),
                     remoteKey.getOrigin(),
                     true,
-                    DsosInterpretationMapper.symptomsExist(remoteKey.getDaysSinceOnsetOfSymptoms())
-                    ));
+                    DsosInterpretationMapper.symptomsExist(remoteKey.getDaysSinceOnsetOfSymptoms()),
+                    currentInterval,
+                    currentIntervalV2
+            ));
         } catch (InputValidationException e) {
             LOG.warn("Remote key data validation failed {}", keyValue("exception", e));
             return Stream.empty();

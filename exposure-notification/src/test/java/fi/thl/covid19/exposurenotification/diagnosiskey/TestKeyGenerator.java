@@ -6,8 +6,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
-import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.INTERVALS_10MIN_PER_24H;
-import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.dayFirst10MinInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
 
 public class TestKeyGenerator {
@@ -19,26 +18,33 @@ public class TestKeyGenerator {
     }
 
     public List<TemporaryExposureKey> someKeys(int count) {
-        return someKeys(count, count, true);
+        Instant now = Instant.now();
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
+        return someKeys(count, currentInterval, currentIntervalV2, count, true);
     }
 
-    public List<TemporaryExposureKey> someKeys(int count, int symptomsDays, boolean consentToShare) {
+    public List<TemporaryExposureKey> someKeys(int count, int currentInterval, int currentIntervalV2) {
+        return someKeys(count, currentInterval, currentIntervalV2, count, true);
+    }
+
+    public List<TemporaryExposureKey> someKeys(int count, int currentInterval, int currentIntervalV2, int symptomsDays, boolean consentToShare) {
         ArrayList<TemporaryExposureKey> list = new ArrayList<>(14);
         for (int i = count - 1; i >= 0; i--) {
-            list.add(someKey(count - i, symptomsDays, consentToShare));
+            list.add(someKey(count - i, symptomsDays, consentToShare, currentInterval, currentIntervalV2));
         }
         return list;
     }
 
-    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare) {
-        return someKey(ageDays, symptomsDays, consentToShare, 0);
+    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare, int currentInterval, int currentIntervalV2) {
+        return someKey(ageDays, symptomsDays, consentToShare, 0, currentInterval, currentIntervalV2);
     }
 
-    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare, int dsos) {
-        return someKey(ageDays, symptomsDays, consentToShare, dsos, Optional.empty());
+    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare, int dsos, int currentInterval, int currentIntervalV2) {
+        return someKey(ageDays, symptomsDays, consentToShare, dsos, Optional.empty(), currentInterval, currentIntervalV2);
     }
 
-    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare, int dsos, Optional<Boolean> symptomsExist) {
+    public TemporaryExposureKey someKey(int ageDays, int symptomsDays, boolean consentToShare, int dsos, Optional<Boolean> symptomsExist, int currentInterval, int currentIntervalV2) {
         byte[] bytes = new byte[16];
         rand.nextBytes(bytes);
         String keyData = Base64.getEncoder().encodeToString(bytes);
@@ -47,11 +53,13 @@ public class TestKeyGenerator {
                 getRiskBucket(symptomsDays - ageDays),
                 dayFirst10MinInterval(Instant.now().minus(ageDays, ChronoUnit.DAYS)),
                 INTERVALS_10MIN_PER_24H,
-                rand.nextBoolean() ? Set.of() : Set.of("DE","IT"),
+                rand.nextBoolean() ? Set.of() : Set.of("DE", "IT"),
                 Optional.of(dsos),
                 "FI",
                 consentToShare,
-                symptomsExist
+                symptomsExist,
+                currentInterval,
+                currentIntervalV2
         );
     }
 

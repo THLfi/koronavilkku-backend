@@ -14,7 +14,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
 
-import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to10MinInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static java.time.ZoneOffset.UTC;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -112,8 +112,11 @@ public class DiagnosisKeyServiceTest {
     }
 
     private TemporaryExposureKey generateDomainKeyAt(LocalDate keyDate, int rollingPeriod, int transmissionRiskLevel) {
-        int interval = to10MinInterval(keyDate.atStartOfDay(UTC).toInstant());
+        Instant keyInstant = keyDate.atStartOfDay(UTC).toInstant();
+        int keyInterval = to24HourInterval(keyInstant);
+        int keyIntervalV2 = toV2Interval(keyInstant);
+        int interval = to10MinInterval(keyInstant);
         return new TemporaryExposureKey("c9Uau9icuBlvDvtokvlNaA==", transmissionRiskLevel, interval,
-                rollingPeriod, Set.of(), Optional.of(0), "FI", false, Optional.empty());
+                rollingPeriod, Set.of(), Optional.of(0), "FI", false, Optional.empty(), keyInterval, keyIntervalV2);
     }
 }

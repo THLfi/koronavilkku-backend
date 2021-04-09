@@ -3,7 +3,6 @@ package fi.thl.covid19.exposurenotification.efgs;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
-import fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TestKeyGenerator;
 import fi.thl.covid19.exposurenotification.efgs.dao.InboundOperationDao;
@@ -109,8 +108,11 @@ public class FederationServiceSyncWithDaoTestIT {
 
     @Test
     public void downloadKeys() throws Exception {
-        List<TemporaryExposureKey> keys1 = transform(transform(keyGenerator.someKeys(10)));
-        List<TemporaryExposureKey> keys2 = transform(transform(keyGenerator.someKeys(10)));
+        Instant now = Instant.now();
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
+        List<TemporaryExposureKey> keys1 = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
+        List<TemporaryExposureKey> keys2 = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
         String date = getDateString(LocalDate.now(ZoneOffset.UTC));
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
@@ -133,14 +135,17 @@ public class FederationServiceSyncWithDaoTestIT {
 
         inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
-        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
+        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(to24HourInterval(Instant.now()));
         assertTrue(keys1.size() + keys2.size() == dbKeys.size() && dbKeys.containsAll(keys1) && dbKeys.containsAll(keys2));
         assertDownloadOperationStateIsCorrect(10);
     }
 
     @Test
     public void downloadRetry() throws Exception {
-        List<TemporaryExposureKey> keys = transform(transform(keyGenerator.someKeys(10)));
+        Instant now = Instant.now();
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
+        List<TemporaryExposureKey> keys = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
         LocalDate date = LocalDate.now(ZoneOffset.UTC);
         String dateS = getDateString(date);
         mockServer.expect(ExpectedCount.once(),
@@ -205,13 +210,16 @@ public class FederationServiceSyncWithDaoTestIT {
     @Test
     public void downloadKeysTransmissionRiskLevel() throws Exception {
         String date = getDateString(LocalDate.now(ZoneOffset.UTC));
+        Instant now = Instant.now();
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
         List<TemporaryExposureKey> keys = transform(transform(
                 List.of(
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 1, Optional.of(true)),
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 2, Optional.of(false)),
-                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 3)
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 1, Optional.of(true), currentInterval, currentIntervalV2),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 2, Optional.of(false), currentInterval, currentIntervalV2),
+                        keyGenerator.someKey(1, 0x7FFFFFFF, true, 3, currentInterval, currentIntervalV2)
                 )
-        ));
+        ), currentInterval, currentIntervalV2);
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
                 .andExpect(method(HttpMethod.GET))
@@ -223,7 +231,7 @@ public class FederationServiceSyncWithDaoTestIT {
         generateAuditResponse(date, TEST_TAG_NAME, keys);
         inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
-        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(IntervalNumber.to24HourInterval(Instant.now()));
+        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(to24HourInterval(Instant.now()));
         assertEquals(dbKeys.size(), keys.size());
         assertTrue(dbKeys.get(0).daysSinceOnsetOfSymptoms.get() == 1 &&
                 calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKeys.get(0).transmissionRiskLevel);
@@ -233,7 +241,10 @@ public class FederationServiceSyncWithDaoTestIT {
 
     @Test
     public void downloadValidationFailsWithWrongPublicKey() throws Exception {
-        List<TemporaryExposureKey> keys = transform(transform(keyGenerator.someKeys(10)));
+        Instant now = Instant.now();
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
+        List<TemporaryExposureKey> keys = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
         LocalDate date = LocalDate.now(ZoneOffset.UTC);
         String dateS = getDateString(date);
         mockServer.expect(ExpectedCount.once(),
@@ -263,7 +274,7 @@ public class FederationServiceSyncWithDaoTestIT {
                         .body("")
                 );
         Instant now = Instant.now();
-        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
         Set<Long> operationIds = outboundService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
         long operationId = operationIds.stream().findFirst().get();
@@ -275,8 +286,8 @@ public class FederationServiceSyncWithDaoTestIT {
 
     @Test
     public void uploadKeysPartialSuccess() throws JsonProcessingException {
-        List<TemporaryExposureKey> keys = keyGenerator.someKeys(5);
         Instant now = Instant.now();
+        List<TemporaryExposureKey> keys = keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now));
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(now), toV2Interval(now), keys, 5);
 
         mockServer.expect(ExpectedCount.once(),
@@ -321,7 +332,7 @@ public class FederationServiceSyncWithDaoTestIT {
                 );
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
 
         try {
             outboundService.startOutbound(false);
@@ -346,7 +357,7 @@ public class FederationServiceSyncWithDaoTestIT {
                 );
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
 
         doOutBound();
         IntStream.range(1, MAX_RETRY_COUNT).forEach(this::doOutBoundRetry);
@@ -366,7 +377,7 @@ public class FederationServiceSyncWithDaoTestIT {
                 );
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(10000), 10000);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(10000, to24HourInterval(now), toV2Interval(now)), 10000);
 
         Set<Long> operationIds = outboundService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
@@ -379,7 +390,7 @@ public class FederationServiceSyncWithDaoTestIT {
     public void fetchPartialBatch() {
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5005), 5005);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5005, to24HourInterval(now), toV2Interval(now)), 5005);
 
         List<TemporaryExposureKey> batch1 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
         List<TemporaryExposureKey> batch2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
@@ -393,7 +404,7 @@ public class FederationServiceSyncWithDaoTestIT {
     public void crashDoNotReturnKeys() {
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
         assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
         assertCrashDoNotReturnKeys();
     }
@@ -402,7 +413,7 @@ public class FederationServiceSyncWithDaoTestIT {
     public void crashDoReturnKeys() {
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
         assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
         assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
         fakeStalled();
@@ -413,10 +424,12 @@ public class FederationServiceSyncWithDaoTestIT {
     @Test
     public void keysWithoutConsentWillNotBeFetched() {
         Instant now = Instant.now();
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test1".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, 5, false), 5);
+                currentInterval, currentIntervalV2, keyGenerator.someKeys(5, currentInterval, currentIntervalV2, 5, false), 5);
         diagnosisKeyDao.addKeys(2, md5DigestAsHex("test2".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, 5, true), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, currentInterval, currentIntervalV2, 5, true), 5);
 
         assertEquals(10, getAllDiagnosisKeys().size());
         OutboundOperation operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get();
