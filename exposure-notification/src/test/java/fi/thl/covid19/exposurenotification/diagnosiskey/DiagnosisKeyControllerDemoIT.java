@@ -104,7 +104,7 @@ public class DiagnosisKeyControllerDemoIT {
 
     @Test
     public void listWithKeysReturnsDemoBatchIds() throws Exception {
-        dao.addKeys(1, md5DigestAsHex("test1".getBytes()), INTERVALS.current, from24hourToV2Interval(INTERVALS.current), keyGenerator.someKeys(1), 1);
+        dao.addKeys(1, md5DigestAsHex("test1".getBytes()), INTERVALS.current, from24hourToV2Interval(INTERVALS.current), keyGenerator.someKeys(1, INTERVALS.current, from24hourToV2Interval(INTERVALS.current)), 1);
 
         BatchId batchId1 = new BatchId(INTERVALS.current, Optional.of(Integer.parseInt(INTERVALS.current + "1")));
         assertListing(BatchId.DEFAULT, List.of(batchId1));
@@ -112,7 +112,7 @@ public class DiagnosisKeyControllerDemoIT {
         assertListing(batchId1, List.of());
 
         BatchId batchId2 = new BatchId(INTERVALS.current, Optional.of(Integer.parseInt(INTERVALS.current + "3")));
-        dao.addKeys(2, md5DigestAsHex("test2".getBytes()), INTERVALS.current, from24hourToV2Interval(INTERVALS.current), keyGenerator.someKeys(2), 2);
+        dao.addKeys(2, md5DigestAsHex("test2".getBytes()), INTERVALS.current, from24hourToV2Interval(INTERVALS.current), keyGenerator.someKeys(2, INTERVALS.current, from24hourToV2Interval(INTERVALS.current)), 2);
 
         assertListing(BatchId.DEFAULT, List.of(batchId2));
         assertListing(new BatchId(INTERVALS.first), List.of(batchId2));
@@ -122,7 +122,7 @@ public class DiagnosisKeyControllerDemoIT {
 
     @Test
     public void listWithKeysReturnsDemoBatchIdsV2() throws Exception {
-        dao.addKeys(1, md5DigestAsHex("test1".getBytes()), fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current, keyGenerator.someKeys(1), 1);
+        dao.addKeys(1, md5DigestAsHex("test1".getBytes()), fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current, keyGenerator.someKeys(1, fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current), 1);
 
         BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.current), Optional.of(Integer.parseInt(INTERVALS_V2.current + "1")));
         assertListing(BatchId.DEFAULT, List.of(batchId1), true);
@@ -131,7 +131,7 @@ public class DiagnosisKeyControllerDemoIT {
 
         BatchId batchId2 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.current), Optional.of(Integer.parseInt(INTERVALS_V2.current + "3")));
         dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
-                fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current, keyGenerator.someKeys(2), 2);
+                fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current, keyGenerator.someKeys(2, fromV2to24hourInterval(INTERVALS_V2.current), INTERVALS_V2.current), 2);
 
         assertListing(BatchId.DEFAULT, List.of(batchId2), true);
         assertListing(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId2), true);
@@ -145,14 +145,14 @@ public class DiagnosisKeyControllerDemoIT {
         BatchId batchId2 = new BatchId(INTERVALS.last, Optional.of(Integer.parseInt(INTERVALS.last + "1")));
 
         dao.addKeys(1, md5DigestAsHex("test1".getBytes()),
-                batchId1.intervalNumber, from24hourToV2Interval(batchId1.intervalNumber), keyGenerator.someKeys(1), 1);
+                batchId1.intervalNumber, from24hourToV2Interval(batchId1.intervalNumber), keyGenerator.someKeys(1, batchId1.intervalNumber, from24hourToV2Interval(batchId1.intervalNumber)), 1);
 
         assertStatus(BatchId.DEFAULT, List.of(batchId1));
         assertStatus(new BatchId(INTERVALS.first), List.of(batchId1));
         assertStatus(batchId1, List.of());
 
         dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
-                batchId2.intervalNumber, from24hourToV2Interval(batchId2.intervalNumber), keyGenerator.someKeys(1), 1);
+                batchId2.intervalNumber, from24hourToV2Interval(batchId2.intervalNumber), keyGenerator.someKeys(1, batchId2.intervalNumber, from24hourToV2Interval(batchId2.intervalNumber)), 1);
 
         assertStatus(BatchId.DEFAULT, List.of(batchId1, batchId2));
         assertStatus(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1, batchId2));
@@ -165,14 +165,14 @@ public class DiagnosisKeyControllerDemoIT {
         BatchId batchId1 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(INTERVALS_V2.last - 1));
         BatchId batchId2 = new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(Integer.parseInt(INTERVALS_V2.last + "1")));
 
-        dao.addKeys(1, md5DigestAsHex("test1".getBytes()), batchId1.intervalNumber, batchId1.intervalNumberV2.get(), keyGenerator.someKeys(1), 1);
+        dao.addKeys(1, md5DigestAsHex("test1".getBytes()), batchId1.intervalNumber, batchId1.intervalNumberV2.get(), keyGenerator.someKeys(1, batchId1.intervalNumber, batchId1.intervalNumberV2.get()), 1);
 
         assertStatus(BatchId.DEFAULT, List.of(batchId1), true);
         assertStatus(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1), true);
         assertStatus(batchId1, List.of(), true);
 
         dao.addKeys(2, md5DigestAsHex("test2".getBytes()),
-                batchId2.intervalNumber, INTERVALS_V2.last, keyGenerator.someKeys(1), 1);
+                batchId2.intervalNumber, INTERVALS_V2.last, keyGenerator.someKeys(1, batchId2.intervalNumber, INTERVALS_V2.last), 1);
 
         assertStatus(BatchId.DEFAULT, List.of(batchId1, batchId2), true);
         assertStatus(new BatchId(fromV2to24hourInterval(INTERVALS_V2.first), Optional.of(INTERVALS_V2.first)), List.of(batchId1, batchId2), true);
@@ -188,7 +188,7 @@ public class DiagnosisKeyControllerDemoIT {
         assertCurrent(demoBatchWith0Keys);
         assertNoFile(demoBatchWith1Key);
         dao.addKeys(1, md5DigestAsHex("test".getBytes()), INTERVALS.last, from24hourToV2Interval(INTERVALS.last),
-                keyGenerator.someKeys(1), 1);
+                keyGenerator.someKeys(1, INTERVALS.last, from24hourToV2Interval(INTERVALS.last)), 1);
 
         assertFileExists(demoBatchWith1Key);
     }
@@ -200,7 +200,7 @@ public class DiagnosisKeyControllerDemoIT {
 
     @Test
     public void demoBatchFetchingSucceeds() throws Exception {
-        dao.addKeys(123, "TEST", INTERVALS.current, from24hourToV2Interval(INTERVALS.current), keyGenerator.someKeys(14), 14);
+        dao.addKeys(123, "TEST", INTERVALS.current, from24hourToV2Interval(INTERVALS.current), keyGenerator.someKeys(14, INTERVALS.current, from24hourToV2Interval(INTERVALS.current)), 14);
         mockMvc.perform(get("/diagnosis/v1/batch/" + INTERVALS.current + "_14"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM));

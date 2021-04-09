@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.to10MinInterval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class BatchFileFactoryTest {
@@ -81,16 +81,21 @@ public class BatchFileFactoryTest {
         Random rand = new Random(seed);
         byte[] keyBytes = new byte[16];
         rand.nextBytes(keyBytes);
+        Instant now = Instant.now();
+        int currentInterval = to24HourInterval(now);
+        int currentIntervalV2 = toV2Interval(now);
         return new TemporaryExposureKey(
                 Base64.getEncoder().encodeToString(keyBytes),
                 rand.nextInt(9),
-                to10MinInterval(Instant.now())-rand.nextInt(10)*6*24,
+                to10MinInterval(now) - rand.nextInt(10) * 6 * 24,
                 144,
                 Set.of(),
                 Optional.of(0),
                 "FI",
                 false,
-                Optional.empty()
+                Optional.empty(),
+                currentInterval,
+                currentIntervalV2
         );
     }
 
