@@ -55,11 +55,9 @@ public class DsosMapperUtil {
         public static int mapToEfgs(TemporaryExposureKey localKey) {
             final int dsos = localKey.daysSinceOnsetOfSymptoms.orElse(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
             final int submissionDsos = calculateDsosFromSubmission(localKey);
-            AtomicInteger efgsDsos = new AtomicInteger(DEFAULT_LOCAL_DAYS_SINCE_SYMPTOMS);
-            localKey.symptomsExist.ifPresentOrElse(
-                    e -> efgsDsos.set(mapDsos(dsos, submissionDsos, e)),
-                    () -> efgsDsos.set(SYMPTOMS_UNKNOWN.zero + submissionDsos));
-            return efgsDsos.get();
+            return localKey.symptomsExist
+                    .map(e -> mapDsos(dsos, submissionDsos, e))
+                    .orElseGet(() -> SYMPTOMS_UNKNOWN.zero + submissionDsos);
         }
 
         private static int calculateDsosFromSubmission(TemporaryExposureKey localKey) {
