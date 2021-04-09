@@ -44,7 +44,7 @@ select * from (
        13 => NONE,
        14 => NONE
        '::hstore,
-       'STANDARD',
+       'HIGH',
        '{ BE, BG, CZ, DK, DE, EE, IE, GR, ES, FR, HR, IT, CY, LV, LT, LU, HU, MT, NL, AT, PL, PT, RO, SI, SK, SE, IS, NO, LI, CH, GB }'::varchar(2)[])
 ) as default_values
 -- Don't insert a new version if the latest one is identical
