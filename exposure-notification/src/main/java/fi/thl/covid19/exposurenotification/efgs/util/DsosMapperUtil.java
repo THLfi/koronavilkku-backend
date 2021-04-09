@@ -5,7 +5,6 @@ import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
