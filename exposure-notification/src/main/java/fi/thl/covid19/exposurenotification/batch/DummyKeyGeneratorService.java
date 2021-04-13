@@ -49,15 +49,16 @@ public class DummyKeyGeneratorService {
         }
     }
 
-    private List<TemporaryExposureKey> generateDummyKeys(int count) {
+    private List<TemporaryExposureKey> generateDummyKeys(int totalCount) {
         List<TemporaryExposureKey> dummyKeys = new ArrayList<>();
-        for (int totalCount = 0; totalCount < count; totalCount++) {
+        while (dummyKeys.size() < totalCount) {
             Instant now = Instant.now();
             LocalDate symptomsOnset = now.atOffset(ZoneOffset.UTC).toLocalDate().minusDays(secureRandom.nextInt(maxDays - minDays + 1) + minDays);
             for (int dummySetCount = 0; dummySetCount < 14; dummySetCount++) {
                 dummyKeys.add(generateDummyKey(dummySetCount, symptomsOnset, now));
             }
         }
+
         return dummyKeys;
     }
 
