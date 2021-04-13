@@ -1,6 +1,5 @@
 package fi.thl.covid19.exposurenotification.efgs;
 
-import fi.thl.covid19.exposurenotification.batch.DummyKeyGeneratorService;
 import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyDao;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 import fi.thl.covid19.exposurenotification.efgs.dao.OutboundOperationDao;
@@ -31,7 +30,6 @@ public class OutboundService {
     private final OutboundOperationDao outboundOperationDao;
     private final FederationGatewaySigning signer;
     private final MeterRegistry meterRegistry;
-    private final DummyKeyGeneratorService dummyKeyGeneratorService;
 
     private final String efgsTotalOperationsOutbound = "efgs_total_operations_outbound";
     private final String efgsErrorOperationsOutbound = "efgs_error_operations_outbound";
@@ -42,15 +40,13 @@ public class OutboundService {
             DiagnosisKeyDao diagnosisKeyDao,
             OutboundOperationDao outboundOperationDao,
             FederationGatewaySigning signer,
-            MeterRegistry meterRegistry,
-            DummyKeyGeneratorService dummyKeyGeneratorService
+            MeterRegistry meterRegistry
     ) {
         this.client = requireNonNull(client);
         this.diagnosisKeyDao = requireNonNull(diagnosisKeyDao);
         this.outboundOperationDao = requireNonNull(outboundOperationDao);
         this.signer = requireNonNull(signer);
         this.meterRegistry = requireNonNull(meterRegistry);
-        this.dummyKeyGeneratorService = requireNonNull(dummyKeyGeneratorService);
         initCounters();
     }
 
@@ -72,7 +68,7 @@ public class OutboundService {
     private void doOutbound(OutboundOperation operation) {
         boolean finished = false;
         try {
-            List<TemporaryExposureKey> outboundKeys = dummyKeyGeneratorService.addDummyKeysWhenNecessary(operation.keys);
+            List<TemporaryExposureKey> outboundKeys = operation.keys;
             UploadResponseEntity res = handleOutbound(transform(outboundKeys), operation.batchTag);
             // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
             if (res.httpStatus.value() == 207) {
@@ -100,7 +96,7 @@ public class OutboundService {
         List<Integer> successKeysIdx = statuses.get(201);
         List<Integer> keysIdx409 = statuses.get(409);
         List<Integer> keysIdx500 = statuses.get(500);
-        List<TemporaryExposureKey> successKeys = dummyKeyGeneratorService.addDummyKeysWhenNecessary(successKeysIdx.stream().map(operation.keys::get).collect(Collectors.toList()));
+        List<TemporaryExposureKey> successKeys = successKeysIdx.stream().map(operation.keys::get).collect(Collectors.toList());
 
         UploadResponseEntity resendRes = handleOutbound(transform(successKeys), operation.batchTag);
 

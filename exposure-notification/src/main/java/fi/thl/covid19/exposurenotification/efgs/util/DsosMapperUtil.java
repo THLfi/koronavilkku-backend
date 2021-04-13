@@ -2,6 +2,7 @@ package fi.thl.covid19.exposurenotification.efgs.util;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
 
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Optional;
@@ -57,6 +58,17 @@ public class DsosMapperUtil {
             return localKey.symptomsExist
                     .map(e -> mapDsos(dsos, submissionDsos, e))
                     .orElseGet(() -> SYMPTOMS_UNKNOWN.zero + submissionDsos);
+        }
+
+        public static Optional<Integer> calculateDsos(LocalDate symptomsOnset, int rollingStartIntervalNumber) {
+            return mapFrom(
+                    Math.toIntExact(
+                            ChronoUnit.DAYS.between(
+                                    symptomsOnset,
+                                    utcDateOf10MinInterval(rollingStartIntervalNumber)
+                            )
+                    )
+            );
         }
 
         private static int calculateDsosFromSubmission(TemporaryExposureKey localKey) {

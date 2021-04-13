@@ -1,8 +1,6 @@
-package fi.thl.covid19.exposurenotification.batch;
+package fi.thl.covid19.exposurenotification.efgs.util;
 
-import fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyService;
 import fi.thl.covid19.exposurenotification.diagnosiskey.TemporaryExposureKey;
-import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -15,45 +13,34 @@ import java.util.stream.Stream;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.DiagnosisKeyService.DEFAULT_ORIGIN_COUNTRY;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
+import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DsosInterpretationMapper.calculateDsos;
 import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.Comparator.comparing;
-import static java.util.Objects.requireNonNull;
 
-@Service
-public class DummyKeyGeneratorService {
+public class DummyKeyGeneratorUtil {
 
-    private final SecureRandom secureRandom;
-    private final int minDays;
-    private final int maxDays;
-    private final int batchMinSize;
+    public static final int BATCH_MIN_SIZE = 200;
+    private static final int MIN_DAYS = 2;
+    private static final int MAX_DAYS = 10;
 
-    private final DiagnosisKeyService diagnosisKeyService;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-
-    public DummyKeyGeneratorService(DiagnosisKeyService diagnosisKeyService) {
-        this.secureRandom = new SecureRandom();
-        this.minDays = 2;
-        this.maxDays = 10;
-        this.batchMinSize = 200;
-        this.diagnosisKeyService = requireNonNull(diagnosisKeyService);
-    }
-
-    public List<TemporaryExposureKey> addDummyKeysWhenNecessary(List<TemporaryExposureKey> actualKeys) {
-        if (actualKeys.isEmpty() || actualKeys.size() >= batchMinSize) {
+    public static List<TemporaryExposureKey> concatDummyKeys(List<TemporaryExposureKey> actualKeys, List<TemporaryExposureKey> dummyKeys) {
+        if (actualKeys.isEmpty() || actualKeys.size() >= BATCH_MIN_SIZE) {
             return actualKeys;
         } else {
             return Stream.concat(
                     actualKeys.stream(),
-                    generateDummyKeys(batchMinSize - actualKeys.size()).stream()
+                    dummyKeys.stream()
             ).sorted(comparing(TemporaryExposureKey::getKeyData)).collect(Collectors.toList());
         }
     }
 
-    private List<TemporaryExposureKey> generateDummyKeys(int totalCount) {
+    public static List<TemporaryExposureKey> generateDummyKeys(int totalCount) {
         List<TemporaryExposureKey> dummyKeys = new ArrayList<>();
         while (dummyKeys.size() < totalCount) {
             Instant now = Instant.now();
-            LocalDate symptomsOnset = now.atOffset(ZoneOffset.UTC).toLocalDate().minusDays(secureRandom.nextInt(maxDays - minDays + 1) + minDays);
+            LocalDate symptomsOnset = now.atOffset(ZoneOffset.UTC).toLocalDate().minusDays(SECURE_RANDOM.nextInt(MAX_DAYS - MIN_DAYS + 1) + MIN_DAYS);
             for (int dummySetCount = 0; dummySetCount < 14; dummySetCount++) {
                 dummyKeys.add(generateDummyKey(dummySetCount, symptomsOnset, now));
             }
@@ -62,9 +49,9 @@ public class DummyKeyGeneratorService {
         return dummyKeys;
     }
 
-    private TemporaryExposureKey generateDummyKey(int rollingStartIntervalOffset, LocalDate symptomsOnset, Instant now) {
+    private static TemporaryExposureKey generateDummyKey(int rollingStartIntervalOffset, LocalDate symptomsOnset, Instant now) {
         byte[] keyData = new byte[16];
-        secureRandom.nextBytes(keyData);
+        SECURE_RANDOM.nextBytes(keyData);
 
         int rollingStartInterval = dayFirst10MinInterval(now.minus(rollingStartIntervalOffset, DAYS));
 
@@ -74,7 +61,7 @@ public class DummyKeyGeneratorService {
                 rollingStartInterval,
                 144,
                 Set.of(),
-                diagnosisKeyService.calculateDsos(symptomsOnset, rollingStartInterval),
+                calculateDsos(symptomsOnset, rollingStartInterval),
                 DEFAULT_ORIGIN_COUNTRY,
                 true,
                 Optional.empty(),

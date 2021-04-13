@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import static fi.thl.covid19.exposurenotification.efgs.util.DummyKeyGeneratorUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.util.CommonConst.MAX_RETRY_COUNT;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -32,7 +33,8 @@ public class DiagnosisKeyDao {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final OutboundOperationDao outboundOperationDao;
 
-    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate, OutboundOperationDao outboundOperationDao) {
+    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate,
+                           OutboundOperationDao outboundOperationDao) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
         this.outboundOperationDao = requireNonNull(outboundOperationDao);
 
@@ -190,12 +192,21 @@ public class DiagnosisKeyDao {
 
         if (keys.isEmpty()) {
             return Optional.empty();
+        } else if (!retry && keys.size() <= BATCH_MIN_SIZE) {
+            List<TemporaryExposureKey> dummyKeys = generateDummyKeys(BATCH_MIN_SIZE - keys.size());
+            batchInsert(dummyKeys, Optional.of(timestamp));
+            List<TemporaryExposureKey> concatKeys = concatDummyKeys(keys, dummyKeys);
+            return constructOutboundOperation(concatKeys, timestamp);
         } else {
-            return Optional.of(
-                    new OutboundOperation(
-                            keys,
-                            outboundOperationDao.startOutboundOperation(timestamp)));
+            return constructOutboundOperation(keys, timestamp);
         }
+    }
+
+    private Optional<OutboundOperation> constructOutboundOperation(List<TemporaryExposureKey> keys, Timestamp timestamp) {
+        return Optional.of(
+                new OutboundOperation(
+                        keys,
+                        outboundOperationDao.startOutboundOperation(timestamp)));
     }
 
     @Transactional
