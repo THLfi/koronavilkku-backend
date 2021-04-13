@@ -32,7 +32,7 @@ public class DiagnosisKeyService {
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyService.class);
 
     private static final Duration MAX_KEY_AGE = Duration.ofDays(14);
-    private static final String DEFAULT_ORIGIN_COUNTRY = "FI";
+    public static final String DEFAULT_ORIGIN_COUNTRY = "FI";
 
     private final DiagnosisKeyDao dao;
     private final PublishTokenVerificationService tokenVerificationService;
@@ -80,7 +80,7 @@ public class DiagnosisKeyService {
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
                 visitedCountries,
-                calculateDsos(verification.symptomsOnset, requestKey),
+                calculateDsos(verification.symptomsOnset, requestKey.rollingStartIntervalNumber),
                 DEFAULT_ORIGIN_COUNTRY,
                 consentToShareWithEfgs,
                 verification.symptomsExist,
@@ -89,12 +89,12 @@ public class DiagnosisKeyService {
         )).collect(Collectors.toList());
     }
 
-    private Optional<Integer> calculateDsos(LocalDate symptomsOnset, TemporaryExposureKeyRequest requestKey) {
+    public Optional<Integer> calculateDsos(LocalDate symptomsOnset, int rollingStartIntervalNumber) {
         return DsosMapperUtil.DsosInterpretationMapper.mapFrom(
                 Math.toIntExact(
                         ChronoUnit.DAYS.between(
                                 symptomsOnset,
-                                utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)
+                                utcDateOf10MinInterval(rollingStartIntervalNumber)
                         )
                 )
         );

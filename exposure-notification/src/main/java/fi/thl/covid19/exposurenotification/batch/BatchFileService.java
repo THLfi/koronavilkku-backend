@@ -29,6 +29,7 @@ public class BatchFileService {
 
     private final DiagnosisKeyDao dao;
     private final BatchFileStorage batchFileStorage;
+    private final DummyKeyGeneratorService dummyKeyGeneratorService;
 
     private final String region;
     private final SignatureConfig signatureConfig;
@@ -37,10 +38,12 @@ public class BatchFileService {
     public BatchFileService(DiagnosisKeyDao dao,
                             SignatureConfig signatureConfig,
                             BatchFileStorage batchFileStorage,
+                            DummyKeyGeneratorService dummyKeyGeneratorService,
                             @Value("${covid19.region}") String region,
                             @Value("${covid19.diagnosis.signature.randomize-key:false}") boolean randomizeKey) {
         this.dao = requireNonNull(dao, "DAO required");
         this.batchFileStorage = requireNonNull(batchFileStorage, "BatchFileStorage required");
+        this.dummyKeyGeneratorService = requireNonNull(dummyKeyGeneratorService);
         this.signatureConfig = requireNonNull(signatureConfig, "SignatureConfig required");
         this.region = requireNonNull(region, "Region required");
         if (randomizeKey) {
@@ -144,7 +147,7 @@ public class BatchFileService {
 
     private byte[] createBatchData(BatchId id) {
         LOG.debug("Generating batch file: {}", keyValue("batchId", id));
-        List<TemporaryExposureKey> keys = dao.getIntervalKeys(id.intervalNumber);
+        List<TemporaryExposureKey> keys = dummyKeyGeneratorService.addDummyKeysWhenNecessary(dao.getIntervalKeys(id.intervalNumber));
         if (keys.isEmpty()) {
             throw new BatchNotFoundException(id);
         } else {
@@ -156,7 +159,7 @@ public class BatchFileService {
     private byte[] createBatchDataV2(BatchId id) {
         LOG.debug("Generating V2 batch file: {}", keyValue("batchId", id));
         int intervalV2 = id.intervalNumberV2.orElseThrow();
-        List<TemporaryExposureKey> keys = dao.getIntervalKeysV2(intervalV2);
+        List<TemporaryExposureKey> keys = dummyKeyGeneratorService.addDummyKeysWhenNecessary(dao.getIntervalKeysV2(intervalV2));
         if (keys.isEmpty()) {
             throw new BatchNotFoundException(id);
         } else {

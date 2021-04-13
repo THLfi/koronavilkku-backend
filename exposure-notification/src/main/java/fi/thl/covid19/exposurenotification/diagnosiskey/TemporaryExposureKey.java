@@ -78,6 +78,10 @@ public final class TemporaryExposureKey {
         this.submissionIntervalV2 = submissionIntervalV2;
     }
 
+    public String getKeyData() {
+        return keyData;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
