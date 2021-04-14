@@ -20,6 +20,9 @@ import java.util.*;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.from24hourToV2Interval;
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.toV2Interval;
+import static fi.thl.covid19.exposurenotification.efgs.util.DummyKeyGeneratorUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.util.CommonConst.MAX_RETRY_COUNT;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -32,7 +35,8 @@ public class DiagnosisKeyDao {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final OutboundOperationDao outboundOperationDao;
 
-    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate, OutboundOperationDao outboundOperationDao) {
+    public DiagnosisKeyDao(NamedParameterJdbcTemplate jdbcTemplate,
+                           OutboundOperationDao outboundOperationDao) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
         this.outboundOperationDao = requireNonNull(outboundOperationDao);
 
@@ -107,41 +111,53 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public List<TemporaryExposureKey> getIntervalKeys(int interval) {
+    public List<TemporaryExposureKey> getIntervalKeysWithDummyPadding(int interval, boolean isV2Interval) {
+        List<TemporaryExposureKey> keys = isV2Interval ? getIntervalKeysV2(interval) : getIntervalKeys(interval);
+        if (keys.isEmpty() || keys.size() >= BATCH_MIN_SIZE) {
+            return keys;
+        } else {
+            return concatDummyKeys(keys, createDummyKeys(BATCH_MIN_SIZE - keys.size(), isV2Interval ? interval : from24hourToV2Interval(interval), false, Optional.empty()));
+        }
+    }
+
+    private List<TemporaryExposureKey> getIntervalKeys(int interval) {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
-        String sql =
-                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval, submission_interval_v2, " +
-                        "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
-                        "from en.diagnosis_key " +
-                        "where submission_interval = :interval " +
-                        // Level 0 & 7 would get 0 score anyhow, so ignore them
-                        // This also clips the range, so that we can manage the difference between iOS & Android APIs
-                        "and transmission_risk_level between 1 and 6 " +
-                        "order by key_data";
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "submission_interval, submission_interval_v2, " +
+                "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                "from en.diagnosis_key " +
+                "where submission_interval = :interval " +
+                // Level 0 & 7 would get 0 score anyhow, so ignore them
+                // This also clips the range, so that we can manage the difference between iOS & Android APIs
+                "and transmission_risk_level between 1 and 6 " +
+                "order by key_data";
         Map<String, Object> params = Map.of("interval", interval);
         // We should not have invalid data in the DB, but if we do, pass by it and move on
         return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(interval, rs, i))
                 .stream().flatMap(Optional::stream).collect(Collectors.toList());
     }
 
-    @Transactional
-    public List<TemporaryExposureKey> getIntervalKeysV2(int intervalV2) {
+    private List<TemporaryExposureKey> getIntervalKeysV2(int intervalV2) {
         LOG.info("Fetching keys: {}", keyValue("intervalV2", intervalV2));
-        String sql =
-                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval, submission_interval_v2, " +
-                        "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
-                        "from en.diagnosis_key " +
-                        "where submission_interval_v2 = :interval_v2 " +
-                        // Level 0 & 7 would get 0 score anyhow, so ignore them
-                        // This also clips the range, so that we can manage the difference between iOS & Android APIs
-                        "and transmission_risk_level between 1 and 6 " +
-                        "order by key_data";
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "submission_interval, submission_interval_v2, " +
+                "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                "from en.diagnosis_key " +
+                "where submission_interval_v2 = :interval_v2 " +
+                // Level 0 & 7 would get 0 score anyhow, so ignore them
+                // This also clips the range, so that we can manage the difference between iOS & Android APIs
+                "and transmission_risk_level between 1 and 6 " +
+                "order by key_data";
         Map<String, Object> params = Map.of("interval_v2", intervalV2);
         // We should not have invalid data in the DB, but if we do, pass by it and move on
         return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(intervalV2, rs, i))
                 .stream().flatMap(Optional::stream).collect(Collectors.toList());
+    }
+
+    private List<TemporaryExposureKey> createDummyKeys(int count, int intervalV2, boolean consentToShare, Optional<Timestamp> timestamp) {
+        List<TemporaryExposureKey> dummyKeys = generateDummyKeys(count, consentToShare, intervalV2, Instant.now());
+        batchInsert(dummyKeys, timestamp);
+        return dummyKeys;
     }
 
     @Transactional
@@ -166,9 +182,22 @@ public class DiagnosisKeyDao {
     }
 
     @Transactional
-    public Optional<OutboundOperation> fetchAvailableKeysForEfgs(boolean retry) {
+    public Optional<OutboundOperation> fetchAvailableKeyForEfgsWithDummyPadding(boolean retry) {
+        Instant now = Instant.now();
+        Timestamp timestamp = Timestamp.from(now);
+        List<TemporaryExposureKey> keys = fetchAvailableKeysForEfgs(retry, timestamp);
+        if (keys.isEmpty()) {
+            return Optional.empty();
+        } else if (!retry && keys.size() < BATCH_MIN_SIZE) {
+            List<TemporaryExposureKey> concatKeys = concatDummyKeys(keys, createDummyKeys(BATCH_MIN_SIZE - keys.size(), toV2Interval(now), true, Optional.of(timestamp)));
+            return constructOutboundOperation(concatKeys, timestamp);
+        } else {
+            return constructOutboundOperation(keys, timestamp);
+        }
+    }
+
+    private List<TemporaryExposureKey> fetchAvailableKeysForEfgs(boolean retry, Timestamp timestamp) {
         LOG.info("Fetching queued keys not sent to efgs.");
-        Timestamp timestamp = Timestamp.from(Instant.now());
         String sql = "with batch as ( " +
                 "select key_data " +
                 "from en.diagnosis_key " +
@@ -182,20 +211,18 @@ public class DiagnosisKeyDao {
                 "visited_countries, days_since_onset_of_symptoms, origin, consent_to_share, symptoms_exist, " +
                 "submission_interval, submission_interval_v2";
 
-        List<TemporaryExposureKey> keys = new ArrayList<>(jdbcTemplate.query(sql, Map.of(
+        return new ArrayList<>(jdbcTemplate.query(sql, Map.of(
                 "min_retry_count", retry ? 1 : 0,
                 "max_retry_count", retry ? MAX_RETRY_COUNT : 1,
                 "timestamp", timestamp
         ), (rs, i) -> mapKey(rs)));
+    }
 
-        if (keys.isEmpty()) {
-            return Optional.empty();
-        } else {
-            return Optional.of(
-                    new OutboundOperation(
-                            keys,
-                            outboundOperationDao.startOutboundOperation(timestamp)));
-        }
+    private Optional<OutboundOperation> constructOutboundOperation(List<TemporaryExposureKey> keys, Timestamp timestamp) {
+        return Optional.of(
+                new OutboundOperation(
+                        keys,
+                        outboundOperationDao.startOutboundOperation(timestamp)));
     }
 
     @Transactional

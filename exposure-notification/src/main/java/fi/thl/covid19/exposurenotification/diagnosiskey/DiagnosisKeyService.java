@@ -2,7 +2,6 @@ package fi.thl.covid19.exposurenotification.diagnosiskey;
 
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.DiagnosisPublishRequest;
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.TemporaryExposureKeyRequest;
-import fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerification;
 import fi.thl.covid19.exposurenotification.tokenverification.PublishTokenVerificationService;
 import org.slf4j.Logger;
@@ -12,15 +11,13 @@ import org.springframework.util.DigestUtils;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.TransmissionRiskBuckets.getRiskBucket;
+import static fi.thl.covid19.exposurenotification.efgs.util.DsosMapperUtil.DsosInterpretationMapper.calculateDsos;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
@@ -32,7 +29,7 @@ public class DiagnosisKeyService {
     private static final Logger LOG = LoggerFactory.getLogger(DiagnosisKeyService.class);
 
     private static final Duration MAX_KEY_AGE = Duration.ofDays(14);
-    private static final String DEFAULT_ORIGIN_COUNTRY = "FI";
+    public static final String DEFAULT_ORIGIN_COUNTRY = "FI";
 
     private final DiagnosisKeyDao dao;
     private final PublishTokenVerificationService tokenVerificationService;
@@ -80,24 +77,13 @@ public class DiagnosisKeyService {
                 requestKey.rollingStartIntervalNumber,
                 requestKey.rollingPeriod,
                 visitedCountries,
-                calculateDsos(verification.symptomsOnset, requestKey),
+                calculateDsos(verification.symptomsOnset, requestKey.rollingStartIntervalNumber),
                 DEFAULT_ORIGIN_COUNTRY,
                 consentToShareWithEfgs,
                 verification.symptomsExist,
                 intervalNumber,
                 intervalNumberV2
         )).collect(Collectors.toList());
-    }
-
-    private Optional<Integer> calculateDsos(LocalDate symptomsOnset, TemporaryExposureKeyRequest requestKey) {
-        return DsosMapperUtil.DsosInterpretationMapper.mapFrom(
-                Math.toIntExact(
-                        ChronoUnit.DAYS.between(
-                                symptomsOnset,
-                                utcDateOf10MinInterval(requestKey.rollingStartIntervalNumber)
-                        )
-                )
-        );
     }
 
     private String checksum(List<TemporaryExposureKey> keys) {

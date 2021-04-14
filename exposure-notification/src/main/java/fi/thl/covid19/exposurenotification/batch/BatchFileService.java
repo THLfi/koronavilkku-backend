@@ -144,7 +144,7 @@ public class BatchFileService {
 
     private byte[] createBatchData(BatchId id) {
         LOG.debug("Generating batch file: {}", keyValue("batchId", id));
-        List<TemporaryExposureKey> keys = dao.getIntervalKeys(id.intervalNumber);
+        List<TemporaryExposureKey> keys = dao.getIntervalKeysWithDummyPadding(id.intervalNumber, false);
         if (keys.isEmpty()) {
             throw new BatchNotFoundException(id);
         } else {
@@ -156,7 +156,7 @@ public class BatchFileService {
     private byte[] createBatchDataV2(BatchId id) {
         LOG.debug("Generating V2 batch file: {}", keyValue("batchId", id));
         int intervalV2 = id.intervalNumberV2.orElseThrow();
-        List<TemporaryExposureKey> keys = dao.getIntervalKeysV2(intervalV2);
+        List<TemporaryExposureKey> keys = dao.getIntervalKeysWithDummyPadding(intervalV2, true);
         if (keys.isEmpty()) {
             throw new BatchNotFoundException(id);
         } else {

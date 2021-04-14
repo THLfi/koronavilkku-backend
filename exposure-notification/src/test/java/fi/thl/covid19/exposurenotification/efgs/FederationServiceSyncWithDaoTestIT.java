@@ -32,6 +32,7 @@ import java.sql.Timestamp;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.*;
@@ -111,8 +112,8 @@ public class FederationServiceSyncWithDaoTestIT {
         Instant now = Instant.now();
         int currentInterval = to24HourInterval(now);
         int currentIntervalV2 = toV2Interval(now);
-        List<TemporaryExposureKey> keys1 = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
-        List<TemporaryExposureKey> keys2 = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
+        List<TemporaryExposureKey> keys1 = transform(transform(keyGenerator.someKeys(200)), currentInterval, currentIntervalV2);
+        List<TemporaryExposureKey> keys2 = transform(transform(keyGenerator.someKeys(200)), currentInterval, currentIntervalV2);
         String date = getDateString(LocalDate.now(ZoneOffset.UTC));
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
@@ -135,9 +136,9 @@ public class FederationServiceSyncWithDaoTestIT {
 
         inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
-        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(to24HourInterval(Instant.now()));
+        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeysWithDummyPadding(to24HourInterval(Instant.now()), false);
         assertTrue(keys1.size() + keys2.size() == dbKeys.size() && dbKeys.containsAll(keys1) && dbKeys.containsAll(keys2));
-        assertDownloadOperationStateIsCorrect(10);
+        assertDownloadOperationStateIsCorrect(200);
     }
 
     @Test
@@ -231,12 +232,16 @@ public class FederationServiceSyncWithDaoTestIT {
         generateAuditResponse(date, TEST_TAG_NAME, keys);
         inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
-        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(to24HourInterval(Instant.now()));
-        assertEquals(dbKeys.size(), keys.size());
-        assertTrue(dbKeys.get(0).daysSinceOnsetOfSymptoms.get() == 1 &&
-                calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKeys.get(0).transmissionRiskLevel);
-        assertTrue(dbKeys.get(1).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(1).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
-        assertTrue(dbKeys.get(2).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(2).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+        List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeysWithDummyPadding(to24HourInterval(Instant.now()), false);
+        assertEquals(dbKeys.size(), 210 + keys.size());
+
+        TemporaryExposureKey dbKey0 = dbKeys.stream().filter(key -> key.keyData.equals(keys.get(0).getKeyData())).findAny().orElseThrow();
+        TemporaryExposureKey dbKey1 = dbKeys.stream().filter(key -> key.keyData.equals(keys.get(1).getKeyData())).findAny().orElseThrow();
+        TemporaryExposureKey dbKey2 = dbKeys.stream().filter(key -> key.keyData.equals(keys.get(2).getKeyData())).findAny().orElseThrow();
+        assertTrue(dbKey0.daysSinceOnsetOfSymptoms.get() == 1 &&
+                calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKey0.transmissionRiskLevel);
+        assertTrue(dbKey1.daysSinceOnsetOfSymptoms.isEmpty() && dbKey1.transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+        assertTrue(dbKey2.daysSinceOnsetOfSymptoms.isEmpty() && dbKey2.transmissionRiskLevel == DEFAULT_RISK_BUCKET);
     }
 
     @Test
@@ -278,17 +283,17 @@ public class FederationServiceSyncWithDaoTestIT {
         Set<Long> operationIds = outboundService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
         long operationId = operationIds.stream().findFirst().get();
-        assertUploadOperationStateIsCorrect(operationId, 5, 5, 0, 0);
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
+        assertUploadOperationStateIsCorrect(operationId, 201, 201, 0, 0);
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(true).isEmpty());
         assertCrashDoNotReturnKeys();
     }
 
     @Test
     public void uploadKeysPartialSuccess() throws JsonProcessingException {
         Instant now = Instant.now();
-        List<TemporaryExposureKey> keys = keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now));
-        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(now), toV2Interval(now), keys, 5);
+        List<TemporaryExposureKey> keys = keyGenerator.someKeys(603, to24HourInterval(now), toV2Interval(now));
+        diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()), to24HourInterval(now), toV2Interval(now), keys, 603);
 
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/upload/"))
@@ -308,9 +313,9 @@ public class FederationServiceSyncWithDaoTestIT {
         Set<Long> operationIds = outboundService.startOutbound(false);
         assertFalse(operationIds.isEmpty());
         long operationId = operationIds.stream().findFirst().get();
-        assertUploadOperationStateIsCorrect(operationId, 5, 2, 2, 1);
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
-        assertEquals(3, diagnosisKeyDao.fetchAvailableKeysForEfgs(true).get().keys.size());
+        assertUploadOperationStateIsCorrect(operationId, 603, 200, 201, 202);
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
+        assertEquals(403, diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(true).get().keys.size());
         assertCrashDoNotReturnKeys();
     }
 
@@ -342,7 +347,7 @@ public class FederationServiceSyncWithDaoTestIT {
         Set<Long> operationIds = outboundService.startOutbound(true);
         assertUploadOperationErrorStateIsFinished(operationIds.stream().findFirst().get());
         assertEquals(1, getOutboundOperationsInError().size());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertEquals(210, diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get().keys.size());
         assertCrashDoNotReturnKeys();
     }
 
@@ -357,12 +362,12 @@ public class FederationServiceSyncWithDaoTestIT {
                 );
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
-                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
+                to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(500, to24HourInterval(now), toV2Interval(now)), 500);
 
         doOutBound();
         IntStream.range(1, MAX_RETRY_COUNT).forEach(this::doOutBoundRetry);
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(true).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
         assertCrashDoNotReturnKeys();
     }
 
@@ -392,12 +397,12 @@ public class FederationServiceSyncWithDaoTestIT {
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
                 to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5005, to24HourInterval(now), toV2Interval(now)), 5005);
 
-        List<TemporaryExposureKey> batch1 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
-        List<TemporaryExposureKey> batch2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys;
+        List<TemporaryExposureKey> batch1 = diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get().keys;
+        List<TemporaryExposureKey> batch2 = diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get().keys;
 
         assertEquals(5000, batch1.size());
-        assertEquals(5, batch2.size());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertEquals(201, batch2.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
     }
 
     @Test
@@ -405,7 +410,7 @@ public class FederationServiceSyncWithDaoTestIT {
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
                 to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
-        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
+        assertEquals(201, diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get().keys.size());
         assertCrashDoNotReturnKeys();
     }
 
@@ -414,11 +419,11 @@ public class FederationServiceSyncWithDaoTestIT {
         Instant now = Instant.now();
         diagnosisKeyDao.addKeys(1, md5DigestAsHex("test".getBytes()),
                 to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, to24HourInterval(now), toV2Interval(now)), 5);
-        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertEquals(201, diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get().keys.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
         fakeStalled();
         diagnosisKeyDao.resolveOutboundCrash();
-        assertEquals(5, diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get().keys.size());
+        assertEquals(201, diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get().keys.size());
     }
 
     @Test
@@ -432,22 +437,22 @@ public class FederationServiceSyncWithDaoTestIT {
                 to24HourInterval(now), toV2Interval(now), keyGenerator.someKeys(5, currentInterval, currentIntervalV2, 5, true), 5);
 
         assertEquals(10, getAllDiagnosisKeys().size());
-        OutboundOperation operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(false).get();
+        OutboundOperation operation = diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get();
         List<TemporaryExposureKey> toEfgs1 = operation.keys;
-        assertEquals(5, toEfgs1.size());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertEquals(201, toEfgs1.size());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
         diagnosisKeyDao.setNotSent(operation);
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
-        List<TemporaryExposureKey> toEfgs2 = diagnosisKeyDao.fetchAvailableKeysForEfgs(true).get().keys;
+        assertEquals(210, diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).get().keys.size());
+        List<TemporaryExposureKey> toEfgs2 = diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(true).get().keys;
         assertEquals(5, toEfgs2.size());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(true).isEmpty());
     }
 
     private void assertCrashDoNotReturnKeys() {
         diagnosisKeyDao.resolveOutboundCrash();
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(true).isEmpty());
-        assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(true).isEmpty());
+        assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
     }
 
     private void doOutBound() {
@@ -455,7 +460,7 @@ public class FederationServiceSyncWithDaoTestIT {
             outboundService.startOutbound(false);
         } catch (HttpServerErrorException e) {
             assertOutboundOperationErrorStateIsCorrect();
-            assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+            assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
         }
     }
 
@@ -464,7 +469,7 @@ public class FederationServiceSyncWithDaoTestIT {
             outboundService.startOutbound(true);
         } catch (HttpServerErrorException e) {
             assertOutboundOperationErrorStateIsCorrect();
-            assertTrue(diagnosisKeyDao.fetchAvailableKeysForEfgs(false).isEmpty());
+            assertTrue(diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(false).isEmpty());
             getAllDiagnosisKeys().forEach(key ->
                     assertEquals(i + 1, key.get("retry_count"))
             );
@@ -518,7 +523,10 @@ public class FederationServiceSyncWithDaoTestIT {
 
     private String generateMultiStatusUploadResponseBody() throws JsonProcessingException {
         FederationGatewayClient.UploadResponseEntityInner body = new FederationGatewayClient.UploadResponseEntityInner();
-        body.putAll(Map.of(201, List.of(0, 1), 409, List.of(2, 3), 500, List.of(4)));
+        List<Integer> successIds = IntStream.rangeClosed(0, 199).boxed().collect(Collectors.toList());
+        List<Integer> ids409 = IntStream.rangeClosed(200, 400).boxed().collect(Collectors.toList());
+        List<Integer> ids500 = IntStream.rangeClosed(401, 602).boxed().collect(Collectors.toList());
+        body.putAll(Map.of(201, successIds, 409, ids409, 500, ids500));
         return objectMapper.writeValueAsString(body);
     }
 

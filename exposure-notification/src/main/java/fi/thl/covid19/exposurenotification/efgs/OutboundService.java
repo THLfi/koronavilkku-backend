@@ -54,7 +54,7 @@ public class OutboundService {
         Optional<OutboundOperation> operation;
         Set<Long> operationsProcessed = new HashSet<>();
 
-        while ((operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).isPresent()) {
+        while ((operation = diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(retry)).isPresent()) {
             long operationId = operation.get().operationId;
             MDC.put("outboundOperationId", "outbound-" + operationId);
             meterRegistry.counter(efgsTotalOperationsOutbound).increment(1.0);
@@ -68,7 +68,8 @@ public class OutboundService {
     private void doOutbound(OutboundOperation operation) {
         boolean finished = false;
         try {
-            UploadResponseEntity res = handleOutbound(transform(operation.keys), operation.batchTag);
+            List<TemporaryExposureKey> outboundKeys = operation.keys;
+            UploadResponseEntity res = handleOutbound(transform(outboundKeys), operation.batchTag);
             // 207 means partial success, due server implementation details we'll need to remove erroneous and re-send
             if (res.httpStatus.value() == 207) {
                 Map<Integer, Integer> responseCounts = handlePartialOutbound(res.multiStatuses.orElseThrow(), operation);
