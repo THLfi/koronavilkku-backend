@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.from24hourToV2Interval;
 import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.toV2Interval;
 import static fi.thl.covid19.exposurenotification.efgs.util.DummyKeyGeneratorUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.util.CommonConst.MAX_RETRY_COUNT;
@@ -115,7 +116,7 @@ public class DiagnosisKeyDao {
         if (keys.isEmpty() || keys.size() >= BATCH_MIN_SIZE) {
             return keys;
         } else {
-            return concatDummyKeys(keys, createDummyKeys(BATCH_MIN_SIZE - keys.size(), interval, false, Optional.empty()));
+            return concatDummyKeys(keys, createDummyKeys(BATCH_MIN_SIZE - keys.size(), isV2Interval ? interval : from24hourToV2Interval(interval), false, Optional.empty()));
         }
     }
 
