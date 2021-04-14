@@ -36,20 +36,24 @@ public class DummyKeyGeneratorUtil {
         }
     }
 
-    public static List<TemporaryExposureKey> generateDummyKeys(int totalCount) {
+    public static List<TemporaryExposureKey> generateDummyKeys(int totalCount, boolean consentToShare) {
+        Instant now = Instant.now();
+        return generateDummyKeys(totalCount, consentToShare, toV2Interval(now), now);
+    }
+
+    public static List<TemporaryExposureKey> generateDummyKeys(int totalCount, boolean consentToShare, int intervalV2, Instant now) {
         List<TemporaryExposureKey> dummyKeys = new ArrayList<>();
         while (dummyKeys.size() < totalCount) {
-            Instant now = Instant.now();
             LocalDate symptomsOnset = now.atOffset(ZoneOffset.UTC).toLocalDate().minusDays(SECURE_RANDOM.nextInt(MAX_DAYS - MIN_DAYS + 1) + MIN_DAYS);
             for (int dummySetCount = 0; dummySetCount < 14; dummySetCount++) {
-                dummyKeys.add(generateDummyKey(dummySetCount, symptomsOnset, now));
+                dummyKeys.add(generateDummyKey(dummySetCount, symptomsOnset, now, consentToShare, intervalV2));
             }
         }
 
         return dummyKeys;
     }
 
-    private static TemporaryExposureKey generateDummyKey(int rollingStartIntervalOffset, LocalDate symptomsOnset, Instant now) {
+    private static TemporaryExposureKey generateDummyKey(int rollingStartIntervalOffset, LocalDate symptomsOnset, Instant now, boolean consentToShare, int intervalV2) {
         byte[] keyData = new byte[16];
         SECURE_RANDOM.nextBytes(keyData);
 
@@ -63,10 +67,10 @@ public class DummyKeyGeneratorUtil {
                 Set.of(),
                 calculateDsos(symptomsOnset, rollingStartInterval),
                 DEFAULT_ORIGIN_COUNTRY,
-                true,
+                consentToShare,
                 Optional.empty(),
-                to24HourInterval(now),
-                toV2Interval(now)
+                fromV2to24hourInterval(intervalV2),
+                intervalV2
         );
     }
 }

@@ -112,8 +112,8 @@ public class FederationServiceSyncWithDaoTestIT {
         Instant now = Instant.now();
         int currentInterval = to24HourInterval(now);
         int currentIntervalV2 = toV2Interval(now);
-        List<TemporaryExposureKey> keys1 = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
-        List<TemporaryExposureKey> keys2 = transform(transform(keyGenerator.someKeys(10)), currentInterval, currentIntervalV2);
+        List<TemporaryExposureKey> keys1 = transform(transform(keyGenerator.someKeys(200)), currentInterval, currentIntervalV2);
+        List<TemporaryExposureKey> keys2 = transform(transform(keyGenerator.someKeys(200)), currentInterval, currentIntervalV2);
         String date = getDateString(LocalDate.now(ZoneOffset.UTC));
         mockServer.expect(ExpectedCount.once(),
                 requestTo("http://localhost:8080/diagnosiskeys/download/" + date))
@@ -138,7 +138,7 @@ public class FederationServiceSyncWithDaoTestIT {
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(to24HourInterval(Instant.now()));
         assertTrue(keys1.size() + keys2.size() == dbKeys.size() && dbKeys.containsAll(keys1) && dbKeys.containsAll(keys2));
-        assertDownloadOperationStateIsCorrect(10);
+        assertDownloadOperationStateIsCorrect(200);
     }
 
     @Test
@@ -233,11 +233,15 @@ public class FederationServiceSyncWithDaoTestIT {
         inboundService.startInbound(LocalDate.now(ZoneOffset.UTC), Optional.empty());
 
         List<TemporaryExposureKey> dbKeys = diagnosisKeyDao.getIntervalKeys(to24HourInterval(Instant.now()));
-        assertEquals(dbKeys.size(), keys.size());
-        assertTrue(dbKeys.get(0).daysSinceOnsetOfSymptoms.get() == 1 &&
-                calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKeys.get(0).transmissionRiskLevel);
-        assertTrue(dbKeys.get(1).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(1).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
-        assertTrue(dbKeys.get(2).daysSinceOnsetOfSymptoms.isEmpty() && dbKeys.get(2).transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+        assertEquals(dbKeys.size(), 210 + keys.size());
+
+        TemporaryExposureKey dbKey0 = dbKeys.stream().filter(key -> key.keyData.equals(keys.get(0).getKeyData())).findAny().orElseThrow();
+        TemporaryExposureKey dbKey1 = dbKeys.stream().filter(key -> key.keyData.equals(keys.get(1).getKeyData())).findAny().orElseThrow();
+        TemporaryExposureKey dbKey2 = dbKeys.stream().filter(key -> key.keyData.equals(keys.get(2).getKeyData())).findAny().orElseThrow();
+        assertTrue(dbKey0.daysSinceOnsetOfSymptoms.get() == 1 &&
+                calculateTransmissionRisk(dayFirst10MinInterval(Instant.now().minus(1, ChronoUnit.DAYS)), 1) == dbKey0.transmissionRiskLevel);
+        assertTrue(dbKey1.daysSinceOnsetOfSymptoms.isEmpty() && dbKey1.transmissionRiskLevel == DEFAULT_RISK_BUCKET);
+        assertTrue(dbKey2.daysSinceOnsetOfSymptoms.isEmpty() && dbKey2.transmissionRiskLevel == DEFAULT_RISK_BUCKET);
     }
 
     @Test

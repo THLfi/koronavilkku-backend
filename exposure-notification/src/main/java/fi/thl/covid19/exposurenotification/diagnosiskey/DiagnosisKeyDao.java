@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import static fi.thl.covid19.exposurenotification.diagnosiskey.IntervalNumber.from24hourToV2Interval;
 import static fi.thl.covid19.exposurenotification.efgs.util.DummyKeyGeneratorUtil.*;
 import static fi.thl.covid19.exposurenotification.efgs.util.CommonConst.MAX_RETRY_COUNT;
 import static java.util.Objects.requireNonNull;
@@ -111,39 +112,53 @@ public class DiagnosisKeyDao {
     @Transactional
     public List<TemporaryExposureKey> getIntervalKeys(int interval) {
         LOG.info("Fetching keys: {}", keyValue("interval", interval));
-        String sql =
-                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval, submission_interval_v2, " +
-                        "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
-                        "from en.diagnosis_key " +
-                        "where submission_interval = :interval " +
-                        // Level 0 & 7 would get 0 score anyhow, so ignore them
-                        // This also clips the range, so that we can manage the difference between iOS & Android APIs
-                        "and transmission_risk_level between 1 and 6 " +
-                        "order by key_data";
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "submission_interval, submission_interval_v2, " +
+                "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                "from en.diagnosis_key " +
+                "where submission_interval = :interval " +
+                // Level 0 & 7 would get 0 score anyhow, so ignore them
+                // This also clips the range, so that we can manage the difference between iOS & Android APIs
+                "and transmission_risk_level between 1 and 6 " +
+                "order by key_data";
         Map<String, Object> params = Map.of("interval", interval);
         // We should not have invalid data in the DB, but if we do, pass by it and move on
-        return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(interval, rs, i))
+        List<TemporaryExposureKey> keys = jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(interval, rs, i))
                 .stream().flatMap(Optional::stream).collect(Collectors.toList());
+
+        if (keys.isEmpty() || keys.size() >= BATCH_MIN_SIZE) {
+            return keys;
+        } else {
+            List<TemporaryExposureKey> dummyKeys = generateDummyKeys(BATCH_MIN_SIZE - keys.size(), false, from24hourToV2Interval(interval), Instant.now());
+            batchInsert(dummyKeys, Optional.empty());
+            return concatDummyKeys(keys, dummyKeys);
+        }
     }
 
     @Transactional
     public List<TemporaryExposureKey> getIntervalKeysV2(int intervalV2) {
         LOG.info("Fetching keys: {}", keyValue("intervalV2", intervalV2));
-        String sql =
-                "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
-                        "submission_interval, submission_interval_v2, " +
-                        "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
-                        "from en.diagnosis_key " +
-                        "where submission_interval_v2 = :interval_v2 " +
-                        // Level 0 & 7 would get 0 score anyhow, so ignore them
-                        // This also clips the range, so that we can manage the difference between iOS & Android APIs
-                        "and transmission_risk_level between 1 and 6 " +
-                        "order by key_data";
+        String sql = "select key_data, rolling_period, rolling_start_interval_number, transmission_risk_level, " +
+                "submission_interval, submission_interval_v2, " +
+                "origin, visited_countries, days_since_onset_of_symptoms, consent_to_share, symptoms_exist " +
+                "from en.diagnosis_key " +
+                "where submission_interval_v2 = :interval_v2 " +
+                // Level 0 & 7 would get 0 score anyhow, so ignore them
+                // This also clips the range, so that we can manage the difference between iOS & Android APIs
+                "and transmission_risk_level between 1 and 6 " +
+                "order by key_data";
         Map<String, Object> params = Map.of("interval_v2", intervalV2);
         // We should not have invalid data in the DB, but if we do, pass by it and move on
-        return jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(intervalV2, rs, i))
+        List<TemporaryExposureKey> keys = jdbcTemplate.query(sql, params, (rs, i) -> mapValidKey(intervalV2, rs, i))
                 .stream().flatMap(Optional::stream).collect(Collectors.toList());
+
+        if (keys.isEmpty() || keys.size() >= BATCH_MIN_SIZE) {
+            return keys;
+        } else {
+            List<TemporaryExposureKey> dummyKeys = generateDummyKeys(BATCH_MIN_SIZE - keys.size(), false, intervalV2, Instant.now());
+            batchInsert(dummyKeys, Optional.empty());
+            return concatDummyKeys(keys, dummyKeys);
+        }
     }
 
     @Transactional
@@ -192,8 +207,8 @@ public class DiagnosisKeyDao {
 
         if (keys.isEmpty()) {
             return Optional.empty();
-        } else if (!retry && keys.size() <= BATCH_MIN_SIZE) {
-            List<TemporaryExposureKey> dummyKeys = generateDummyKeys(BATCH_MIN_SIZE - keys.size());
+        } else if (!retry && keys.size() < BATCH_MIN_SIZE) {
+            List<TemporaryExposureKey> dummyKeys = generateDummyKeys(BATCH_MIN_SIZE - keys.size(), true);
             batchInsert(dummyKeys, Optional.of(timestamp));
             List<TemporaryExposureKey> concatKeys = concatDummyKeys(keys, dummyKeys);
             return constructOutboundOperation(concatKeys, timestamp);

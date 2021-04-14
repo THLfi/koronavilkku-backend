@@ -187,7 +187,7 @@ public class DiagnosisKeyDaoIT {
         // Expect ordering to be by key, not by insert order
         dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, intervalV2, List.of(key1, key2, key3, key4), 4);
         List<TemporaryExposureKey> fromDb = dao.getIntervalKeys(interval);
-        assertEquals(List.of(key2, key3, key1, key4), fromDb);
+        assertTrue(fromDb.indexOf(key2) < fromDb.indexOf(key3) && fromDb.indexOf(key3) < fromDb.indexOf(key1) && fromDb.indexOf(key1) < fromDb.indexOf(key4));
     }
 
     private void assertKeysStored(int interval, List<TemporaryExposureKey> keys) {

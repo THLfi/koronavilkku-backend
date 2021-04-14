@@ -442,14 +442,15 @@ public class DiagnosisKeyControllerIT {
         assertEquals(9, expectedOutput.size());
         // Also, the order of exported keys is random -> sort here for clearer comparison
         List<TemporaryExposureKey> intervalKeys = dao.getIntervalKeys(available.get(0));
-        assertEquals(sortByIntervalRequest(expectedOutput), sortByInterval(intervalKeys));
+        assertTrue(sortByInterval(intervalKeys).containsAll(expectedOutput));
+        List<TemporaryExposureKey> dummiesRemoved = intervalKeys.stream().filter(k1 -> expectedOutput.stream().anyMatch(k2 -> k2.keyData.equals(k1.keyData))).collect(Collectors.toList());
         visitedCountries.ifPresentOrElse(
-                vc -> verifyVisitedCountries(intervalKeys, vc, expectVisitedCountriesToSucceeding),
-                () -> verifyVisitedCountries(intervalKeys, Map.of(), expectVisitedCountriesToSucceeding)
+                vc -> verifyVisitedCountries(dummiesRemoved, vc, expectVisitedCountriesToSucceeding),
+                () -> verifyVisitedCountries(dummiesRemoved, Map.of(), expectVisitedCountriesToSucceeding)
         );
         consentToShareWithEfgs.ifPresentOrElse(
-                c -> verifyConsentToShare(intervalKeys, c),
-                () -> verifyConsentToShare(intervalKeys, false)
+                c -> verifyConsentToShare(dummiesRemoved, c),
+                () -> verifyConsentToShare(dummiesRemoved, false)
         );
     }
 
@@ -555,12 +556,6 @@ public class DiagnosisKeyControllerIT {
                 .andExpect(header().string(
                         "Content-Disposition",
                         "attachment; filename=\"" + BatchFile.batchFileName(id) + "\""));
-    }
-
-    private List<TemporaryExposureKeyRequest> sortByIntervalRequest(List<TemporaryExposureKeyRequest> originals) {
-        return originals.stream()
-                .sorted((k1, k2) -> Integer.compare(k2.rollingStartIntervalNumber, k1.rollingStartIntervalNumber))
-                .collect(Collectors.toList());
     }
 
     private List<TemporaryExposureKeyRequest> resetRiskLevelsRequest(List<TemporaryExposureKeyRequest> originals, int level) {
