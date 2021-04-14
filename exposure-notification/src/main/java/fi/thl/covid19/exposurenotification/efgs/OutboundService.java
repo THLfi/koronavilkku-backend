@@ -54,7 +54,7 @@ public class OutboundService {
         Optional<OutboundOperation> operation;
         Set<Long> operationsProcessed = new HashSet<>();
 
-        while ((operation = diagnosisKeyDao.fetchAvailableKeysForEfgs(retry)).isPresent()) {
+        while ((operation = diagnosisKeyDao.fetchAvailableKeyForEfgsWithDummyPadding(retry)).isPresent()) {
             long operationId = operation.get().operationId;
             MDC.put("outboundOperationId", "outbound-" + operationId);
             meterRegistry.counter(efgsTotalOperationsOutbound).increment(1.0);

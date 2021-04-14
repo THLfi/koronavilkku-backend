@@ -186,19 +186,19 @@ public class DiagnosisKeyDaoIT {
 
         // Expect ordering to be by key, not by insert order
         dao.addKeys(1, md5DigestAsHex("test".getBytes()), interval, intervalV2, List.of(key1, key2, key3, key4), 4);
-        List<TemporaryExposureKey> fromDb = dao.getIntervalKeys(interval);
+        List<TemporaryExposureKey> fromDb = dao.getIntervalKeysWithDummyPadding(interval, false);
         assertTrue(fromDb.indexOf(key2) < fromDb.indexOf(key3) && fromDb.indexOf(key3) < fromDb.indexOf(key1) && fromDb.indexOf(key1) < fromDb.indexOf(key4));
     }
 
     private void assertKeysStored(int interval, List<TemporaryExposureKey> keys) {
-        List<TemporaryExposureKey> result = dao.getIntervalKeys(interval);
+        List<TemporaryExposureKey> result = dao.getIntervalKeysWithDummyPadding(interval, false);
         for (TemporaryExposureKey key : keys) {
             assertTrue(result.stream().anyMatch(key::equals));
         }
     }
 
     private void assertKeysNotStored(int interval, List<TemporaryExposureKey> keys) {
-        List<TemporaryExposureKey> result = dao.getIntervalKeys(interval);
+        List<TemporaryExposureKey> result = dao.getIntervalKeysWithDummyPadding(interval, false);
         for (TemporaryExposureKey key : keys) {
             assertFalse(result.stream().anyMatch(key::equals));
         }

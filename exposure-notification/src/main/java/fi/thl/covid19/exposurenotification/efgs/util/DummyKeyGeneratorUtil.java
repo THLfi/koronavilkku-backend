@@ -36,11 +36,6 @@ public class DummyKeyGeneratorUtil {
         }
     }
 
-    public static List<TemporaryExposureKey> generateDummyKeys(int totalCount, boolean consentToShare) {
-        Instant now = Instant.now();
-        return generateDummyKeys(totalCount, consentToShare, toV2Interval(now), now);
-    }
-
     public static List<TemporaryExposureKey> generateDummyKeys(int totalCount, boolean consentToShare, int intervalV2, Instant now) {
         List<TemporaryExposureKey> dummyKeys = new ArrayList<>();
         while (dummyKeys.size() < totalCount) {
