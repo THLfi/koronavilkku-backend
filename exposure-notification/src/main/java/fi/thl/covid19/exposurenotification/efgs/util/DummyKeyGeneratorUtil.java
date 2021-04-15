@@ -26,14 +26,10 @@ public class DummyKeyGeneratorUtil {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     public static List<TemporaryExposureKey> concatDummyKeys(List<TemporaryExposureKey> actualKeys, List<TemporaryExposureKey> dummyKeys) {
-        if (actualKeys.isEmpty() || actualKeys.size() >= BATCH_MIN_SIZE) {
-            return actualKeys;
-        } else {
-            return Stream.concat(
-                    actualKeys.stream(),
-                    dummyKeys.stream()
-            ).sorted(comparing(TemporaryExposureKey::getKeyData)).collect(Collectors.toList());
-        }
+        return Stream.concat(
+                actualKeys.stream(),
+                dummyKeys.stream()
+        ).sorted(comparing(TemporaryExposureKey::getKeyData)).collect(Collectors.toList());
     }
 
     public static List<TemporaryExposureKey> generateDummyKeys(int totalCount, boolean consentToShare, int intervalV2, Instant now) {
