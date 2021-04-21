@@ -104,12 +104,14 @@ public class BatchFileService {
 
     public Optional<BatchId> getDemoBatchId(int currentInterval) {
         int count = dao.getKeyCount(currentInterval);
-        return count > 0 ? Optional.of(new BatchId(currentInterval, Optional.of(Integer.parseInt("" + currentInterval + count)))) : Optional.empty();
+        int demoId = generateDemoId(count, 100000);
+        return count > 0 ? Optional.of(new BatchId(currentInterval, Optional.of(Integer.parseInt("" + currentInterval + demoId)))) : Optional.empty();
     }
 
     public Optional<BatchId> getDemoBatchIdV2(int currentInterval) {
         int count = dao.getKeyCountV2(currentInterval);
-        return count > 0 ? Optional.of(new BatchId(fromV2to24hourInterval(currentInterval), Optional.of(Integer.parseInt("" + currentInterval + count)))) : Optional.empty();
+        int demoId = generateDemoId(count, 10000);
+        return count > 0 ? Optional.of(new BatchId(fromV2to24hourInterval(currentInterval), Optional.of(Integer.parseInt("" + currentInterval + demoId)))) : Optional.empty();
     }
 
     public BatchFile getBatchFile(BatchId id) {
@@ -128,7 +130,9 @@ public class BatchFileService {
 
     public BatchId getLatestBatchId(BatchIntervals intervals) {
         if (intervals.current == intervals.last) {
-            return new BatchId(intervals.last, Optional.of(dao.getKeyCount(intervals.last)));
+            int count = dao.getKeyCount(intervals.last);
+            int demoId = generateDemoId(count, 100000);
+            return new BatchId(intervals.last, Optional.of(demoId));
         } else {
             return new BatchId(intervals.last);
         }
@@ -136,7 +140,9 @@ public class BatchFileService {
 
     public BatchId getLatestBatchIdV2(BatchIntervals intervals) {
         if (intervals.current == intervals.last) {
-            return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(Integer.parseInt("" + intervals.last + dao.getKeyCountV2(intervals.last))));
+            int count = dao.getKeyCountV2(intervals.last);
+            int demoId = generateDemoId(count, 10000);
+            return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(Integer.parseInt("" + intervals.last + demoId)));
         } else {
             return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(intervals.last));
         }
@@ -162,6 +168,16 @@ public class BatchFileService {
         } else {
             BatchMetadata metadata = BatchMetadata.ofV2(intervalV2, region);
             return BatchFileFactory.createBatchFile(signatureConfig, signingKey, metadata, keys);
+        }
+    }
+
+    private int generateDemoId(int keyCount, int base) {
+        if (keyCount < base) {
+            return keyCount;
+        } else if (keyCount % base == 0) {
+            return base - 1;
+        } else {
+            return keyCount % base;
         }
     }
 }
