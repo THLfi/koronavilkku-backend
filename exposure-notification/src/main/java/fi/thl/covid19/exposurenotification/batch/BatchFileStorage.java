@@ -12,14 +12,17 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.nio.file.StandardOpenOption.*;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
@@ -117,27 +120,42 @@ public class BatchFileStorage {
         }
     }
 
+    private final AtomicLong readOperationId = new AtomicLong(0);
     public Optional<byte[]> readBatchFile(BatchId batchId) {
-        try (FileChannel channel = FileChannel.open(pathToFile(batchId), READ);
-             FileLock lock = channel.tryLock(0, Integer.MAX_VALUE, true)) {
-            if (lock == null) {
-                return Optional.empty();
-            }
-            if (channel.size() > Integer.MAX_VALUE) {
-                throw new IllegalStateException("File too large: batchId=" + batchId + " size=" + channel.size());
-            }
-            ByteBuffer buffer = ByteBuffer.allocate((int) channel.size());
-            channel.read(buffer);
-            return Optional.of(buffer.array());
-        } catch (NoSuchFileException e) {
+        long operationId = readOperationId.incrementAndGet();
+        try {
+            BatchFileChannel channel = openFileWithLock(batchId, operationId);
+            return Optional.of(channel.read());
+        } catch (Exception e) {
+            LOG.info("Could not read file from disk.", e);
             return Optional.empty();
-        } catch (IOException e) {
-            LOG.info("Unexpected error reading batch file from disk.");
-            throw new UncheckedIOException(e);
+        } finally {
+            releaseFileLock(batchId, operationId);
         }
     }
 
     private Path pathToFile(BatchId batchId) {
         return batchFileDirectory.resolve(BatchFile.batchFileName(batchId));
     }
+
+    private final Map<BatchId, BatchFileChannel> channels = new HashMap<>();
+    private BatchFileChannel openFileWithLock(BatchId batchId, Long accessor) {
+        synchronized (channels) {
+            Path path = pathToFile(batchId);
+            BatchFileChannel channel = channels.computeIfAbsent(batchId, id -> new BatchFileChannel(batchId, path));
+            channel.addAccessor(accessor);
+            return channel;
+        }
+    }
+
+    private void releaseFileLock(BatchId batchId, Long accessor) {
+        synchronized (channels) {
+            BatchFileChannel lock = channels.get(batchId);
+            if (lock != null && lock.removeAccessor(accessor)) {
+                channels.remove(batchId);
+                lock.close();
+            }
+        }
+    }
+
 }
