@@ -16,6 +16,8 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
+import static fi.thl.covid19.exposurenotification.batch.BatchIntervals.DAYS_TO_KEEP_BATCHES;
+import static fi.thl.covid19.exposurenotification.batch.BatchIntervals.V2_INTERVALS_TO_KEEP_BATCHES;
 import static java.util.Objects.requireNonNull;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
@@ -26,18 +28,21 @@ public class ApplicationConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(ApplicationConfiguration.class);
 
     private static final Duration REST_TIMEOUT = Duration.of(10, ChronoUnit.SECONDS);
-    private static final int ACTIVE_INTERVALS = 14;
 
     private final boolean cacheEnabled;
     private final Duration statusCacheDuration;
+    private final Duration fileCacheDuration;
 
     public ApplicationConfiguration(@Value("${covid19.diagnosis.data-cache.enabled}") boolean cacheEnabled,
-                                    @Value("${covid19.diagnosis.data-cache.status-duration}") Duration statusCacheDuration) {
+                                    @Value("${covid19.diagnosis.data-cache.status-duration}") Duration statusCacheDuration,
+                                    @Value("${covid19.diagnosis.data-cache.file-duration}") Duration fileCacheDuration) {
         this.cacheEnabled = cacheEnabled;
         this.statusCacheDuration = requireNonNull(statusCacheDuration);
-        LOG.info("Initialized: {} {}",
+        this.fileCacheDuration = requireNonNull(fileCacheDuration);
+        LOG.info("Initialized: {} {} {}",
                 keyValue("cacheEnabled", cacheEnabled),
-                keyValue("statusCacheDuration", statusCacheDuration));
+                keyValue("statusCacheDuration", statusCacheDuration),
+                keyValue("fileCacheDuration", fileCacheDuration));
     }
 
     @Bean("default")
@@ -53,23 +58,26 @@ public class ApplicationConfiguration {
         if (cacheEnabled) {
             return new SpringCache2kCacheManager().addCaches(
                     b -> b.name("exposure-config")
-                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .expireAfterWrite(statusCacheDuration.toSeconds(), TimeUnit.SECONDS)
                             .entryCapacity(1),
                     b -> b.name("exposure-config-v2")
-                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .expireAfterWrite(statusCacheDuration.toSeconds(), TimeUnit.SECONDS)
                             .entryCapacity(1),
                     b -> b.name("available-intervals")
-                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .expireAfterWrite(statusCacheDuration.toSeconds(), TimeUnit.SECONDS)
                             .entryCapacity(1),
                     b -> b.name("available-intervals-v2")
-                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
+                            .expireAfterWrite(statusCacheDuration.toSeconds(), TimeUnit.SECONDS)
                             .entryCapacity(1),
                     b -> b.name("key-count")
-                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
-                            .entryCapacity(ACTIVE_INTERVALS),
+                            .expireAfterWrite(statusCacheDuration.toSeconds(), TimeUnit.SECONDS)
+                            .entryCapacity(DAYS_TO_KEEP_BATCHES),
                     b -> b.name("key-count-v2")
-                            .expireAfterWrite(statusCacheDuration.toMinutes(), TimeUnit.MINUTES)
-                            .entryCapacity(ACTIVE_INTERVALS));
+                            .expireAfterWrite(statusCacheDuration.toSeconds(), TimeUnit.SECONDS)
+                            .entryCapacity(V2_INTERVALS_TO_KEEP_BATCHES),
+                    b -> b.name("batch-file")
+                            .expireAfterWrite(fileCacheDuration.toSeconds(), TimeUnit.SECONDS)
+                            .entryCapacity(DAYS_TO_KEEP_BATCHES+V2_INTERVALS_TO_KEEP_BATCHES));
         } else {
             return new NoOpCacheManager();
         }

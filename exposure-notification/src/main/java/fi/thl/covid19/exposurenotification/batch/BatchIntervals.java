@@ -14,10 +14,10 @@ public class BatchIntervals {
     private static final Duration DISTRIBUTION_DELAY = Duration.ofHours(1);
 
     private static final int DAYS_TO_DISTRIBUTE_BATCHES = 14;
-    private static final int DAYS_TO_KEEP_BATCHES = DAYS_TO_DISTRIBUTE_BATCHES + 1;
+    public static final int DAYS_TO_KEEP_BATCHES = DAYS_TO_DISTRIBUTE_BATCHES + 1;
     public static final int DAILY_BATCHES_COUNT = 6;
     private static final int V2_INTERVALS_TO_DISTRIBUTE_BATCHES = DAYS_TO_DISTRIBUTE_BATCHES * DAILY_BATCHES_COUNT;
-    private static final int V2_INTERVALS_TO_KEEP_BATCHES = DAYS_TO_KEEP_BATCHES * DAILY_BATCHES_COUNT;
+    public static final int V2_INTERVALS_TO_KEEP_BATCHES = DAYS_TO_KEEP_BATCHES * DAILY_BATCHES_COUNT;
 
     public final int current;
     public final int first;

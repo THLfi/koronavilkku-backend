@@ -75,6 +75,7 @@ covid19:
     data-cache:
       enabled: true
       status-duration: PT5M
+      file-duration: PT10S
   maintenance:
     # How often is maintenance-check done
     interval: PT15M

@@ -3,6 +3,7 @@ package fi.thl.covid19.exposurenotification.batch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -19,7 +20,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.nio.file.StandardOpenOption.*;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
 
 @Service
@@ -117,6 +120,8 @@ public class BatchFileStorage {
         }
     }
 
+    // Note: This also caches empty value (rejecting it is not compatible with sync) so the time should be short.
+    @Cacheable(value = "batch-file", sync = true)
     public Optional<byte[]> readBatchFile(BatchId batchId) {
         try (FileChannel channel = FileChannel.open(pathToFile(batchId), READ);
              FileLock lock = channel.tryLock(0, Integer.MAX_VALUE, true)) {
