@@ -1,10 +1,7 @@
 package fi.thl.covid19.exposurenotification.diagnosiskey;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fi.thl.covid19.exposurenotification.batch.BatchFile;
-import fi.thl.covid19.exposurenotification.batch.BatchFileStorage;
-import fi.thl.covid19.exposurenotification.batch.BatchId;
-import fi.thl.covid19.exposurenotification.batch.BatchIntervals;
+import fi.thl.covid19.exposurenotification.batch.*;
 import fi.thl.covid19.exposurenotification.configuration.ConfigurationService;
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.BatchList;
 import fi.thl.covid19.exposurenotification.diagnosiskey.v1.CurrentBatch;
@@ -67,6 +64,9 @@ public class DiagnosisKeyControllerDemoIT {
     @Autowired
     private BatchFileStorage storage;
 
+    @Autowired
+    private BatchFileService batchFileService;
+
     @MockBean
     private PublishTokenVerificationService tokenVerificationService;
 
@@ -87,8 +87,8 @@ public class DiagnosisKeyControllerDemoIT {
 
     @Test
     public void currentWithNoDataReturnsOk() throws Exception {
-        assertCurrent(new BatchId(INTERVALS.last, Optional.of(0)));
-        assertCurrent(new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), Optional.of(Integer.parseInt(INTERVALS_V2.current + "0"))), true);
+        assertCurrent(new BatchId(INTERVALS.last, batchFileService.generateDemoTagPart(INTERVALS.last, 0)));
+        assertCurrent(new BatchId(fromV2to24hourInterval(INTERVALS_V2.last), batchFileService.generateDemoTagPart(INTERVALS_V2.current, 0)), true);
     }
 
     @Test
@@ -182,8 +182,8 @@ public class DiagnosisKeyControllerDemoIT {
 
     @Test
     public void newDemoBatchIsGeneratedFromKeys() throws Exception {
-        BatchId demoBatchWith0Keys = new BatchId(INTERVALS.last, Optional.of(0));
-        BatchId demoBatchWith1Key = new BatchId(INTERVALS.last, Optional.of(2));
+        BatchId demoBatchWith0Keys = new BatchId(INTERVALS.last, batchFileService.generateDemoTagPart(INTERVALS.last, 0));
+        BatchId demoBatchWith1Key = new BatchId(INTERVALS.last, batchFileService.generateDemoTagPart(INTERVALS.last, 2));
 
         assertCurrent(demoBatchWith0Keys);
         assertNoFile(demoBatchWith1Key);

@@ -105,13 +105,13 @@ public class BatchFileService {
     public Optional<BatchId> getDemoBatchId(int currentInterval) {
         int count = dao.getKeyCount(currentInterval);
         int demoId = generateDemoId(count, 100000);
-        return count > 0 ? Optional.of(new BatchId(currentInterval, Optional.of(Integer.parseInt("" + currentInterval + demoId)))) : Optional.empty();
+        return count > 0 ? Optional.of(new BatchId(currentInterval, generateDemoTagPart(currentInterval, demoId))) : Optional.empty();
     }
 
     public Optional<BatchId> getDemoBatchIdV2(int currentInterval) {
         int count = dao.getKeyCountV2(currentInterval);
         int demoId = generateDemoId(count, 10000);
-        return count > 0 ? Optional.of(new BatchId(fromV2to24hourInterval(currentInterval), Optional.of(Integer.parseInt("" + currentInterval + demoId)))) : Optional.empty();
+        return count > 0 ? Optional.of(new BatchId(fromV2to24hourInterval(currentInterval), generateDemoTagPart(currentInterval, demoId))) : Optional.empty();
     }
 
     public BatchFile getBatchFile(BatchId id) {
@@ -132,7 +132,7 @@ public class BatchFileService {
         if (intervals.current == intervals.last) {
             int count = dao.getKeyCount(intervals.last);
             int demoId = generateDemoId(count, 100000);
-            return new BatchId(intervals.last, Optional.of(demoId));
+            return new BatchId(intervals.last, generateDemoTagPart(intervals.last, demoId));
         } else {
             return new BatchId(intervals.last);
         }
@@ -142,7 +142,7 @@ public class BatchFileService {
         if (intervals.current == intervals.last) {
             int count = dao.getKeyCountV2(intervals.last);
             int demoId = generateDemoId(count, 10000);
-            return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(Integer.parseInt("" + intervals.last + demoId)));
+            return new BatchId(fromV2to24hourInterval(intervals.last), generateDemoTagPart(intervals.last, demoId));
         } else {
             return new BatchId(fromV2to24hourInterval(intervals.last), Optional.of(intervals.last));
         }
@@ -179,5 +179,9 @@ public class BatchFileService {
         } else {
             return keyCount % base;
         }
+    }
+
+    public Optional<Integer> generateDemoTagPart(int interval, int demoId) {
+        return Optional.of(Integer.parseInt("" + interval + demoId));
     }
 }
