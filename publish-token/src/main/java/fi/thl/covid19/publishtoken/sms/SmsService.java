@@ -2,6 +2,7 @@ package fi.thl.covid19.publishtoken.sms;
 
 import fi.thl.covid19.publishtoken.PublishTokenDao;
 import fi.thl.covid19.publishtoken.generation.v1.PublishToken;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -30,10 +31,16 @@ public class SmsService {
 
     private final PublishTokenDao dao;
 
-    public SmsService(RestTemplate restTemplate, SmsConfig config, PublishTokenDao dao) {
+    private final MeterRegistry meterRegistry;
+
+    private final String smsErrorRequestsTotalCount = "sms_error_requests_total_count";
+
+    public SmsService(RestTemplate restTemplate, SmsConfig config, PublishTokenDao dao, MeterRegistry meterRegistry) {
         this.restTemplate = requireNonNull(restTemplate);
         this.config = requireNonNull(config);
         this.dao = requireNonNull(dao);
+        this.meterRegistry = requireNonNull(meterRegistry);
+        initCounters();
         LOG.info("SMS Service initialized: {} {} {}",
                 keyValue("active", config.gateway.isPresent()),
                 keyValue("senderName", config.senderName),
@@ -63,10 +70,12 @@ public class SmsService {
                 LOG.info("SMS sent: {}", keyValue("status", result.getStatusCode()));
                 return true;
             } else {
+                meterRegistry.counter(smsErrorRequestsTotalCount).increment(1.0);
                 LOG.error("Failed to send SMS: {}", keyValue("status", result.getStatusCode()));
                 return false;
             }
         } catch (RestClientException e) {
+            meterRegistry.counter(smsErrorRequestsTotalCount).increment(1.0);
             LOG.error("Failed to send SMS.", e);
             return false;
         }
@@ -80,5 +89,9 @@ public class SmsService {
         SmsPayload sms = new SmsPayload(config.senderName, content, Set.of(number));
 
         return new HttpEntity<>(sms, headers);
+    }
+
+    private void initCounters() {
+        meterRegistry.counter(smsErrorRequestsTotalCount);
     }
 }
