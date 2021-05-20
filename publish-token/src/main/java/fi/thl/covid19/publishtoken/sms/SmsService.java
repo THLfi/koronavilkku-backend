@@ -52,6 +52,7 @@ public class SmsService {
             dao.addSmsStatsRow(Instant.now());
             return true;
         } else {
+            meterRegistry.counter(smsErrorRequestsTotalCount).increment(1.0);
             LOG.warn("Requested to send SMS, but no gateway configured!");
             return false;
         }
@@ -70,12 +71,10 @@ public class SmsService {
                 LOG.info("SMS sent: {}", keyValue("status", result.getStatusCode()));
                 return true;
             } else {
-                meterRegistry.counter(smsErrorRequestsTotalCount).increment(1.0);
                 LOG.error("Failed to send SMS: {}", keyValue("status", result.getStatusCode()));
                 return false;
             }
         } catch (RestClientException e) {
-            meterRegistry.counter(smsErrorRequestsTotalCount).increment(1.0);
             LOG.error("Failed to send SMS.", e);
             return false;
         }
