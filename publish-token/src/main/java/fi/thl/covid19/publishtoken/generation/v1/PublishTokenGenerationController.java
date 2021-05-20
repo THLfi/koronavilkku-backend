@@ -50,6 +50,7 @@ public class PublishTokenGenerationController {
                     request.symptomsExist);
             request.patientSmsNumber.ifPresent(number -> {
                         if (!smsService.send(number, token)) {
+                            publishTokenService.invalidateToken(token);
                             throw new IllegalStateException("SMS send failed");
                         }
                     }

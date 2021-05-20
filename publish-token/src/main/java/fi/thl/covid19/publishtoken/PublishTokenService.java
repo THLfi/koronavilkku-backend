@@ -48,6 +48,10 @@ public class PublishTokenService {
         return token;
     }
 
+    public void invalidateToken(PublishToken token) {
+        dao.invalidateToken(token);
+    }
+
     public PublishToken generate() {
         Instant now = Instant.now().truncatedTo(SECONDS);
         // Java Random does not generate longs at a desired range, so we generate 12-number token in 2 parts
