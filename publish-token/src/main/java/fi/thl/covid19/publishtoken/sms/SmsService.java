@@ -53,7 +53,7 @@ public class SmsService {
             return true;
         } else {
             meterRegistry.counter(smsErrorRequestsTotalCount).increment(1.0);
-            LOG.warn("Requested to send SMS, but no gateway configured!");
+            LOG.warn("Requested to send SMS, but no gateway configured or sending failed!");
             return false;
         }
     }
