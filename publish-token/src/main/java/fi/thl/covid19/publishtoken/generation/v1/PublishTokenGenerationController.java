@@ -2,6 +2,7 @@ package fi.thl.covid19.publishtoken.generation.v1;
 
 import fi.thl.covid19.publishtoken.PublishTokenService;
 import fi.thl.covid19.publishtoken.Validation;
+import fi.thl.covid19.publishtoken.error.SmsGatewayException;
 import fi.thl.covid19.publishtoken.sms.SmsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +52,7 @@ public class PublishTokenGenerationController {
             request.patientSmsNumber.ifPresent(number -> {
                         if (!smsService.send(number, token)) {
                             publishTokenService.invalidateToken(token);
-                            throw new IllegalStateException("SMS send failed");
+                            throw new SmsGatewayException();
                         }
                     }
             );

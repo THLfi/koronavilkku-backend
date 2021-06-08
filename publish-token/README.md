@@ -85,6 +85,9 @@ Deprecated components will be removed in next api-version.
       "validThroughTime": "2020-07-02T15:13:20.050472Z"
     }
     ```
+* **Failure Response:**
+    * Error when communicating with sms-gateway
+    * Status: 502 Bad Gateway
     
 ### Fetch Tokens Created by a User
 Request tokens created by a single user, so that the user may re-check the code in case of mistakes or misreads.
