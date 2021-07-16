@@ -29,8 +29,7 @@ import static fi.thl.covid19.publishtoken.error.CorrelationIdInterceptor.clearCo
 import static fi.thl.covid19.publishtoken.error.CorrelationIdInterceptor.getOrCreateCorrelationId;
 import static fi.thl.covid19.publishtoken.generation.v1.PublishTokenGenerationController.VALIDATE_ONLY_HEADER;
 import static net.logstash.logback.argument.StructuredArguments.keyValue;
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.*;
 
 /**
  * Specific client-side mistakes are identified as client errors, trying to describe back the reason.
@@ -51,6 +50,11 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler({InputValidationValidateOnlyException.class})
     public ResponseEntity<Object> handleInputValidationValidateOnlyError(InputValidationValidateOnlyException ex, WebRequest request) {
         return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler({SmsGatewayException.class})
+    public ResponseEntity<Object> handleSMSGatewayError(SmsGatewayException ex, WebRequest request) {
+        return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), BAD_GATEWAY, request);
     }
 
     @ExceptionHandler({ClientAbortException.class})
