@@ -86,7 +86,7 @@ Deprecated components will be removed in next api-version.
     }
     ```
 * **Failure Response:**
-    * Error when communicating with sms-gateway
+    * Error when communicating with SMS-gateway
     * Status: 502 Bad Gateway
     
 ### Fetch Tokens Created by a User
