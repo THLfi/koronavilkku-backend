@@ -11,7 +11,7 @@ select * from (
        1.0::numeric,
        '{ 51, 63, 70 }'::numeric array[3],
        '{ 1.25, 1.0, 0.5, 0.0 }'::numeric array[4],
-       14::int,
+       10::int,
        1.0::numeric,
        900::int,
        '-14 => NONE,
