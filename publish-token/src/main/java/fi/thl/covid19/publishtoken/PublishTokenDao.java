@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,17 @@ public class PublishTokenDao {
         Map<String, Object> params = Map.of("expiry_limit", new Timestamp(expiryLimit.toEpochMilli()));
         int count = jdbcTemplate.update(sql, params);
         LOG.info("Publish tokens deleted: {} {}", keyValue("expiryLimit", expiryLimit.toString()), keyValue("count", count));
+    }
+
+    @Transactional
+    public void invalidateToken(PublishToken publishToken) {
+        String sql = "update pt.publish_token set valid_through = :valid_through where token = :token";
+        Map<String, Object> params = Map.of(
+                "valid_through", LocalDateTime.now(),
+                "token", publishToken.token
+        );
+        jdbcTemplate.update(sql, params);
+        LOG.info("Publish token invalidated: {}", keyValue("token", publishToken.token));
     }
 
     public void addTokenCreateStatsRow(Instant createTime, Optional<Boolean> symptomsExist) {
