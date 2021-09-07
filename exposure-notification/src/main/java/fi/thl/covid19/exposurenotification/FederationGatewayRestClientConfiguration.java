@@ -24,7 +24,6 @@ public class FederationGatewayRestClientConfiguration {
 
     private final Duration connectTimeout = Duration.ofSeconds(60);
     private final Duration readTimeout = Duration.ofSeconds(60);
-    private final Duration socketTimeout = Duration.ofSeconds(60);
 
     private final FederationGatewayRestClientProperties properties;
 
@@ -39,7 +38,6 @@ public class FederationGatewayRestClientConfiguration {
         return builder
                 .setConnectTimeout(connectTimeout)
                 .setReadTimeout(readTimeout)
-                .setConnectTimeout(socketTimeout)
                 .requestFactory(this::requestFactory)
                 .errorHandler(new RestTemplateErrorHandler())
                 .build();
