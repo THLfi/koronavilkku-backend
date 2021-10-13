@@ -76,7 +76,11 @@ public class ConfigurationDao {
                 "minimum_daily_score, " +
                 "days_since_onset_to_infectiousness, " +
                 "infectiousness_when_dsos_missing, " +
-                "available_countries " +
+                "available_countries, " +
+                "end_of_life_reached, " +
+                "end_of_life_statistics_fi, " +
+                "end_of_life_statistics_sv, " +
+                "end_of_life_statistics_en " +
                 "from en.exposure_configuration_v2 " +
                 "order by version desc " +
                 "limit 1";
@@ -95,7 +99,11 @@ public class ConfigurationDao {
                 rs.getInt("minimum_daily_score"),
                 toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
                 rs.getString("infectiousness_when_dsos_missing"),
-                Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())
+                Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet()),
+                rs.getBoolean("end_of_life_reached"),
+                toIntegerString(rs.getObject("end_of_life_statistics_fi")),
+                toIntegerString(rs.getObject("end_of_life_statistics_sv")),
+                toIntegerString(rs.getObject("end_of_life_statistics_en"))
         ));
     }
 
