@@ -39,7 +39,7 @@ public class ConfigurationControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=3600, public"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().string(expected));
+                .andExpect(content().json(expected));
     }
 
     @Test
@@ -49,7 +49,7 @@ public class ConfigurationControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=3600, public"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().string(expected));
+                .andExpect(content().json(expected));
     }
 
     @Test
@@ -60,7 +60,7 @@ public class ConfigurationControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=3600, public"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().string(expected));
+                .andExpect(content().json(expected));
     }
 
     @Test
@@ -71,7 +71,7 @@ public class ConfigurationControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "max-age=3600, public"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().string(expected));
+                .andExpect(content().json(expected));
     }
 
     @Test
