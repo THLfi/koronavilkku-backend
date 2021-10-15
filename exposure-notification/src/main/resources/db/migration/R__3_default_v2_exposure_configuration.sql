@@ -1,6 +1,6 @@
 -- As a repeatable migration, this will be re-run whenever the file changes
 insert into en.exposure_configuration_v2
-  (report_type_weight_confirmed_test, report_type_weight_confirmed_clinical_diagnosis, report_type_weight_self_report, report_type_weight_recursive, infectiousness_weight_standard, infectiousness_weight_high, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, minimum_daily_score, days_since_onset_to_infectiousness, infectiousness_when_dsos_missing, available_countries, end_of_life_reached, end_of_life_statistics_fi, end_of_life_statistics_sv, end_of_life_statistics_en)
+  (report_type_weight_confirmed_test, report_type_weight_confirmed_clinical_diagnosis, report_type_weight_self_report, report_type_weight_recursive, infectiousness_weight_standard, infectiousness_weight_high, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, minimum_daily_score, days_since_onset_to_infectiousness, infectiousness_when_dsos_missing, available_countries, end_of_life_reached, end_of_life_statistics)
 select * from (
     values(
        1.0::numeric,
@@ -47,17 +47,27 @@ select * from (
        'HIGH',
        '{ BE, BG, CZ, DK, DE, EE, IE, GR, ES, FR, HR, IT, CY, LV, LT, LU, HU, MT, NL, AT, PL, PT, RO, SI, SK, SE, IS, NO, LI, CH, GB }'::varchar(2)[],
        false::boolean,
-       '100 => "Tämä on vain ensimmäinen testi",
-       200 => "Tämä on toinen testi"'::hstore,
-       '100 => "Detta är bara det första testet",
-       200 => "Detta är ett annat test"'::hstore,
-       '100 => "This is just the first test",
-       200 => "This is another test"'::hstore)
+       '[{
+        "value": "100%",
+        "label": {
+         "fi": "Tämä on vain ensimmäinen testi",
+         "sv": "Detta är bara det första testet",
+         "en": "This is just the first test"
+         }
+       },
+       {
+        "value": "200",
+        "label": {
+         "fi": "Tämä on toinen testi",
+         "sv": "Detta är ett annat test",
+         "en": "This is another test"
+        }
+       }]'::jsonb)
 ) as default_values
 -- Don't insert a new version if the latest one is identical
 except (
   select
-    report_type_weight_confirmed_test, report_type_weight_confirmed_clinical_diagnosis, report_type_weight_self_report, report_type_weight_recursive, infectiousness_weight_standard, infectiousness_weight_high, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, minimum_daily_score, days_since_onset_to_infectiousness, infectiousness_when_dsos_missing, available_countries, end_of_life_reached, end_of_life_statistics_fi, end_of_life_statistics_sv, end_of_life_statistics_en
+    report_type_weight_confirmed_test, report_type_weight_confirmed_clinical_diagnosis, report_type_weight_self_report, report_type_weight_recursive, infectiousness_weight_standard, infectiousness_weight_high, attenuation_bucket_threshold_db, attenuation_bucket_weights, days_since_exposure_threshold, minimum_window_score, minimum_daily_score, days_since_onset_to_infectiousness, infectiousness_when_dsos_missing, available_countries, end_of_life_reached, end_of_life_statistics
   from en.exposure_configuration_v2
   order by version desc limit 1
 );
