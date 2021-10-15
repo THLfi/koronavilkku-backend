@@ -30,9 +30,7 @@ public class ExposureConfigurationV2 {
 
     // End of life configurations
     public final boolean endOfLifeReached;
-    public final Map<Integer, String> endOfLifeStatisticsFI;
-    public final Map<Integer, String> endOfLifeStatisticsSV;
-    public final Map<Integer, String> endOfLifeStatisticsEN;
+    public final List<EndOfLifeStatistic> endOfLifeStatistics;
 
     /*
      * Set of available countries in ISO-3166 alpha-2 format
@@ -57,9 +55,7 @@ public class ExposureConfigurationV2 {
             String infectiousnessWhenDaysSinceOnsetMissing,
             Set<String> availableCountries,
             boolean endOfLifeReached,
-            Map<Integer, String> endOfLifeStatisticsFI,
-            Map<Integer, String> endOfLifeStatisticsSV,
-            Map<Integer, String> endOfLifeStatisticsEN
+            List<EndOfLifeStatistic> endOfLifeStatistics
     ) {
         this.version = version;
         this.reportTypeWeightConfirmedTest = reportTypeWeightConfirmedTest;
@@ -77,8 +73,6 @@ public class ExposureConfigurationV2 {
         this.infectiousnessWhenDaysSinceOnsetMissing = infectiousnessWhenDaysSinceOnsetMissing;
         this.availableCountries = availableCountries;
         this.endOfLifeReached = endOfLifeReached;
-        this.endOfLifeStatisticsFI = endOfLifeStatisticsFI;
-        this.endOfLifeStatisticsSV = endOfLifeStatisticsSV;
-        this.endOfLifeStatisticsEN = endOfLifeStatisticsEN;
+        this.endOfLifeStatistics = endOfLifeStatistics;
     }
 }
