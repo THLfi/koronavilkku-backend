@@ -131,7 +131,7 @@ public class ConfigurationDao {
             return objectMapper.readValue(json, new TypeReference<>() {
             });
         } catch (JsonProcessingException jsonProcessingException) {
-            throw new IllegalStateException("Invalid json mapping: end of life statistic");
+            throw new IllegalStateException("Invalid json in end of life statistics.");
         }
     }
 }
