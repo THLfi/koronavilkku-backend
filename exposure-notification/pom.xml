@@ -138,7 +138,7 @@
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>0.6.1</version>
                 <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:3.15.8:exe:${os.detected.classifier}</protocArtifact>
+                    <protocArtifact>com.google.protobuf:protoc:3.16.1:exe:${os.detected.classifier}</protocArtifact>
                 </configuration>
                 <executions>
                     <execution>
