@@ -2,7 +2,7 @@ package fi.thl.covid19.exposurenotification.batch;
 
 import com.google.protobuf.ByteString;
 import fi.thl.covid19.proto.*;
-import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

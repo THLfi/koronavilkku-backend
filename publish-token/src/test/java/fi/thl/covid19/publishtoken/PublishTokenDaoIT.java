@@ -17,7 +17,7 @@ import java.util.Optional;
 import static fi.thl.covid19.publishtoken.Validation.SERVICE_NAME_MAX_LENGTH;
 import static fi.thl.covid19.publishtoken.Validation.USER_NAME_MAX_LENGTH;
 import static java.time.temporal.ChronoUnit.HOURS;
-import static net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils.repeat;
+import static org.apache.commons.lang3.StringUtils.repeat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
