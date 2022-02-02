@@ -42,8 +42,8 @@ spring:
     password: "${EN_DATABASE_PASSWORD}"
     hikari:
       auto-commit: true
-      maximum-pool-size: 5
-      connection-timeout: 20000
+      maximum-pool-size: 10
+      connection-timeout: 60000
       leak-detection-threshold: 60000
       validation-timeout: 5000
   servlet:
