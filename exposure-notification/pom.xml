@@ -11,7 +11,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.9</version>
+        <version>2.5.10</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -21,8 +21,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>11</java.version>
-        <cache2k-version>2.4.1.Final</cache2k-version>
-        <tomcat.version>9.0.58</tomcat.version>
+        <cache2k-version>2.6.1.Final</cache2k-version>
     </properties>
 
     <dependencies>
