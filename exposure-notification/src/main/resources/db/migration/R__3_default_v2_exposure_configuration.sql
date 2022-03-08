@@ -47,22 +47,32 @@ select * from (
        'HIGH',
        '{ BE, BG, CZ, DK, DE, EE, IE, GR, ES, FR, HR, IT, CY, LV, LT, LU, HU, MT, NL, AT, PL, PT, RO, SI, SK, SE, IS, NO, LI, CH, GB }'::varchar(2)[],
        false::boolean,
-       '[{
-        "value": "100%",
-        "label": {
-         "fi": "Tämä on vain ensimmäinen testi",
-         "sv": "Detta är bara det första testet",
-         "en": "This is just the first test"
+       '[
+         {
+           "value": {
+             "fi": "100%",
+             "sv": "100%",
+             "en": "100%"
+           },
+           "label": {
+             "fi": "Tämä on vain ensimmäinen testi",
+             "sv": "Detta är bara det första testet",
+             "en": "This is just the first test"
+           }
+         },
+         {
+           "value": {
+             "fi": "Noin 100-200",
+             "sv": "Cirka 100-200",
+             "en": "Approximately 100-200"
+           },
+           "label": {
+             "fi": "Tämä on toinen testi",
+             "sv": "Detta är ett annat test",
+             "en": "This is another test"
+           }
          }
-       },
-       {
-        "value": "200",
-        "label": {
-         "fi": "Tämä on toinen testi",
-         "sv": "Detta är ett annat test",
-         "en": "This is another test"
-        }
-       }]'::jsonb)
+       ]'::jsonb)
 ) as default_values
 -- Don't insert a new version if the latest one is identical
 except (
