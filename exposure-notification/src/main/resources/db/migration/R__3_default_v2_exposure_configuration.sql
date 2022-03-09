@@ -51,49 +51,49 @@ select * from (
          {
            "value": {
              "fi": "Noin 2,5 miljoonaa",
-             "sv": "*sv_käännös puuttuu*",
-             "en": "*en_käännös puuttuu*"
+             "sv": "Cirka 2,5 miljoner",
+             "en": "About 2.5 million"
            },
            "label": {
              "fi": "suomalaista käytti Koronavilkkua.",
-             "sv": "*sv_käännös puuttuu*",
-             "en": "*en_käännös puuttuu*"
+             "sv": "finländare använde Coronablinkern.",
+             "en": "people in Finland used Koronavilkku."
            }
          },
          {
            "value": {
              "fi": "20 000",
              "sv": "20 000",
-             "en": "20 000"
+             "en": "20,000"
            },
            "label": {
              "fi": "käyttäjää ilmoitti tartunnastaan Koronavilkun kautta.",
-             "sv": "*sv_käännös puuttuu*",
-             "en": "*en_käännös puuttuu*"
+             "sv": "användare meddelade om sin smitta via Coronablinkern.",
+             "en": "users reported their infection with Koronavilkku."
            }
          },
          {
            "value": {
              "fi": "350 000",
              "sv": "350 000",
-             "en": "350 000"
+             "en": "350,000"
            },
            "label": {
              "fi": "käyttäjää siirtyi altistumisilmoituksesta Omaolon koronaoirearvioon.",
-             "sv": "*sv_käännös puuttuu*",
-             "en": "*en_käännös puuttuu*"
+             "sv": "användare gick vidare till Omaolos coronasymtombedömning från exponeringsmeddelandet.",
+             "en": "users went to the Omaolo coronavirus symptom checker after receiving an exposure notification."
            }
          },
          {
            "value": {
              "fi": "Arviolta 36 000 – 103 000",
-             "sv": "*sv_käännös puuttuu*",
-             "en": "*en_käännös puuttuu*"
+             "sv": "Uppskattningsvis 36 000–103 000",
+             "en": "An estimated 36,000 to 103,000"
            },
            "label": {
              "fi": "tartuntaa vältettiin Koronavilkun avulla.",
-             "sv": "*sv_käännös puuttuu*",
-             "en": "*en_käännös puuttuu*"
+             "sv": "smittfall kunde undvikas med hjälp av Coronablinkern.",
+             "en": "infections were prevented with Koronavilkku."
            }
          }
        ]'::jsonb)
