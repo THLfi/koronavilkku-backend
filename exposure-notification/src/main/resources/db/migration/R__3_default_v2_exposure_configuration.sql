@@ -50,26 +50,50 @@ select * from (
        '[
          {
            "value": {
-             "fi": "100%",
-             "sv": "100%",
-             "en": "100%"
+             "fi": "Noin 2,5 miljoonaa",
+             "sv": "*sv_käännös puuttuu*",
+             "en": "*en_käännös puuttuu*"
            },
            "label": {
-             "fi": "Tämä on vain ensimmäinen testi",
-             "sv": "Detta är bara det första testet",
-             "en": "This is just the first test"
+             "fi": "suomalaista käytti Koronavilkkua.",
+             "sv": "*sv_käännös puuttuu*",
+             "en": "*en_käännös puuttuu*"
            }
          },
          {
            "value": {
-             "fi": "Noin 100-200",
-             "sv": "Cirka 100-200",
-             "en": "Approximately 100-200"
+             "fi": "20 000",
+             "sv": "20 000",
+             "en": "20 000"
            },
            "label": {
-             "fi": "Tämä on toinen testi",
-             "sv": "Detta är ett annat test",
-             "en": "This is another test"
+             "fi": "käyttäjää ilmoitti tartunnastaan Koronavilkun kautta.",
+             "sv": "*sv_käännös puuttuu*",
+             "en": "*en_käännös puuttuu*"
+           }
+         },
+         {
+           "value": {
+             "fi": "350 000",
+             "sv": "350 000",
+             "en": "350 000"
+           },
+           "label": {
+             "fi": "käyttäjää siirtyi altistumisilmoituksesta Omaolon koronaoirearvioon.",
+             "sv": "*sv_käännös puuttuu*",
+             "en": "*en_käännös puuttuu*"
+           }
+         },
+         {
+           "value": {
+             "fi": "Arviolta 36 000 – 103 000",
+             "sv": "*sv_käännös puuttuu*",
+             "en": "*en_käännös puuttuu*"
+           },
+           "label": {
+             "fi": "tartuntaa vältettiin Koronavilkun avulla.",
+             "sv": "*sv_käännös puuttuu*",
+             "en": "*en_käännös puuttuu*"
            }
          }
        ]'::jsonb)
