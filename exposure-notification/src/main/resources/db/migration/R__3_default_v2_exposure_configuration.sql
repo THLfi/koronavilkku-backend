@@ -62,8 +62,8 @@ select * from (
          },
          {
            "value": {
-             "fi": "20 000",
-             "sv": "20 000",
+             "fi": "20\u00A000",
+             "sv": "20\u00A000",
              "en": "20,000"
            },
            "label": {
@@ -74,8 +74,8 @@ select * from (
          },
          {
            "value": {
-             "fi": "350 000",
-             "sv": "350 000",
+             "fi": "350\u00A000",
+             "sv": "350\u00A000",
              "en": "350,000"
            },
            "label": {
@@ -86,8 +86,8 @@ select * from (
          },
          {
            "value": {
-             "fi": "Arviolta 36 000 – 103 000",
-             "sv": "Uppskattningsvis 36 000–103 000",
+             "fi": "Arviolta 36\u00A000 – 103\u00A000",
+             "sv": "Uppskattningsvis 36\u00A000 – 103\u00A000",
              "en": "An estimated 36,000 to 103,000"
            },
            "label": {
