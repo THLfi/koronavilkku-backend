@@ -43,11 +43,10 @@ public class ApiErrorHandlerTest {
 
     @Test
     public void getInvalidIs404() throws Exception {
-        String result = mockMvc.perform(get("/nosuchpath"))
+        var result = mockMvc.perform(get("/nosuchpath"))
                 .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andReturn().getResponse().getContentAsString();
-        assertErrorObject(result, HttpStatus.NOT_FOUND, Optional.of("Invalid request path"));
+                .andReturn().getResponse();
+        assertEquals(HttpStatus.NOT_FOUND.value(), result.getStatus());
     }
 
     @Test
