@@ -28,6 +28,10 @@ public class ExposureConfigurationV2 {
     public final Map<Integer, String> daysSinceOnsetToInfectiousness;
     public final String infectiousnessWhenDaysSinceOnsetMissing;
 
+    // End of life configurations
+    public final boolean endOfLifeReached;
+    public final List<EndOfLifeStatistic> endOfLifeStatistics;
+
     /*
      * Set of available countries in ISO-3166 alpha-2 format
      * Source: https://ec.europa.eu/info/live-work-travel-eu/health/coronavirus-response/travel-during-coronavirus-pandemic/mobile-contact-tracing-apps-eu-member-states_en
@@ -49,7 +53,9 @@ public class ExposureConfigurationV2 {
             int minimumDailyScore,
             Map<Integer, String> daysSinceOnsetToInfectiousness,
             String infectiousnessWhenDaysSinceOnsetMissing,
-            Set<String> availableCountries
+            Set<String> availableCountries,
+            boolean endOfLifeReached,
+            List<EndOfLifeStatistic> endOfLifeStatistics
     ) {
         this.version = version;
         this.reportTypeWeightConfirmedTest = reportTypeWeightConfirmedTest;
@@ -66,5 +72,7 @@ public class ExposureConfigurationV2 {
         this.daysSinceOnsetToInfectiousness = daysSinceOnsetToInfectiousness;
         this.infectiousnessWhenDaysSinceOnsetMissing = infectiousnessWhenDaysSinceOnsetMissing;
         this.availableCountries = availableCountries;
+        this.endOfLifeReached = endOfLifeReached;
+        this.endOfLifeStatistics = endOfLifeStatistics;
     }
 }

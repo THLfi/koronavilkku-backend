@@ -1,6 +1,10 @@
 package fi.thl.covid19.exposurenotification.configuration;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.thl.covid19.exposurenotification.configuration.v1.ExposureConfiguration;
+import fi.thl.covid19.exposurenotification.configuration.v2.EndOfLifeStatistic;
 import fi.thl.covid19.exposurenotification.configuration.v2.ExposureConfigurationV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +25,11 @@ public class ConfigurationDao {
     private static final Logger LOG = LoggerFactory.getLogger(ConfigurationDao.class);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper;
 
-    public ConfigurationDao(NamedParameterJdbcTemplate jdbcTemplate) {
+    public ConfigurationDao(NamedParameterJdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = requireNonNull(jdbcTemplate);
+        this.objectMapper = requireNonNull(objectMapper);
         LOG.info("Initialized");
     }
 
@@ -76,7 +82,9 @@ public class ConfigurationDao {
                 "minimum_daily_score, " +
                 "days_since_onset_to_infectiousness, " +
                 "infectiousness_when_dsos_missing, " +
-                "available_countries " +
+                "available_countries, " +
+                "end_of_life_reached, " +
+                "end_of_life_statistics " +
                 "from en.exposure_configuration_v2 " +
                 "order by version desc " +
                 "limit 1";
@@ -95,7 +103,9 @@ public class ConfigurationDao {
                 rs.getInt("minimum_daily_score"),
                 toIntegerString(rs.getObject("days_since_onset_to_infectiousness")),
                 rs.getString("infectiousness_when_dsos_missing"),
-                Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet())
+                Arrays.stream((String[]) rs.getArray("available_countries").getArray()).collect(Collectors.toSet()),
+                rs.getBoolean("end_of_life_reached"),
+                toEndOfLifeStatistics(rs.getString("end_of_life_statistics"))
         ));
     }
 
@@ -114,5 +124,14 @@ public class ConfigurationDao {
                         (existing, replacement) -> replacement,
                         TreeMap::new
                 ));
+    }
+
+    private List<EndOfLifeStatistic> toEndOfLifeStatistics(String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<>() {
+            });
+        } catch (JsonProcessingException jsonProcessingException) {
+            throw new IllegalStateException("Invalid json in end of life statistics.", jsonProcessingException);
+        }
     }
 }
