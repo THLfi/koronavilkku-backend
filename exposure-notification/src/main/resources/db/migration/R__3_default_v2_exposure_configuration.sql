@@ -50,9 +50,9 @@ select * from (
        '[
          {
            "value": {
-             "fi": "Noin 2,5 miljoonaa",
-             "sv": "Cirka 2,5 miljoner",
-             "en": "About 2.5 million"
+             "fi": "2,5 miljoonaa",
+             "sv": "2,5 miljoner",
+             "en": "2.5 million"
            },
            "label": {
              "fi": "suomalaista käytti Koronavilkkua.",
@@ -62,9 +62,9 @@ select * from (
          },
          {
            "value": {
-             "fi": "20\u00a0000",
-             "sv": "20\u00a0000",
-             "en": "20,000"
+             "fi": "64\u00a0000",
+             "sv": "64\u00a0000",
+             "en": "64,000"
            },
            "label": {
              "fi": "käyttäjää ilmoitti tartunnastaan Koronavilkun kautta.",
@@ -74,26 +74,14 @@ select * from (
          },
          {
            "value": {
-             "fi": "350\u00a0000",
-             "sv": "350\u00a0000",
-             "en": "350,000"
+             "fi": "23\u00a0%",
+             "sv": "23\u00a0%",
+             "en": "23\u00a0%"
            },
            "label": {
-             "fi": "käyttäjää siirtyi altistumisilmoituksesta Omaolon koronaoirearvioon.",
-             "sv": "användare gick vidare till Omaolos coronasymtombedömning från exponeringsmeddelandet.",
-             "en": "users went to the Omaolo coronavirus symptom checker after receiving an exposure notification."
-           }
-         },
-         {
-           "value": {
-             "fi": "Arviolta 36\u00a0000 – 103\u00a0000",
-             "sv": "Uppskattningsvis 36\u00a0000 – 103\u00a0000",
-             "en": "An estimated 36,000 to 103,000"
-           },
-           "label": {
-             "fi": "tartuntaa vältettiin Koronavilkun avulla.",
-             "sv": "smittfall kunde undvikas med hjälp av Coronablinkern.",
-             "en": "infections were prevented with Koronavilkku."
+             "fi": "käyttäjistä kertoi saaneensa altistumisilmoituksen.",
+             "sv": "av användarna uppgav att de hade fått exponeringsmeddelandet.",
+             "en": "of users reported having received an exposure notification."
            }
          }
        ]'::jsonb)
