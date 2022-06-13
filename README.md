@@ -1,3 +1,5 @@
+## :warning: This project has been terminated and is no longer actively maintained: project has been archived and any usage should be done with caution! :warning:
+
 # Finnish COVID-19 Application Backend
 
 ## Contents
