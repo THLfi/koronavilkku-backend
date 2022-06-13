@@ -1,3 +1,6 @@
+#:warning: **This project has been terminated and is no longer actively maintained**:
+project has been archived and any usage should be done with caution! :warning:
+
 # Diagnosis Publish Token Generation Service for the Finnish COVID-19 Application
 
 ## Maintenance
