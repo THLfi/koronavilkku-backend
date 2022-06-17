@@ -5,8 +5,6 @@ on:
     branches: '*'
   pull_request:
     branches: 'trunk'
-  schedule:
-  - cron:  "0 5 * * *" # this is utc time
 
 jobs:
   dependency-scan:
@@ -28,11 +26,3 @@ jobs:
         with:
           name: dependency-check-result
           path: ./**/target/dependency-check-report.html
-      - name: Notify to slack
-        if: ${{ github.event_name == 'schedule' && failure() }}
-        uses: ./.github/docker-slack
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        with:
-          text: "OWASP dependency check - trunk"
-          status: ${{job.status}}
